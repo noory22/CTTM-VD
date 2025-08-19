@@ -1,0 +1,31 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import "./index.css";
+import Login from "./Login.jsx";
+import MainMenu from "./MainMenu.jsx";
+import CreateConfig from "./CreateConfig.jsx"; // Add this import
+import HandleConfig from "./HandleConfig.jsx";
+import Manual from "./Manual.jsx";
+import ProcessLogs from "./ProcessLogs.jsx";
+import ProcessMode from "./ProcessMode.jsx"; // add this import
+
+const rootElement = document.getElementById("root");
+const root = ReactDOM.createRoot(rootElement);
+
+root.render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/main-menu" element={<MainMenu />} />
+        <Route path="/create-config" element={<CreateConfig />} /> {/* Add this route */}
+        <Route path="/handle-config/load" element={<HandleConfig mode="load" />} />
+        <Route path="/handle-config/delete" element={<HandleConfig mode="delete" />} />
+        <Route path="/manual-mode" element={<Manual />} />
+        <Route path="/process-logs" element={<ProcessLogs />} />
+        <Route path="/process-mode" element={<ProcessMode />} />
+      </Routes>
+    </BrowserRouter>
+  </React.StrictMode>
+);
