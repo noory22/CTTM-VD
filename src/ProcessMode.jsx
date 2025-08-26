@@ -18,35 +18,72 @@ const ProcessMode = () => {
   const startTimeRef = useRef(Date.now());
 
   // Simulate real-time data (replace with actual WebSocket/Serial communication)
+  u// Setup serial communication listeners
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isProcessRunning && !isPaused) {
-        const currentTime = (Date.now() - startTimeRef.current) / 1000;
-        const newForce = Math.sin(currentTime * 0.3) * 80 + 120 + Math.random() * 15;
-        const newDistance = Math.cos(currentTime * 0.2) * 30 + 50 + Math.random() * 8;
-        const newTemp = 24 + Math.sin(currentTime * 0.1) * 3 + Math.random() * 1.5;
+    const handleTemperatureUpdate = (temp) => {
+      setSensorData(prev => ({ ...prev, temperature: temp.toFixed(1) }));
+    };
 
-        setSensorData(prev => ({
-          ...prev,
-          temperature: newTemp.toFixed(1),
-          force: Math.max(0, newForce).toFixed(1),
-          distance: Math.max(0, newDistance).toFixed(1),
-          status: isProcessRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED'
-        }));
+    const handleForceUpdate = (force) => {
+      setSensorData(prev => ({ ...prev, force: force.toFixed(1) }));
+      
+      // Add to chart data
+      const currentTime = (Date.now() - startTimeRef.current) / 1000;
+      setChartData(prev => {
+        const newData = [...prev, {
+          time: currentTime.toFixed(1),
+          force: parseFloat(force.toFixed(1)),
+          distance: parseFloat(sensorData.distance) || 0
+        }];
+        return newData.slice(-60); // Keep last 60 points
+      });
+    };
 
-        setChartData(prev => {
-          const newData = [...prev, {
-            time: currentTime.toFixed(1),
-            force: parseFloat(Math.max(0, newForce).toFixed(1)),
-            distance: parseFloat(Math.max(0, newDistance).toFixed(1))
-          }];
-          return newData.slice(-60); // Keep last 60 points
-        });
+    const handleProcessResponse = (response) => {
+      console.log('Process response:', response);
+      
+      switch (response) {
+        case 'started':
+          setIsProcessRunning(true);
+          setIsPaused(false);
+          setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
+          startTimeRef.current = Date.now();
+          break;
+        case 'paused':
+          setIsPaused(true);
+          setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
+          break;
+        case 'reset':
+          setIsProcessRunning(false);
+          setIsPaused(false);
+          setChartData([]);
+          setSensorData(prev => ({ ...prev, status: 'RESET' }));
+          break;
+        case 'homing':
+          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
+          break;
       }
-    }, 150);
+    };
 
-    return () => clearInterval(interval);
-  }, [isProcessRunning, isPaused]);
+    const handleSerialError = (error) => {
+      console.error('Serial error:', error);
+      setIsConnected(false);
+    };
+
+    // Setup listeners
+    window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
+    window.serialAPI.onForceUpdate(handleForceUpdate);
+    window.serialAPI.onProcessResponse(handleProcessResponse);
+    window.serialAPI.onError(handleSerialError);
+
+    // Cleanup listeners
+    return () => {
+      window.serialAPI.removeAllListeners('temperature-update');
+      window.serialAPI.removeAllListeners('force-update');
+      window.serialAPI.removeAllListeners('process-response');
+      window.serialAPI.removeAllListeners('serial-error');
+    };
+  }, [sensorData.distance]);
 
   // Initialize camera feed
   useEffect(() => {
@@ -66,49 +103,54 @@ const ProcessMode = () => {
     initCamera();
   }, []);
 
-  // Protocol communication functions
-  const sendCommand = (command) => {
-    console.log(`Sending command: ${command}`);
-    
-    // Simulate response
-    setTimeout(() => {
-      if (command.includes('*1:1:')) {
-        console.log('Received: *PRS:STR#');
-        setIsProcessRunning(true);
-        setIsPaused(false);
-        startTimeRef.current = Date.now();
-      } else if (command.includes('*1:2:')) {
-        console.log('Received: *PRS:PUS#');
-        setIsPaused(true);
-      } else if (command.includes('*1:3:')) {
-        console.log('Received: *PRS:HOM#');
-        setIsProcessRunning(false);
-        setIsPaused(false);
-        setChartData([]);
-        setSensorData(prev => ({ ...prev, status: 'RESET' }));
-      }
-    }, 100);
+  // Check connection status
+  useEffect(() => {
+    // You can implement a periodic connection check here
+    const checkConnection = () => {
+      // This could be a ping command or checking port status
+      setIsConnected(true); // Set based on actual connection status
+    };
+
+    checkConnection();
+  }, []);
+
+  const handleStart = async () => {
+    try {
+      await window.serialAPI.processStart();
+      console.log('Start command sent');
+      // State will be updated via the process response listener
+    } catch (error) {
+      console.error('Failed to start process:', error);
+      // Handle error - maybe show notification
+    }
   };
 
-  const handleStart = () => {
-    const command = '*1:1:xxx:xxx:xxx:xxx#';
-    sendCommand(command);
+  const handlePause = async () => {
+    try {
+      await window.serialAPI.processPause();
+      console.log('Pause command sent');
+      // State will be updated via the process response listener
+    } catch (error) {
+      console.error('Failed to pause process:', error);
+      // Handle error
+    }
   };
 
-  const handlePause = () => {
-    const command = '*1:2:xxx:xxx:xxx:xxx#';
-    sendCommand(command);
-  };
-
-  const handleReset = () => {
-    const command = '*1:3:xxx:xxx:xxx:xxx#';
-    sendCommand(command);
+  const handleReset = async () => {
+    try {
+      await window.serialAPI.processReset();
+      console.log('Reset command sent');
+      // State will be updated via the process response listener
+    } catch (error) {
+      console.error('Failed to reset process:', error);
+      // Handle error
+    }
   };
 
   const toggleConnection = () => {
+    // This could trigger reconnection logic
     setIsConnected(!isConnected);
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden">
       {/* Animated Background Pattern */}

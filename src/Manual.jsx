@@ -17,6 +17,39 @@ const Manual = () => {
     homing: false
   });
   const [catheterPosition, setCatheterPosition] = useState(50); // Percentage position
+   // Setup serial communication listeners
+  useEffect(() => {
+    const handleTemperatureUpdate = (temp) => {
+      setTemperature(temp);
+    };
+
+    const handleForceUpdate = (force) => {
+      setForce(force);
+    };
+
+    const handleManualResponse = (response) => {
+      console.log('Manual response:', response);
+    };
+
+    const handleSerialError = (error) => {
+      console.error('Serial error:', error);
+      setShowSerialError(true);
+    };
+
+    // Setup listeners
+    window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
+    window.serialAPI.onForceUpdate(handleForceUpdate);
+    window.serialAPI.onManualResponse(handleManualResponse);
+    window.serialAPI.onError(handleSerialError);
+
+    // Cleanup listeners
+    return () => {
+      window.serialAPI.removeAllListeners('temperature-update');
+      window.serialAPI.removeAllListeners('force-update');
+      window.serialAPI.removeAllListeners('manual-response');
+      window.serialAPI.removeAllListeners('serial-error');
+    };
+  }, []);
 
   // Initialize camera feed
   useEffect(() => {
@@ -78,31 +111,58 @@ const Manual = () => {
     return () => clearInterval(interval);
   }, [controls.heater]);
 
-  const handleControlToggle = (controlName) => {
-    setControls(prev => ({
-      ...prev,
-      [controlName]: !prev[controlName]
-    }));
-  };
-
-  const moveCatheter = (direction) => {
-    setCatheterPosition(prev => {
-      if (direction === 'left') {
-        return Math.max(0, prev - 10);
-      } else {
-        return Math.min(100, prev + 10);
+  const handleControlToggle = async (controlName) => {
+    try {
+      if (controlName === 'clamp') {
+        const newState = !controls.clamp;
+        await window.serialAPI.controlClamp(newState ? 'on' : 'off');
+        setControls(prev => ({ ...prev, clamp: newState }));
+      } else if (controlName === 'heater') {
+        const newState = !controls.heater;
+        await window.serialAPI.controlHeater(newState ? 'on' : 'off');
+        setControls(prev => ({ ...prev, heater: newState }));
       }
-    });
+    } catch (error) {
+      console.error('Control error:', error);
+      // Handle error - maybe show notification
+    }
   };
 
-  const resetCatheter = () => {
-    setCatheterPosition(50);
-    setControls(prev => ({ ...prev, homing: true }));
-    
-    // Simulate homing process
-    setTimeout(() => {
-      setControls(prev => ({ ...prev, homing: false }));
-    }, 2000);
+  const moveCatheter = async (direction) => {
+    try {
+      // Send motor command via serial
+      await window.serialAPI.moveMotor(direction);
+      
+      // Update UI position
+      setCatheterPosition(prev => {
+        if (direction === 'backward') {
+          return Math.max(0, prev - 10);
+        } else {
+          return Math.min(100, prev + 10);
+        }
+      });
+    } catch (error) {
+      console.error('Motor movement error:', error);
+      // Handle error - maybe show notification
+    }
+  };
+
+  const resetCatheter = async () => {
+    try {
+      // Send reset command via serial (using process reset for homing)
+      await window.serialAPI.processReset();
+      
+      setCatheterPosition(50);
+      setControls(prev => ({ ...prev, homing: true }));
+      
+      // Simulate homing process
+      setTimeout(() => {
+        setControls(prev => ({ ...prev, homing: false }));
+      }, 2000);
+    } catch (error) {
+      console.error('Homing error:', error);
+      // Handle error
+    }
   };
 
   const retryCamera = async () => {
