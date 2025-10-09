@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
 const HandleConfig = ({ mode = 'load' }) => {
@@ -11,6 +11,8 @@ const HandleConfig = ({ mode = 'load' }) => {
   const [showSerialError, setShowSerialError] = useState(mode === 'load');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingConfigs, setLoadingConfigs] = useState(true);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
 
   useEffect(() => {
     loadAvailableConfigs();
@@ -56,21 +58,33 @@ const HandleConfig = ({ mode = 'load' }) => {
       const success = await window.serialAPI.deleteConfigFile(selectedConfig.configName);
       
       if (success) {
-        // Refresh the config list
-        await loadAvailableConfigs();
-        
-        // Reset selection
-        setSelectedConfig(null);
+        // Close the delete confirmation modal
         setShowDeleteConfirm(false);
         
-        alert('Configuration deleted successfully!');
+        // Show success message
+        setShowDeleteSuccess(true);
+        
+        // Refresh the config list after a short delay
+        setTimeout(async () => {
+          await loadAvailableConfigs();
+          
+          // Reset selection and hide success message
+          setSelectedConfig(null);
+          setIsLoading(false);
+          
+          // Hide success message after 2 seconds
+          setTimeout(() => {
+            setShowDeleteSuccess(false);
+          }, 2000);
+        }, 500);
+        
       } else {
         alert('Error deleting configuration. Please try again.');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
       alert('Error deleting configuration. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -94,12 +108,29 @@ const HandleConfig = ({ mode = 'load' }) => {
   };
 
   const getButtonIcon = () => {
-    return mode === 'load' ? <Play className="w-5 h-5" /> : <Trash2 className="w-5 h-5" />;
+    return mode === 'load' ? null : <Trash2 className="w-5 h-5" />;
+  };
+  const getHelpContent = () => {
+    if (mode === 'load') {
+      return [
+        'Select a configuration from the dropdown to load its settings',
+        'All configuration values will be populated automatically',
+        'Click "Process Mode" to continue with the selected configuration',
+        'Ensure serial port connection is active before processing',
+      
+      ];
+    } else {
+      return [
+        'Select a configuration to delete from your saved configurations',
+        'This action cannot be undone - deleted configurations are permanently removed',
+        'Confirmation will be required before deletion'
+      ];
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -112,12 +143,28 @@ const HandleConfig = ({ mode = 'load' }) => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{getPageTitle()}</h1>
           </div>
           
-          <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
-            <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            {/* Help Button */}
+            <button 
+              onClick={() => setShowHelpModal(true)}
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+            >
+              <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            </button>
+
+            {/* Power Button */}
+            <button 
+              onClick={() => {
+                const confirmed = window.confirm("Are you sure you want to exit?");
+                if (confirmed) {
+                  window.close();
+                }
+              }}
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
+            >
+              <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            </button>
+          </div>
         </div>
 
         {/* Serial Port Error (only for Load mode)
@@ -262,7 +309,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                 </div>
 
                 {/* Action Button */}
-                <div className="pt-6">
+                {/* <div className="pt-6">
                   <button
                     onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
                     disabled={!selectedConfig || isLoading}
@@ -280,13 +327,23 @@ const HandleConfig = ({ mode = 'load' }) => {
                       </>
                     )}
                   </button>
+                </div> */}
+                <div className="pt-6">
+                  <button
+                    onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
+                    disabled={!selectedConfig || isLoading}
+                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
+                  >
+                    {getButtonIcon()}
+                    <span>{getButtonText()}</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Info Card */}
+        {/* Info Card
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
           <div className="flex items-start space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -315,12 +372,12 @@ const HandleConfig = ({ mode = 'load' }) => {
               </ul>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-red-100 rounded-full">
@@ -360,6 +417,71 @@ const HandleConfig = ({ mode = 'load' }) => {
           </div>
         </div>
       )}
+      {/* Delete Success Modal */}
+      {showDeleteSuccess && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-green-100 rounded-full">
+                <FileText className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">Success</h3>
+            </div>
+            
+            <p className="text-slate-600 mb-2">Configuration deleted successfully!</p>
+            
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={() => setShowDeleteSuccess(false)}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg lg:text-xl font-bold text-blue-900">
+                    {mode === 'load' ? 'Load Configuration Info' : 'Delete Configuration Warning'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-blue-600" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-96">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  {getHelpContent().map((item, index) => (
+                    <div key={index} className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };

@@ -28,7 +28,8 @@ const createWindow = () => {
       contextIsolation: true
     },
   });
-
+// Remove the menu completely
+mainWindow.setMenu(null);
 
 
 

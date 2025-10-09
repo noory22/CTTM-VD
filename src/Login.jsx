@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Logo from './assets/Logo.png';
 
 const Login = () => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +34,7 @@ const Login = () => {
       <header className="flex justify-between items-center px-8 py-4 bg-white shadow-lg relative z-10">
     <div className="flex items-center">
       <img 
-        src="/src/assets/logo.png" 
+        src={Logo} 
         alt="Revive Medical Technologies" 
         className="h-12 w-auto object-contain"
         onError={(e) => {
@@ -41,13 +42,20 @@ const Login = () => {
           e.target.nextSibling.style.display = 'flex';
         }}
       />
-      <div className="hidden flex-col items-start">
+      {/* <div className="hidden flex-col items-start">
         <div className="text-2xl font-bold text-blue-600 tracking-wider">REVIVE</div>
         <div className="text-xs text-slate-500 tracking-wide -mt-1">MEDICAL TECHNOLOGIES INC.</div>
-      </div>
+      </div> */}
     </div>
     
-    <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
+    <button 
+     onClick={() => {
+    const confirmed = window.confirm("Are you sure you want to exit?");
+    if (confirmed) {
+      window.close();
+    }
+  }}
+    className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
             <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -73,6 +81,7 @@ const Login = () => {
                 placeholder="Enter Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoComplete="off"
                 required
               />
             </div>
@@ -87,6 +96,7 @@ const Login = () => {
                   placeholder="Enter Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="off"
                   required
                 />
                 <button
@@ -142,7 +152,7 @@ const Login = () => {
         </div>
 
         <div className="max-w-2xl text-gray-700">
-          <h1 className="text-7xl font-black text-gray-800 mb-2 tracking-tight">CTTM-100</h1>
+          <h1 className="text-7xl font-bold text-gray-800 mb-2 tracking-tight">CTTM-100</h1>
           <h2 className="text-3xl font-semibold text-blue-600 mb-6 leading-tight">Catheter Trackability Testing Machine</h2>
           <p className="text-lg leading-relaxed text-gray-600 max-w-lg">
             A reliable solution for precise catheter navigation and accurate performance 
@@ -151,8 +161,15 @@ const Login = () => {
         </div>
       </main>
 
-      <footer className="px-8 py-4 bg-white border-t border-gray-200 text-center">
-        <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
+      <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
+        <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
+          <div className="flex items-center gap-4 lg:gap-6">
+            <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
+          </div>
+          <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
+            <span>Version 1.0.0</span>
+          </div>
+        </div>
       </footer>
     </div>
   );

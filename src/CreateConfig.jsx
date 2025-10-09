@@ -1,31 +1,7 @@
 import React, { useState } from 'react';
+import {ArrowLeft, Info,Power, AlertCircle,Download, X} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// SVG Icon Components
-const ArrowLeft = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5M12 19l-7-7 7-7"/>
-  </svg>
-);
-
-const Power = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
-  </svg>
-);
-
-const AlertCircle = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M12 8v4M12 16h.01"/>
-  </svg>
-);
-
-const Download = ({ className }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-  </svg>
-);
 
 const CreateConfig = () => {
   const navigate = useNavigate();
@@ -40,6 +16,7 @@ const CreateConfig = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSerialError, setShowSerialError] = useState(true);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -47,29 +24,37 @@ const CreateConfig = () => {
     // Validate Configuration Name (alphabets only)
     if (!formData.configName.trim()) {
       newErrors.configName = 'Configuration name is required';
-    } else if (!/^[A-Za-z]+$/.test(formData.configName)) {
+    } else if (!/^[A-Za-z0-9]+$/.test(formData.configName)) {
       newErrors.configName = 'Configuration name must contain only alphabets';
+    } else if (formData.configName.length > 30) {
+      newErrors.configName = 'Configuration name cannot exceed 20 characters';
     }
     
     // Validate Distance (numeric)
     if (!formData.distance.trim()) {
       newErrors.distance = 'Distance is required';
-    } else if (isNaN(formData.distance) || parseFloat(formData.distance) <= 0) {
+    } else if (isNaN(formData.distance) || parseFloat(formData.distance) <= 0 || !/^\d+$/.test(formData.distance)) {
       newErrors.distance = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.distance) < 50 || parseFloat(formData.distance) > 500) {
+      newErrors.pathlength = 'Distance must be between 50mm and 500mm';
     }
     
     // Validate Temperature (numeric)
     if (!formData.temperature.trim()) {
       newErrors.temperature = 'Temperature is required';
-    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
+    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0 || !/^\d+$/.test(formData.temperature)) {
       newErrors.temperature = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 45) {
+      newErrors.temperature = 'Temperature must be between 37°C and 40°C';
     }
     
     // Validate Peak Force (numeric)
     if (!formData.peakForce.trim()) {
       newErrors.peakForce = 'Peak force is required';
-    } else if (isNaN(formData.peakForce) || parseFloat(formData.peakForce) <= 0) {
+    } else if (isNaN(formData.peakForce) || parseFloat(formData.peakForce) <= 0 || !/^\d+$/.test(formData.peakForce)) {
       newErrors.peakForce = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.peakForce) < 1 || parseFloat(formData.peakForce) > 20) {
+      newErrors.peakForce = 'Peak Force must be between 1N and 20N';
     }
     
     setErrors(newErrors);
@@ -80,14 +65,27 @@ const CreateConfig = () => {
     const { name, value } = e.target;
     
     // Validation based on field type
-    if (name === 'configName' && !/^[a-zA-Z]*$/.test(value)) {
+    if (name === 'configName' && !/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
       return; // Only allow alphabets for config name
     }
     
-    if ((name === 'distance' || name === 'temperature' || name === 'peakForce') && 
-        !/^\d*\.?\d*$/.test(value)) {
-      return; // Only allow numbers for numeric fields
+    if (name === 'distance' || name === 'temperature' || name === 'peakForce') {
+      // Prevent negative numbers, leading zeros, and scientific notation (e, E)
+      if (value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
+        return;
+      }
+      
+      // Only allow whole numbers (no decimal points)
+      if (!/^\d*$/.test(value)) {
+        return;
+      }
+      
+      // Prevent multiple decimal points
+      if ((value.match(/\./g) || []).length > 1) {
+        return;
+      }
     }
+ 
     
     setFormData(prev => ({ 
       ...prev, 
@@ -153,7 +151,7 @@ const CreateConfig = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -166,12 +164,29 @@ const CreateConfig = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Create Configuration</h1>
           </div>
           
-          <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
-            <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            {/* Help Button */}
+            <button 
+              onClick={() => setShowHelpModal(true)}
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+            >
+              <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            </button>
+          <button 
+            onClick={() => {
+              const confirmed = window.confirm("Are you sure you want to exit?");
+              if (confirmed) {
+                window.close();
+              }
+            }}
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
+              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         {/* Serial Port Error
@@ -259,8 +274,9 @@ const CreateConfig = () => {
                     value={formData.distance}
                     onChange={handleInputChange}
                     placeholder="Enter distance"
-                    step="0.01"
-                    min="0"
+                    step="1"
+                    min="50"
+                    max="500"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.distance 
                         ? 'border-red-300 focus:border-red-500' 
@@ -287,8 +303,9 @@ const CreateConfig = () => {
                     value={formData.temperature}
                     onChange={handleInputChange}
                     placeholder="Enter temperature"
-                    step="0.1"
-                    min="0"
+                    step="1"
+                    min="37"
+                    max="40"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.temperature 
                         ? 'border-red-300 focus:border-red-500' 
@@ -316,8 +333,9 @@ const CreateConfig = () => {
                   value={formData.peakForce}
                   onChange={handleInputChange}
                   placeholder="Enter peak force"
-                  step="0.01"
+                  step="1"
                   min="0"
+                  max="20"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                     errors.peakForce 
                       ? 'border-red-300 focus:border-red-500' 
@@ -364,7 +382,7 @@ const CreateConfig = () => {
           </div>
         </div>
 
-        {/* Info Card */}
+        {/* Info Card
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
           <div className="flex items-start space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -380,7 +398,79 @@ const CreateConfig = () => {
               </ul>
             </div>
           </div>
+        </div> */}
+         {showHelpModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg lg:text-xl font-bold text-blue-900">Configuration Guidelines</h3>
+                </div>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-blue-600" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-96">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Configuration Name</span> must contain only alphabets and numbers (no special characters)
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      The values of Distance, Peak Force , Temperature <span className="font-semibold">required and must be positive numbers</span>
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Distance</span> should be in range <span className="font-semibold">50 - 500 mm</span> 
+                    </p>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Peak Force </span> should be in range  <span className="font-semibold"> 1N - 20N </span> 
+                    </p>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Temperature</span> should be in range  <span className="font-semibold">37°C - 40°C </span> 
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      Configuration will be <span className="font-semibold">saved to CTTM-100.csv</span>
+                    </p>
+                  </div>
+                  
+                  
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
       </div>
     </div>
   );
