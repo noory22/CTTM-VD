@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("serialAPI", {
   moveMotor: (direction) => ipcRenderer.invoke("move-motor", direction),
   controlHeater: (state) => ipcRenderer.invoke("control-heater", state),
   controlClamp: (state) => ipcRenderer.invoke("control-clamp", state),
+  homingCommand: () => ipcRenderer.invoke("homing-command"),
 
   // Process mode specific commands
   processStartWithValues: (distance, temperature, peakForce) =>
@@ -47,6 +48,8 @@ processResetWithValues: (distance, temperature, peakForce) =>
     ipcRenderer.on("process-response", (event, response) =>
       callback(response)
     ),
+  onHomingStatus: (callback) =>
+   ipcRenderer.on("homing-status", (event, status) => callback(status)),
 
   // Remove listeners
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),

@@ -19,10 +19,12 @@ const Manual = () => {
   // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
+      console.log('Manual.jsx received temperature:', temp);
       setTemperature(temp);
     };
 
     const handleForceUpdate = (force) => {
+      console.log('Manual.jsx received force:', force);
       setForce(force);
     };
 
@@ -42,11 +44,22 @@ const Manual = () => {
       }
     };
 
+    // Add homing status handler
+    const handleHomingStatus = (status) => {
+      if (status === 'HOMING') {
+        setControls(prev => ({ ...prev, homing: true }));
+      } else if (status === 'IDLE') {
+        setControls(prev => ({ ...prev, homing: false }));
+        setCatheterPosition(0); // Reset position when homing completes
+      }
+    };
+
     // Setup listeners
     window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
     window.serialAPI.onForceUpdate(handleForceUpdate);
     window.serialAPI.onManualResponse(handleManualResponse);
     window.serialAPI.onProcessResponse(handleProcessResponse);
+    window.serialAPI.onHomingStatus(handleHomingStatus);
     window.serialAPI.onError(handleSerialError);
 
     // Cleanup listeners
@@ -55,6 +68,7 @@ const Manual = () => {
       window.serialAPI.removeAllListeners('force-update');
       window.serialAPI.removeAllListeners('manual-response');
       window.serialAPI.removeAllListeners('process-response');
+      window.serialAPI.removeAllListeners('homing-status');
       window.serialAPI.removeAllListeners('serial-error');
     };
   }, []);
@@ -142,7 +156,7 @@ const Manual = () => {
     try {
       // Send homing command via serial
       setControls(prev => ({ ...prev, homing: true }));
-      await window.serialAPI.processReset();
+      await window.serialAPI.homingCommand();
       
       // The actual position reset will happen when we receive the homing complete response
     } catch (error) {
@@ -492,19 +506,7 @@ const Manual = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Emergency Stop */}
-        <div className="mt-6 flex justify-center">
-          <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-              </div>
-              <span>EMERGENCY STOP</span>
-            </div>
-          </button>
-        </div>
+        </div>  
       </div>
     </div>
   );

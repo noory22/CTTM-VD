@@ -5,7 +5,7 @@ import started from 'electron-squirrel-startup';
 import "./index.css";
 const { SerialPort } = require('serialport');
 
-const TARGET_HWID = "3267334E3133"
+const TARGET_HWID = "317C39553131"
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -132,9 +132,57 @@ ipcMain.handle('send-data', async (event, data) => {
 });
 
 // Manual mode specific commands
+// ipcMain.handle('move-motor', async (event, direction) => {
+//   const command = direction === 'forward' ? '*2:4:1:1#' : '*2:4:1:2#';
+//   console.log(`🔄 MOTOR COMMAND: ${command} (Direction: ${direction})`);
+//   return new Promise((resolve, reject) => {
+//     if (!currentPort || !currentPort.isOpen) {
+//       return reject('Cannot send data - Port not Open');
+//     }
+//     currentPort.write(command, (err) => {
+//       if (err) return reject(`Error on write: ${err.message}`);
+//       resolve('Motor command sent');
+//     });
+//   });
+// });
+
+// Manual mode specific commands
+let motorStates = {
+  forward: false, // false = stopped, true = running
+  backward: false // false = stopped, true = running
+};
+
 ipcMain.handle('move-motor', async (event, direction) => {
-  const command = direction === 'forward' ? '*2:4:1:1#' : '*2:4:1:2#';
-  console.log(`🔄 MOTOR COMMAND: ${command} (Direction: ${direction})`);
+  let command;
+  
+  if (direction === 'forward') {
+    if (motorStates.forward) {
+      // Stop forward motor
+      command = '*2:4:2:2#';
+      motorStates.forward = false;
+      console.log(`🛑 STOP FORWARD MOTOR COMMAND: ${command}`);
+    } else {
+      // Start forward motor and stop backward if running
+      command = '*2:4:1:1#';
+      motorStates.forward = true;
+      motorStates.backward = false; // Stop backward direction
+      console.log(`🔄 START FORWARD MOTOR COMMAND: ${command}`);
+    }
+  } else if (direction === 'backward') {
+    if (motorStates.backward) {
+      // Stop backward motor
+      command = '*2:4:2:1#';
+      motorStates.backward = false;
+      console.log(`🛑 STOP BACKWARD MOTOR COMMAND: ${command}`);
+    } else {
+      // Start backward motor and stop forward if running
+      command = '*2:4:1:2#';
+      motorStates.backward = true;
+      motorStates.forward = false; // Stop forward direction
+      console.log(`🔄 START BACKWARD MOTOR COMMAND: ${command}`);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -171,6 +219,21 @@ ipcMain.handle('control-clamp', async (event, state) => {
     currentPort.write(command, (err) => {
       if (err) return reject(`Error on write: ${err.message}`);
       resolve('Clamp command sent');
+    });
+  });
+});
+
+ipcMain.handle('homing-command', async (event, state) => {
+  // Clamp is controlled via Valve 1 (button 5 in protocol)
+  const command = '*2:9:1#';
+  console.log(`🔒 HOMING COMMAND: ${command} `);
+  return new Promise((resolve, reject) => {
+    if (!currentPort || !currentPort.isOpen) {
+      return reject('Cannot send data - Port not Open');
+    }
+    currentPort.write(command, (err) => {
+      if (err) return reject(`Error on write: ${err.message}`);
+      resolve('Homing command sent');
     });
   });
 });
@@ -223,21 +286,44 @@ function parseReceivedData(data) {
     const mainWindow = BrowserWindow.getFocusedWindow();
     if (!mainWindow) return;
     
-    // Parse temperature data: *TEP:xxx#
-    if (data.includes('*TEP:') && data.includes('#')) {
-      const tempMatch = data.match(/\*TEP:(\d+)#/);
-      if (tempMatch) {
-        const temperature = parseInt(tempMatch[1]) / 10; // Assuming temperature is in tenths
-        console.log(`🌡️ TEMPERATURE UPDATE: ${temperature}°C`);
-        mainWindow.webContents.send('temperature-update', temperature);
+    console.log('Raw received data:', data); // Debug log
+    
+    // Handle temperature data - FIXED VERSION
+    if (data.includes('*TEP:')) {
+      // Use a more flexible approach that handles both with and without #
+      const tepIndex = data.indexOf('*TEP:');
+      if (tepIndex !== -1) {
+        // Extract everything after *TEP:
+        const afterTep = data.substring(tepIndex + 5);
+        
+        // Find the next # or end of string
+        let valueEnd = afterTep.indexOf('#');
+        if (valueEnd === -1) {
+          // If no # found, use the rest of the string
+          valueEnd = afterTep.length;
+        }
+        
+        // Extract the temperature value
+        const tempStr = afterTep.substring(0, valueEnd);
+        const temperature = parseFloat(tempStr);
+        
+        if (!isNaN(temperature)) {
+          console.log(`🌡️ TEMPERATURE UPDATE: ${temperature}°C`);
+          mainWindow.webContents.send('temperature-update', temperature);
+        } else {
+          console.log(`❌ Invalid temperature value: ${tempStr}`);
+        }
       }
     }
+
     
     // Parse force data: *FRC:xxxxxx#
     if (data.includes('*FRC:') && data.includes('#')) {
-      const forceMatch = data.match(/\*FRC:(\d+)#/);
-      if (forceMatch) {
-        const force = parseInt(forceMatch[1]) / 100; // Assuming force needs scaling
+      const forcePattern = /\*FRC:(\d+(?:\.\d+)?)#/g;
+      let forceMatch;
+      
+      while ((forceMatch = forcePattern.exec(data)) !== null) {
+        const force = parseFloat(forceMatch[1]);
         console.log(`💪 FORCE UPDATE: ${force}N`);
         mainWindow.webContents.send('force-update', force);
       }
@@ -245,9 +331,11 @@ function parseReceivedData(data) {
     
     // Parse distance data: *DST:xxxxxx#
     if (data.includes('*DST:') && data.includes('#')) {
-      const distMatch = data.match(/\*DST:(\d+)#/);
-      if (distMatch) {
-        const distance = parseInt(distMatch[1]) / 10; // Assuming distance needs scaling
+      const distPattern = /\*DST:(\d+(?:\.\d+)?)#/g;
+      let distMatch;
+      
+      while ((distMatch = distPattern.exec(data)) !== null) {
+        const distance = parseFloat(distMatch[1]);
         console.log(`📏 DISTANCE UPDATE: ${distance}mm`);
         mainWindow.webContents.send('distance-update', distance);
       }
@@ -269,18 +357,18 @@ function parseReceivedData(data) {
       mainWindow.webContents.send('process-response', 'paused');
     }
     if (data.includes('*PRS:HOM#')) {
-      console.log('🔄 PROCESS RESET/HOMING STARTED');
-      mainWindow.webContents.send('process-response', 'reset');
+      console.log('🔄 HOMING STARTED');
+      mainWindow.webContents.send('homing-status', 'HOMING');
     }
     if (data.includes('*PRS:RED#')) {
       console.log('🔄 HOMING COMPLETED - READY');
+      // mainWindow.webContents.send('homing-status', 'IDLE')
       mainWindow.webContents.send('process-response', 'ready');
     }
   } catch (error) {
     console.error('Error parsing received data:', error);
   }
 }
-
 
 
 
