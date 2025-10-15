@@ -19,12 +19,12 @@ const Manual = () => {
   // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
-      console.log('Manual.jsx received temperature:', temp);
+      console.log('📱 Manual.jsx received temperature:', temp);
       setTemperature(temp);
     };
 
     const handleForceUpdate = (force) => {
-      console.log('Manual.jsx received force:', force);
+      console.log('📱 Manual.jsx received force:', force);
       setForce(force);
     };
 
@@ -38,20 +38,21 @@ const Manual = () => {
     };
 
     const handleProcessResponse = (response) => {
-      if (response === 'reset' || response === 'homing') {
+      console.log('Process response received:', response);
+      if (response === 'ready') {
+        // Homing completed - set homing to false
         setControls(prev => ({ ...prev, homing: false }));
         setCatheterPosition(0); // Reset position after homing
+        console.log('✅ Homing completed - status set to false');
       }
     };
 
-    // Add homing status handler
     const handleHomingStatus = (status) => {
+      console.log('Homing status received:', status);
       if (status === 'HOMING') {
         setControls(prev => ({ ...prev, homing: true }));
-      } else if (status === 'IDLE') {
-        setControls(prev => ({ ...prev, homing: false }));
-        setCatheterPosition(0); // Reset position when homing completes
-      }
+      } 
+      // Note: We don't handle 'IDLE' here anymore since *PRS:RED# sends 'ready' via process-response
     };
 
     // Setup listeners
@@ -137,15 +138,6 @@ const Manual = () => {
     try {
       // Send motor command via serial
       await window.serialAPI.moveMotor(direction);
-      
-      // Update UI position (this is just visual - real position should come from device)
-      setCatheterPosition(prev => {
-        if (direction === 'backward') {
-          return Math.max(0, prev - 10);
-        } else {
-          return Math.min(100, prev + 10);
-        }
-      });
     } catch (error) {
       console.error('Motor movement error:', error);
       setShowSerialError(true);
@@ -193,6 +185,7 @@ const Manual = () => {
       setCameraLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
@@ -506,7 +499,9 @@ const Manual = () => {
               </div>
             </div>
           </div>
-        </div>  
+        </div>
+
+        
       </div>
     </div>
   );

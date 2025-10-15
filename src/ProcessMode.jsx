@@ -45,31 +45,39 @@ const ProcessMode = () => {
     const handleForceUpdate = (force) => {
       setSensorData(prev => ({ ...prev, force: force.toFixed(1) }));
       
-      // Add to chart data
-      const currentTime = (Date.now() - startTimeRef.current) / 1000;
-      setChartData(prev => {
-        const newData = [...prev, {
-          time: currentTime.toFixed(1),
-          force: parseFloat(force.toFixed(1)),
-          distance: parseFloat(sensorData.distance) || 0
-        }];
-        return newData.slice(-60); // Keep last 60 points
-      });
+      // Add to chart data only when process is running or paused
+      if (isProcessRunning || isPaused) {
+        const currentTime = (Date.now() - startTimeRef.current) / 1000;
+        setChartData(prev => {
+          const newData = [...prev, {
+            time: parseFloat(currentTime.toFixed(1)),
+            force: parseFloat(force.toFixed(1)),
+            distance: parseFloat(sensorData.distance) || 0
+          }];
+          return newData;
+        });
+      }
     };
 
     const handleDistanceUpdate = (distance) => {
       setSensorData(prev => ({ ...prev, distance: distance.toFixed(1) }));
       
-      // Add to chart data
-      const currentTime = (Date.now() - startTimeRef.current) / 1000;
-      setChartData(prev => {
-        const newData = [...prev, {
-          time: currentTime.toFixed(1),
-          force: parseFloat(sensorData.force) || 0,
-          distance: parseFloat(distance.toFixed(1))
-        }];
-        return newData.slice(-60); // Keep last 60 points
-      });
+      // Add to chart data only when process is running or paused
+      if (isProcessRunning || isPaused) {
+        const currentTime = (Date.now() - startTimeRef.current) / 1000;
+        setChartData(prev => {
+          // Create new data point with both force and distance
+          const newDataPoint = {
+            time: parseFloat(currentTime.toFixed(1)),
+            distance: parseFloat(distance.toFixed(1)),
+            force: parseFloat(sensorData.force) || 0
+          };
+          
+          // Add to array - keep all data points
+          const newData = [...prev, newDataPoint];
+          return newData;
+        });
+      }
     };
 
     const handleProcessResponse = (response) => {
@@ -82,28 +90,31 @@ const ProcessMode = () => {
           setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
           startTimeRef.current = Date.now();
+          // Don't clear chart data here - we want to keep all data from start
           break;
         case 'paused':
           setIsPaused(true);
           setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
           break;
-        case 'reset':
+        case 'homing': // Handle homing start
+          setIsProcessRunning(false);
+          setIsPaused(false);
+          setIsHoming(true);
+          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
+          break;
+        case 'ready': // Handle homing completion
+          setIsHoming(false);
+          setIsProcessRunning(false);
+          setIsPaused(false);
+          setSensorData(prev => ({ ...prev, status: 'READY' }));
+          break;
+        case 'reset': // Keep this for backward compatibility
           setIsProcessRunning(false);
           setIsPaused(false);
           setIsHoming(true);
           setChartData([]);
           setSensorData(prev => ({ ...prev, status: 'HOMING' }));
-          break;
-        case 'homing':
-          setIsHoming(true);
-          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
-          break;
-        case 'ready': // Handle the PRS:RED feedback
-          setIsHoming(false);
-          setIsProcessRunning(false);
-          setIsPaused(false);
-          setSensorData(prev => ({ ...prev, status: 'READY' }));
           break;
       }
     };
@@ -128,7 +139,7 @@ const ProcessMode = () => {
       window.serialAPI.removeAllListeners('process-response');
       window.serialAPI.removeAllListeners('serial-error');
     };
-  }, [sensorData.distance, sensorData.force]);
+  }, [sensorData.distance, sensorData.force, isProcessRunning, isPaused]);
 
     // Update main.js to handle PRS:RED feedback
   // In the parseReceivedData function in main.js, add this case:
@@ -272,6 +283,15 @@ const ProcessMode = () => {
       console.log('Reset command with values:', command);
       
       await window.serialAPI.sendData(command);
+
+      // Clear the sensor data labels immediately when reset is pressed
+      setSensorData(prev => ({
+        ...prev,
+        force: '--',
+        distance: '--',
+        status: 'HOMING'
+      }));
+      setChartData([]);
     } catch (error) {
       console.error('Failed to reset process:', error);
     }
@@ -775,28 +795,23 @@ const ProcessMode = () => {
             
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="forceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="distanceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <LineChart 
+                  data={chartData} 
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.7} />
                   <XAxis 
                     dataKey="time" 
                     stroke="#6b7280"
                     tick={{ fill: '#6b7280', fontSize: 12 }}
                     axisLine={{ stroke: '#9ca3af' }}
+                    label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
                   />
                   <YAxis 
                     stroke="#6b7280"
                     tick={{ fill: '#6b7280', fontSize: 12 }}
                     axisLine={{ stroke: '#9ca3af' }}
+                    label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft' }}
                   />
                   <Tooltip 
                     contentStyle={{
@@ -808,6 +823,7 @@ const ProcessMode = () => {
                       backdropFilter: 'blur(12px)'
                     }}
                   />
+                  {/* <Legend /> */}
                   <Line 
                     type="monotone" 
                     dataKey="force" 
@@ -815,7 +831,7 @@ const ProcessMode = () => {
                     strokeWidth={3}
                     dot={false}
                     name="Force (N)"
-                    fill="url(#forceGradient)"
+                    activeDot={{ r: 6, fill: '#3b82f6' }}
                   />
                   <Line 
                     type="monotone" 
@@ -824,7 +840,7 @@ const ProcessMode = () => {
                     strokeWidth={3}
                     dot={false}
                     name="Distance (mm)"
-                    fill="url(#distanceGradient)"
+                    activeDot={{ r: 6, fill: '#22c55e' }}
                   />
                 </LineChart>
               </ResponsiveContainer>

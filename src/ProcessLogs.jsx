@@ -378,7 +378,7 @@ const ProcessLogs = () => {
                         ]}
                         labelFormatter={(label) => `Distance: ${label} mm`}
                       />
-                      <Legend />
+                      {/* <Legend /> */}
                       <Line 
                         type="monotone" 
                         dataKey="force" 

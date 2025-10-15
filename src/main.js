@@ -330,8 +330,8 @@ function parseReceivedData(data) {
     }
     
     // Parse distance data: *DST:xxxxxx#
-    if (data.includes('*DST:') && data.includes('#')) {
-      const distPattern = /\*DST:(\d+(?:\.\d+)?)#/g;
+    if (data.includes('*DIS:') && data.includes('#')) {
+      const distPattern = /\*DIS:(\d+(?:\.\d+)?)#/g;
       let distMatch;
       
       while ((distMatch = distPattern.exec(data)) !== null) {
@@ -359,6 +359,7 @@ function parseReceivedData(data) {
     if (data.includes('*PRS:HOM#')) {
       console.log('🔄 HOMING STARTED');
       mainWindow.webContents.send('homing-status', 'HOMING');
+      mainWindow.webContents.send('process-response', 'homing');
     }
     if (data.includes('*PRS:RED#')) {
       console.log('🔄 HOMING COMPLETED - READY');
