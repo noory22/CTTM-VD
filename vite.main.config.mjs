@@ -1,26 +1,21 @@
-import { defineConfig } from 'vite'
-import { builtinModules } from 'node:module'
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
   build: {
-    outDir: '.vite/build/main',
-    emptyOutDir: true,
+    outDir: '.vite/build/main',  // Ensure this ends with /main
+    emptyOutDir: false,
     lib: {
-      entry: {
-        main: 'src/main.js',
-        preload: 'src/preload.js', // 👈 added preload
-      },
+      entry: resolve(__dirname, 'src/main.js'),
       formats: ['cjs'],
+      fileName: () => 'main.js'
     },
     rollupOptions: {
-      output: {
-        entryFileNames: '[name].js', // generates main.js & preload.js
-      },
-      external: [
-        'electron',
-        'serialport',
-        ...builtinModules,
-      ],
-    },
-  },
-})
+      external: ['electron'],
+      // output: {
+      //   entryFileNames: 'main.js',
+      //   dir: '.vite/build/main'  // Add this line
+      // }
+    }
+  }
+});

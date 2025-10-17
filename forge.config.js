@@ -1,15 +1,58 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const path = require('path');
 
 module.exports = {
   packagerConfig: {
-    asar: true,
-  },
+    asar: {
+      // Unpack preload & renderer so Electron can access them in production
+      unpack: [
+        "**/.vite/build/preload/**",
+        "**/.vite/build/renderer/**",
+        "**/{@serialport,serialport,bindings-cpp}/**/*"
+      ],
+    },
+    ignore: [
+      /^\/\.git/,
+      /^\/forge\.config\.js$/,
+      /^\/vite\.(.+)\.config\.mjs$/,
+    ],
+    win32metadata: {
+      CompanyName: 'Revive Medical Technologies',
+      FileDescription: 'Desktop App',
+      OriginalFileName: 'Catheter Trackability Testing Machine',
+      ProductName: 'CTTM',
+      InternalName: 'Catheter Trackability Testing Machine',
+    },
+  },asar: {
+      // Unpack preload & renderer so Electron can access them in production
+      unpack: [
+        "**/.vite/build/preload/**",
+        "**/.vite/build/renderer/**",
+        "**/{@serialport,serialport,bindings-cpp}/**/*"
+      ],
+    },
+    ignore: [
+      /^\/\.git/,
+      /^\/forge\.config\.js$/,
+      /^\/vite\.(.+)\.config\.mjs$/,
+    ],
+    win32metadata: {
+      CompanyName: 'Revive Medical Technologies',
+      FileDescription: 'Desktop App',
+      OriginalFileName: 'Catheter Trackability Testing Machine',
+      ProductName: 'CTTM',
+      InternalName: 'Catheter Trackability Testing Machine',
+    },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        certificateFile: './cert.pfx',
+        certificatePassword: process.env.CERTIFICATE_PASSWORD,
+        noMsi: true,
+      },
     },
     {
       name: '@electron-forge/maker-zip',
@@ -26,6 +69,10 @@ module.exports = {
   ],
   plugins: [
     {
+      name: '@electron-forge/plugin-auto-unpack-natives',
+      config: { enabled: true },
+    },
+    {
       name: '@electron-forge/plugin-vite',
       config: {
         // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -36,6 +83,7 @@ module.exports = {
             entry: 'src/main.js',
             config: 'vite.main.config.mjs',
             target: 'main',
+            externals: [],
           },
           {
             entry: 'src/preload.js',
@@ -47,6 +95,14 @@ module.exports = {
           {
             name: 'main_window',
             config: 'vite.renderer.config.mjs',
+            entryPoints: [
+              {
+                html: './index.html',
+                js: './src/renderer.jsx',
+                name: 'main_window',
+                preload: { js: './src/preload.js' },
+              },
+            ],
           },
         ],
       },

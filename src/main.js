@@ -3,7 +3,10 @@ import path from 'node:path';
 import fs from 'fs';
 import started from 'electron-squirrel-startup';
 import "./index.css";
+
 const { SerialPort } = require('serialport');
+import { pathToFileURL } from 'node:url';
+const MAIN_WINDOW_VITE_DEV_SERVER_URL = !app.isPackaged ? 'http://localhost:5173' : null;
 
 const TARGET_HWID = "317C39553131"
 
@@ -19,33 +22,78 @@ let currentPort = null;
 let csvWriteStream = null;
 let currentLogFileName = null;
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+function createWindow() {
+  // -------------------------
+  // Resolve preload differently in dev vs prod
+  // -------------------------
+  const preloadPath = app.isPackaged
+    ? path.join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        '.vite',
+        'build',
+        'preload',
+        'preload.js'
+      )
+    : path.join(__dirname, '../../../src/preload.js');
+
+  console.log('Preload path:', preloadPath);
+  console.log('Preload file exists:', require('fs').existsSync(preloadPath));
+
+  // -------------------------
+  // Create the main window
+  // -------------------------
+  mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
     },
+    // Add these icon properties:
+    icon: path.join(__dirname, 'assets', 'icon.ico'), // For development
   });
-// Remove the menu completely
-mainWindow.setMenu(null);
 
-if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-  }
+  // Remove the menu completely
+  mainWindow.setMenu(null);
 
+  // -------------------------
+  // Load renderer HTML
+  // -------------------------
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    // Development → Vite Dev Server
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
+  } else {
+    // Production → packaged HTML in app.asar.unpacked
+    const indexPath = app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          'app.asar.unpacked',
+          'src',
+          '.vite',
+          'build',
+          'renderer',
+          'main_window',
+          'index.html'
+        )
+      : path.join(__dirname, '../.vite/build/renderer/main_window/index.html');
+
+    // Load from inside app.asar in production
+    if (app.isPackaged) {
+      console.log('Loading renderer from:', indexPath);
+      mainWindow.loadFile(indexPath);
+    } else {
+      mainWindow.loadURL(pathToFileURL(indexPath).href);
+    }
   }
 
-  // 🔹 Auto-connect to port on startup
+  // -------------------------
+  // Auto-connect serial port
+  // -------------------------
   autoConnectPort();
-};
+}
 
 // Auto-connect function
 async function autoConnectPort() {

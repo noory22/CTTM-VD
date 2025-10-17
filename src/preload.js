@@ -1,5 +1,3 @@
-import "./index.css";
-
 // preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 

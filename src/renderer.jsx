@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import Login from "./Login.jsx";
 import MainMenu from "./MainMenu.jsx";
@@ -10,12 +10,15 @@ import Manual from "./Manual.jsx";
 import ProcessLogs from "./ProcessLogs.jsx";
 import ProcessMode from "./ProcessMode.jsx"; // add this import
 
+// Check if serialAPI is available
+console.log('Renderer loaded, serialAPI available:', !!window.serialAPI);
+
 const rootElement = document.getElementById("root");
 const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/main-menu" element={<MainMenu />} />
@@ -26,6 +29,6 @@ root.render(
         <Route path="/process-logs" element={<ProcessLogs />} />
         <Route path="/process-mode" element={<ProcessMode />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );

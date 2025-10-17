@@ -347,11 +347,15 @@ const ProcessLogs = () => {
                           borderRadius: '12px',
                           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                         }}
-                        formatter={(value, name) => [
-                          `${value} ${name === 'force' ? 'N' : name === 'distance' ? 'mm' : ''}`,
-                          name === 'force' ? 'Force' : name === 'distance' ? 'Distance' : ''
-                        ]}
-                        labelFormatter={(label) => `Time: ${label} s`}
+                        formatter={(value, name) => {
+                          if (name === 'force') {
+                            return [`${value} N`, 'Force'];
+                          } else if (name === 'distance') {
+                            return [`${value} mm`, 'Distance'];
+                          }
+                          return [value, name];
+                        }}
+                        labelFormatter={(label) => `Time: ${label} seconds`}
                       />
                       <Line 
                         type="monotone" 

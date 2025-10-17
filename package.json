@@ -5,11 +5,16 @@
   "description": "My Electron application description",
   "main": ".vite/build/main/main.js",
   "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
-    "lint": "echo \"No linting configured\""
+    "dev": "vite",
+    "build:renderer": "vite build --config vite.renderer.config.mjs",
+    "build:preload": "vite build --config vite.preload.config.mjs",
+    "build": "npm run build:preload && npm run build:renderer",
+    "start": "cross-env NODE_ENV=development electron-forge start",
+    "package": "npm run build && cross-env NODE_ENV=production electron-forge package",
+    "make": "npm run build && cross-env NODE_ENV=production electron-forge make",
+    "publish": "cross-env NODE_ENV=production electron-forge publish",
+    "lint": "echo \"No linting configured\"",
+    "postinstall": "electron-rebuild"
   },
   "keywords": [],
   "author": {
@@ -27,10 +32,14 @@
     "@electron-forge/plugin-fuses": "^7.8.3",
     "@electron-forge/plugin-vite": "^7.8.3",
     "@electron/fuses": "^1.8.0",
-    "electron": "37.3.0",
+    "cross-env": "^10.1.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
     "vite": "^5.4.19"
   },
   "dependencies": {
+    "@serialport/bindings-cpp": "^13.0.1",
     "@serialport/parser-readline": "^13.0.0",
     "@tailwindcss/vite": "^4.1.12",
     "@vitejs/plugin-react": "^5.0.0",
@@ -41,7 +50,9 @@
     "react-router-dom": "^7.8.1",
     "recharts": "^3.1.2",
     "serialport": "^13.0.0",
-    "tailwindcss": "^4.1.12",
-    "vite-plugin-electron": "^0.29.0"
+    "tailwindcss": "^4.1.12"
+  },
+  "config": {
+    "forge": "./forge.config.js"
   }
 }
