@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCcw, Camera } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCw, Camera, Flame} from 'lucide-react';
 
 const Manual = () => {
   const videoRef = useRef(null);
@@ -371,7 +371,7 @@ const Manual = () => {
           <div className="space-y-6">
             {/* Clamp Control */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp {controls.clamp ? 'ON' : 'OFF'}</h3>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp (Press the button to turn it ON/OFF)</h3>
               <div className="flex justify-center">
                 <button
                   onClick={() => handleControlToggle('clamp')}
@@ -438,11 +438,7 @@ const Manual = () => {
                     }`}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      {/* Heat waves icon */}
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm-6-4c0-1.1.9-2 2-2s2 
-                        .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
-                      </svg>
+                      <Flame className="w-6 h-6" />
                     </div>
                     {controls.heater && (
                       <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
@@ -465,7 +461,7 @@ const Manual = () => {
                     }`}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <RotateCcw className={`w-6 h-6 ${controls.homing ? 'animate-spin' : ''}`} />
+                      <RotateCw className={`w-6 h-6 ${controls.homing ? 'animate-spin' : ''}`} />
                     </div>
                     {controls.homing && (
                       <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>

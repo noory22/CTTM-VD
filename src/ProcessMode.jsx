@@ -309,6 +309,31 @@ const ProcessMode = () => {
       setSensorData(prev => ({ ...prev, temperature: temp }));
     };
 
+    // const handleForceUpdate = (force) => {
+    //   console.log('📱 ProcessMode.jsx received force:', force);
+    //   const currentTime = (Date.now() - startTimeRef.current) / 1000;
+    //   const timeFormatted = parseFloat(currentTime.toFixed(1));
+    //   const forceFormatted = parseFloat(force.toFixed(1));
+      
+    //   setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
+      
+    //   // Add to chart data only when process is running or paused
+    //   if (isProcessRunning || isPaused) {
+    //     setChartData(prev => {
+    //       const newData = [...prev, {
+    //         time: timeFormatted,
+    //         force: forceFormatted,
+    //         distance: parseFloat(sensorData.distance) || 0
+    //       }];
+    //       return newData;
+    //     });
+    //   }
+      
+    //   // Log data when process is running and not paused
+    //   if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
+    //     logSensorData(timeFormatted, sensorData.distance, forceFormatted);
+    //   }
+    // };
     const handleForceUpdate = (force) => {
       console.log('📱 ProcessMode.jsx received force:', force);
       const currentTime = (Date.now() - startTimeRef.current) / 1000;
@@ -316,6 +341,26 @@ const ProcessMode = () => {
       const forceFormatted = parseFloat(force.toFixed(1));
       
       setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
+      
+      // NEW: Auto-pause check - Add this right after setting sensor data
+      if (selectedConfig && isProcessRunning && !isPaused) {
+        const peakForce = parseFloat(selectedConfig.peakForce);
+        if (!isNaN(forceFormatted) && !isNaN(peakForce) && forceFormatted >= peakForce) {
+          console.log('🛑 Peak force safety limit reached: ${forceFormatted}N >= ${peakForce}N');
+          console.log('🟡 Auto-pausing process for safety...');
+          
+          // Use the pause logic directly instead of handlePause to avoid command formatting issues
+          const distanceVal = formatCommandValue(selectedConfig.distance);
+          const tempVal = formatCommandValue(selectedConfig.temperature);
+          const forceVal = formatCommandValue(selectedConfig.peakForce);
+          
+          const command = '*1:2:${distanceVal}:${tempVal}:${forceVal}#';
+          console.log('Auto-pause command:', command);
+          
+          window.serialAPI.sendData(command);
+          return; // Stop further processing
+        }
+      }
       
       // Add to chart data only when process is running or paused
       if (isProcessRunning || isPaused) {
@@ -378,7 +423,7 @@ const ProcessMode = () => {
           console.log('🟡 Process started, starting CSV logging...');
           if (selectedConfig && window.serialAPI) {
             startCsvLogging();
-          } else {
+          } else { 
             console.error('❌ Cannot start logging: missing config or serialAPI');
           }
           break;
@@ -795,10 +840,6 @@ const ProcessMode = () => {
                   <span>CRITICAL: Before Starting Process</span>
                 </h3>
                 <ul className="space-y-2 text-red-800">
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold mt-1">•</span>
-                    <span><strong>Configuration Loaded:</strong> Ensure a valid configuration is selected and displayed</span>
-                  </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span><strong>Serial Connection:</strong> Verify "CONNECTED" status is shown in green</span>

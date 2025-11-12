@@ -298,9 +298,9 @@ const HandleConfig = ({ mode = 'load' }) => {
                   <button
                     onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
                     disabled={!selectedConfig || isLoading}
-                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500
-                     text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 
-                     transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
+                    className={`w-full md:w-auto md:ml-auto ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500
+                    text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 
+                    transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center gap-2 min-w-[160px]`}
                   >
                     {getButtonIcon()}
                     <span>{getButtonText()}</span>
