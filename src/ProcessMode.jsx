@@ -34,7 +34,7 @@ const ProcessMode = () => {
     isHeatingComplete: false,
     showHeaterDialog: false,
     dialogMessage: '',
-    dialogType: '' ,// 'heating-required' or 'heating-complete'
+    dialogType: '', // 'heating-required' or 'heating-complete'
     heaterButtonDisabled: false,
     targetTemperature: null,
     wasTemperatureDrop: false // NEW: Track if temperature dropped during process
@@ -79,102 +79,101 @@ const ProcessMode = () => {
 
     //-----------------------------------------------------------------//
   // Temperature monitoring effect - UPDATED
-  useEffect(() => {
-    if (!selectedConfig || sensorData.temperature === '--') return;
+  // useEffect(() => {
+  //   if (!selectedConfig || sensorData.temperature === '--') return;
 
-    const currentTemp = parseFloat(sensorData.temperature);
-    const targetTemp = parseFloat(selectedConfig.temperature);
+  //   const currentTemp = parseFloat(sensorData.temperature);
+  //   const targetTemp = parseFloat(selectedConfig.temperature);
 
-    if (isNaN(currentTemp) || isNaN(targetTemp)) return;
+  //   if (isNaN(currentTemp) || isNaN(targetTemp)) return;
 
-    console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C, ProcessRunning=${isProcessRunning}, Status=${sensorData.status}`);
+  //   console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C, ProcessRunning=${isProcessRunning}, Status=${sensorData.status}`);
 
-    // NEW: Check if temperature drops below target during running process
-    if (isProcessRunning && !isPaused && currentTemp < targetTemp) {
-      console.log('❌ Temperature dropped below target during process - Auto-pausing');
+  //   // NEW: Check if temperature drops below target during running process
+  //   if (isProcessRunning && !isPaused && currentTemp < targetTemp) {
+  //     console.log('❌ Temperature dropped below target during process - Auto-pausing');
       
-      // Set temperature drop flag
-      setTemperatureStatus(prev => ({
-        ...prev,
-        wasTemperatureDrop: true
-      }));
+  //     // Set temperature drop flag
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       wasTemperatureDrop: true
+  //     }));
 
-      // Auto-pause the process using the same command as manual pause
-      handleAutoPause();
+  //     // Auto-stop the process using the same command as manual stop
+  //     handleAutoStop();
       
-      // Show heater dialog
-      setTemperatureStatus(prev => ({
-        ...prev,
-        isHeatingRequired: true,
-        isHeatingComplete: false,
-        showHeaterDialog: true,
-        dialogMessage: `Temperature dropped to ${currentTemp}°C (below required ${targetTemp}°C). Process auto-paused. Please turn ON the heater.`,
-        dialogType: 'heating-required',
-        heaterButtonDisabled: false,
-        targetTemperature: targetTemp
-      }));
+  //     // Show heater dialog
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       isHeatingRequired: true,
+  //       isHeatingComplete: false,
+  //       showHeaterDialog: true,
+  //       dialogMessage: `Temperature dropped to ${currentTemp}°C (below required ${targetTemp}°C). Process auto-stopped. Please turn ON the heater.`,
+  //       dialogType: 'heating-required',
+  //       heaterButtonDisabled: false,
+  //       targetTemperature: targetTemp
+  //     }));
       
-      return; // Exit early since we're handling the temperature drop case
-    }
+  //     return; // Exit early since we're handling the temperature drop case
+  //   }
 
-    // Existing temperature monitoring logic for non-running states
-    if (currentTemp < targetTemp) {
-      // Temperature is below target
-      if (!temperatureStatus.isHeatingRequired) {
-        setTemperatureStatus(prev => ({
-          ...prev,
-          isHeatingRequired: true,
-          isHeatingComplete: false,
-          showHeaterDialog: true,
-          dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
-          dialogType: 'heating-required',
-          heaterButtonDisabled: false,
-          targetTemperature: targetTemp,
-          wasTemperatureDrop: false
-        }));
-        console.log('🔥 Heating required - showing dialog');
-      }
-    } else {
-      // Temperature reached or exceeded target
-      if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
-        setTemperatureStatus(prev => ({
-          ...prev,
-          isHeatingRequired: false,
-          isHeatingComplete: true,
-          showHeaterDialog: true,
-          dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
-          dialogType: 'heating-complete',
-          heaterButtonDisabled: false,
-          targetTemperature: targetTemp,
-          wasTemperatureDrop: false
-        }));
-        console.log('✅ Heating complete - showing turn off dialog');
-      }
-    }
-  }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete, isProcessRunning, isPaused]);
+  //   // Existing temperature monitoring logic for non-running states
+  //   if (currentTemp < targetTemp) {
+  //     // Temperature is below target
+  //     if (!temperatureStatus.isHeatingRequired) {
+  //       setTemperatureStatus(prev => ({
+  //         ...prev,
+  //         isHeatingRequired: true,
+  //         isHeatingComplete: false,
+  //         showHeaterDialog: true,
+  //         dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
+  //         dialogType: 'heating-required',
+  //         heaterButtonDisabled: false,
+  //         targetTemperature: targetTemp,
+  //         wasTemperatureDrop: false
+  //       }));
+  //       console.log('🔥 Heating required - showing dialog');
+  //     }
+  //   } else {
+  //     // Temperature reached or exceeded target
+  //     if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
+  //       setTemperatureStatus(prev => ({
+  //         ...prev,
+  //         isHeatingRequired: false,
+  //         isHeatingComplete: true,
+  //         showHeaterDialog: true,
+  //         dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
+  //         dialogType: 'heating-complete',
+  //         heaterButtonDisabled: false,
+  //         targetTemperature: targetTemp,
+  //         wasTemperatureDrop: false
+  //       }));
+  //       console.log('✅ Heating complete - showing turn off dialog');
+  //     }
+  //   }
+  // }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete, isProcessRunning, isPaused]);
   //-----------------------------------------------------------------//
 
-  // NEW: Auto-pause function for temperature drops - USES SAME COMMAND AS MANUAL PAUSE
-  const handleAutoPause = async () => {
-    try {
-      if (!selectedConfig) return;
+  // NEW: Auto-stop function for temperature drops
+  // const handleAutoStop = async () => {
+  //   try {
+  //     if (!selectedConfig) return;
       
-      const distanceVal = formatCommandValue(selectedConfig.distance);
-      const tempVal = formatCommandValue(selectedConfig.temperature);
-      const forceVal = formatCommandValue(selectedConfig.peakForce);
+  //     console.log('🔄 Auto-stop command due to temperature drop');
       
-      const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
-      console.log('🔄 Auto-pause command due to temperature drop:', command);
+  //     // Call the stop function directly
+  //     await window.api.stop();
       
-      await window.serialAPI.sendData(command);
+  //     // Update local state
+  //     setIsProcessRunning(false);
+  //     setIsPaused(false);
+  //     setSensorData(prev => ({ ...prev, status: 'STOPPED' }));
       
-      // Note: We don't update local state here because the process-response listener
-      // will handle the state update when it receives the 'paused' response from the machine
-      
-    } catch (error) {
-      console.error('Failed to auto-pause process:', error);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('Failed to auto-stop process:', error);
+  //   }
+  // };
+
   // CSV Logging functions
   const startCsvLogging = async () => {
     if (!selectedConfig) {
@@ -184,7 +183,7 @@ const ProcessMode = () => {
     
     try {
       console.log('🟡 Starting CSV logging with config:', selectedConfig);
-      const result = await window.serialAPI.startCsvLogging(selectedConfig);
+      const result = await window.api.startCsvLogging(selectedConfig);
       if (result.success) {
         setIsLogging(true);
         console.log('✅ CSV logging started:', result.fileName);
@@ -200,7 +199,7 @@ const ProcessMode = () => {
   const stopCsvLogging = async () => {
     if (isLogging) {
       try {
-        const result = await window.serialAPI.stopCsvLogging();
+        const result = await window.api.stopCsvLogging();
         if (result.success) {
           setIsLogging(false);
           console.log('🟡 CSV logging stopped:', result.fileName);
@@ -231,7 +230,7 @@ const ProcessMode = () => {
     try {
       console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}N, isLogging=${isLogging}`);
       
-      await window.serialAPI.logSensorData({
+      await window.api.logSensorData({
         time: timeNum,
         distance: distNum,
         force: forceNum
@@ -244,7 +243,7 @@ const ProcessMode = () => {
     }
   };
   //---------------------------------------------------------------------------------//
-  // Heater Control Functions - UPDATED
+  // Heater Control Functions - UPDATED to use window.api.heating()
   const handleHeaterOn = async () => {
     try {
       // Disable button immediately
@@ -254,7 +253,7 @@ const ProcessMode = () => {
       }));
       
       console.log('🔥 Turning heater ON...');
-      await window.serialAPI.controlHeater('on');
+      await window.api.heating();
       console.log('✅ Heater ON command sent');
       
     } catch (error) {
@@ -271,7 +270,7 @@ const ProcessMode = () => {
       }));
       
       console.log('🔥 Turning heater OFF...');
-      await window.serialAPI.controlHeater('off');
+      await window.api.heating(); // Toggle heating off
       
       // Close dialog and enable start button
       setTemperatureStatus({
@@ -302,189 +301,90 @@ const ProcessMode = () => {
     }
   };
   //---------------------------------------------------------------------------------//
-  // Setup serial communication listeners
+
+  // Real-time data polling
   useEffect(() => {
-    console.log('🔄 Setting up serial communication listeners...'); // Debug log
-    const handleTemperatureUpdate = (temp) => {
-      setSensorData(prev => ({ ...prev, temperature: temp }));
-    };
+    let intervalId;
+    
+    const pollSensorData = async () => {
+      try {
+        const data = await window.api.readData();
+        
+        if (data && data.success) {
+          setSensorData(prev => ({
+            ...prev,
+            temperature: data.temperatureDisplay || '--',
+            force: data.forceDisplay || '--',
+            distance: data.distanceDisplay || '--'
+          }));
 
-    // const handleForceUpdate = (force) => {
-    //   console.log('📱 ProcessMode.jsx received force:', force);
-    //   const currentTime = (Date.now() - startTimeRef.current) / 1000;
-    //   const timeFormatted = parseFloat(currentTime.toFixed(1));
-    //   const forceFormatted = parseFloat(force.toFixed(1));
-      
-    //   setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
-      
-    //   // Add to chart data only when process is running or paused
-    //   if (isProcessRunning || isPaused) {
-    //     setChartData(prev => {
-    //       const newData = [...prev, {
-    //         time: timeFormatted,
-    //         force: forceFormatted,
-    //         distance: parseFloat(sensorData.distance) || 0
-    //       }];
-    //       return newData;
-    //     });
-    //   }
-      
-    //   // Log data when process is running and not paused
-    //   if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
-    //     logSensorData(timeFormatted, sensorData.distance, forceFormatted);
-    //   }
-    // };
-    const handleForceUpdate = (force) => {
-      console.log('📱 ProcessMode.jsx received force:', force);
-      const currentTime = (Date.now() - startTimeRef.current) / 1000;
-      const timeFormatted = parseFloat(currentTime.toFixed(1));
-      const forceFormatted = parseFloat(force.toFixed(1));
-      
-      setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
-      
-      // NEW: Auto-pause check - Add this right after setting sensor data
-      if (selectedConfig && isProcessRunning && !isPaused) {
-        const peakForce = parseFloat(selectedConfig.peakForce);
-        if (!isNaN(forceFormatted) && !isNaN(peakForce) && forceFormatted >= peakForce) {
-          console.log('🛑 Peak force safety limit reached: ${forceFormatted}N >= ${peakForce}N');
-          console.log('🟡 Auto-pausing process for safety...');
-          
-          // Use the pause logic directly instead of handlePause to avoid command formatting issues
-          const distanceVal = formatCommandValue(selectedConfig.distance);
-          const tempVal = formatCommandValue(selectedConfig.temperature);
-          const forceVal = formatCommandValue(selectedConfig.peakForce);
-          
-          const command = '*1:2:${distanceVal}:${tempVal}:${forceVal}#';
-          console.log('Auto-pause command:', command);
-          
-          window.serialAPI.sendData(command);
-          return; // Stop further processing
-        }
-      }
-      
-      // Add to chart data only when process is running or paused
-      if (isProcessRunning || isPaused) {
-        setChartData(prev => {
-          const newData = [...prev, {
-            time: timeFormatted,
-            force: forceFormatted,
-            distance: parseFloat(sensorData.distance) || 0
-          }];
-          return newData;
-        });
-      }
-      
-      // Log data when process is running and not paused
-      if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
-        logSensorData(timeFormatted, sensorData.distance, forceFormatted);
-      }
-    };
-
-    const handleDistanceUpdate = (distance) => {
-      const currentTime = (Date.now() - startTimeRef.current) / 1000;
-      const timeFormatted = parseFloat(currentTime.toFixed(1));
-      const distanceFormatted = parseFloat(distance.toFixed(1));
-      
-      setSensorData(prev => ({ ...prev, distance: distanceFormatted }));
-      
-      // Add to chart data only when process is running or paused
-      if (isProcessRunning || isPaused) {
-        setChartData(prev => {
-          // Create new data point with both force and distance
-          const newDataPoint = {
-            time: timeFormatted,
-            distance: distanceFormatted,
-            force: parseFloat(sensorData.force) || 0
-          };
-          
-          // Add to array - keep all data points
-          const newData = [...prev, newDataPoint];
-          return newData;
-        });
-      }
-      
-      // Log data when process is running and not paused
-      if (isProcessRunning && !isPaused && sensorData.force !== '--') {
-        logSensorData(timeFormatted, distanceFormatted, sensorData.force);
-      }
-    };
-
-    const handleProcessResponse = (response) => {
-      console.log('Process response:', response);
-      
-      switch (response) {
-        case 'started':
-          setIsProcessRunning(true);
-          setIsPaused(false);
-          setIsHoming(false);
-          setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
-          startTimeRef.current = Date.now();
-          
-          console.log('🟡 Process started, starting CSV logging...');
-          if (selectedConfig && window.serialAPI) {
-            startCsvLogging();
-          } else { 
-            console.error('❌ Cannot start logging: missing config or serialAPI');
+          // Add to chart data when process is running or stopped
+          if (isProcessRunning || sensorData.status === 'STOPPED') {
+            const currentTime = (Date.now() - startTimeRef.current) / 1000;
+            const timeFormatted = parseFloat(currentTime.toFixed(1));
+            
+            setChartData(prev => {
+              const newDataPoint = {
+                time: timeFormatted,
+                distance: parseFloat(data.distance) || 0,
+                force: parseFloat(data.force) || 0
+              };
+              
+              // Add to array - keep all data points
+              const newData = [...prev, newDataPoint];
+              return newData;
+            });
           }
-          break;
           
-        case 'paused':
-          setIsPaused(true);
-          setIsHoming(false);
-          setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
-          break;
-          
-        case 'homing': // Handle homing start
-          setIsProcessRunning(false);
-          setIsPaused(false);
-          setIsHoming(true);
-          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
-          break;
-          
-        case 'ready': // Handle homing completion
-          setIsHoming(false);
-          setIsProcessRunning(false);
-          setIsPaused(false);
-          setSensorData(prev => ({ ...prev, status: 'READY' }));
-          
-          console.log('🟡 Process ready, stopping CSV logging...');
-          stopCsvLogging();
-          break;
-          
-        case 'reset': // Keep this for backward compatibility
-          setIsProcessRunning(false);
-          setIsPaused(false);
-          setIsHoming(true);
-          setChartData([]);
-          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
-          
-          console.log('🟡 Process reset, stopping CSV logging...');
-          stopCsvLogging();
-          break;
+          // Log data when process is running
+          if (isProcessRunning && sensorData.distance !== '--' && sensorData.force !== '--') {
+            const currentTime = (Date.now() - startTimeRef.current) / 1000;
+            logSensorData(currentTime.toFixed(1), data.distance, data.force);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling sensor data:', error);
       }
     };
 
-    const handleSerialError = (error) => {
-      console.error('Serial error:', error);
-      setIsConnected(false);
-    };
+    // Start polling if connected
+    if (isConnected) {
+      intervalId = setInterval(pollSensorData, 500); // Poll every 500ms
+      pollSensorData(); // Initial call
+    }
 
-    // Setup listeners
-    window.serialAPI.onForceUpdate(handleForceUpdate);
-    window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
-    window.serialAPI.onDistanceUpdate(handleDistanceUpdate);
-    window.serialAPI.onProcessResponse(handleProcessResponse);
-    window.serialAPI.onError(handleSerialError);
-
-    // Cleanup listeners
     return () => {
-      window.serialAPI.removeAllListeners('temperature-update');
-      window.serialAPI.removeAllListeners('force-update');
-      window.serialAPI.removeAllListeners('distance-update');
-      window.serialAPI.removeAllListeners('process-response');
-      window.serialAPI.removeAllListeners('serial-error');
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [sensorData.distance, sensorData.force, isProcessRunning, isPaused, selectedConfig]);
+  }, [isConnected, isProcessRunning, sensorData.status]);
+
+  // Check connection status
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const connection = await window.api.checkConnection();
+        setIsConnected(connection.connected);
+      } catch (error) {
+        console.error('Error checking connection:', error);
+        setIsConnected(false);
+      }
+    };
+
+    checkConnection();
+    
+    // Listen for connection status changes
+    const handleModbusStatusChange = (event) => {
+      setIsConnected(event.detail === 'connected');
+    };
+
+    window.addEventListener('modbus-status-change', handleModbusStatusChange);
+    
+    return () => {
+      window.removeEventListener('modbus-status-change', handleModbusStatusChange);
+    };
+  }, []);
 
   // Initialize camera feed
   useEffect(() => {
@@ -502,15 +402,6 @@ const ProcessMode = () => {
     };
 
     initCamera();
-  }, []);
-
-  // Check connection status
-  useEffect(() => {
-    const checkConnection = () => {
-      setIsConnected(true);
-    };
-
-    checkConnection();
   }, []);
 
   // Handle dragging for camera button
@@ -570,10 +461,6 @@ const ProcessMode = () => {
     };
   }, [isDraggingCamera, isDraggingConfig, dragOffset]);
 
-  const formatCommandValue = (value) => {
-    return Math.round(parseFloat(value)).toString().padStart(3, '0');
-  };
-
   const handleStart = async () => {
     if (!selectedConfig) {
       console.error('No configuration selected');
@@ -586,70 +473,102 @@ const ProcessMode = () => {
     }
 
     try {
-      const distanceVal = formatCommandValue(selectedConfig.distance);
-      const tempVal = formatCommandValue(selectedConfig.temperature);
-      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      console.log('🚀 Starting process...');
+      const result = await window.api.start();
       
-      const command = `*1:1:${distanceVal}:${tempVal}:${forceVal}#`;
-      console.log('Start command with values:', command);
-      
-      await window.serialAPI.sendData(command);
+      if (result && result.success) {
+        setIsProcessRunning(true);
+        setIsPaused(false);
+        setIsHoming(false);
+        setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
+        startTimeRef.current = Date.now();
+        
+        console.log('🟡 Process started, starting CSV logging...');
+        if (selectedConfig) {
+          startCsvLogging();
+        } else { 
+          console.error('❌ Cannot start logging: missing config');
+        }
+      } else {
+        console.error('Failed to start process:', result?.message);
+      }
     } catch (error) {
       console.error('Failed to start process:', error);
     }
   };
 
-  const handlePause = async () => {
+  const handleStop = async () => {
     try {
-      const distanceVal = formatCommandValue(selectedConfig.distance);
-      const tempVal = formatCommandValue(selectedConfig.temperature);
-      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      console.log('⏹️ Stopping process...');
+      const result = await window.api.stop();
       
-      const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
-      console.log('Pause command with values:', command);
-      
-      await window.serialAPI.sendData(command);
+      if (result && result.success) {
+        setIsProcessRunning(false);
+        setIsPaused(false);
+        setSensorData(prev => ({ ...prev, status: 'STOPPED' }));
+        console.log('Process stopped');
+      } else {
+        console.error('Failed to stop process:', result?.message);
+      }
     } catch (error) {
-      console.error('Failed to pause process:', error);
+      console.error('Failed to stop process:', error);
     }
   };
 
   const handleReset = async () => {
     try {
-      const distanceVal = formatCommandValue(selectedConfig.distance);
-      const tempVal = formatCommandValue(selectedConfig.temperature);
-      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      console.log('🔄 Resetting process...');
+      const result = await window.api.reset();
       
-      const command = `*1:3:${distanceVal}:${tempVal}:${forceVal}#`;
-      console.log('Reset command with values:', command);
-      
-      await window.serialAPI.sendData(command);
+      if (result && result.success) {
+        setIsProcessRunning(false);
+        setIsPaused(false);
+        setIsHoming(true);
+        setChartData([]);
+        setSensorData(prev => ({
+          ...prev,
+          force: '--',
+          distance: '--',
+          status: 'HOMING'
+        }));
 
-      // Clear the sensor data labels immediately when reset is pressed
-      setSensorData(prev => ({
-        ...prev,
-        force: '--',
-        distance: '--',
-        status: 'HOMING'
-      }));
-      setChartData([]);
-
-      // Reset temperature status
-      setTemperatureStatus({
-        isHeatingRequired: false,
-        isHeatingComplete: false,
-        showHeaterDialog: false,
-        dialogMessage: '',
-        dialogType: '',
-        heaterButtonDisabled: false,
-        targetTemperature: null,
-        wasTemperatureDrop: false
-      });
-      
-      // Stop CSV logging when reset is pressed
-      stopCsvLogging();
+        // Reset temperature status
+        setTemperatureStatus({
+          isHeatingRequired: false,
+          isHeatingComplete: false,
+          showHeaterDialog: false,
+          dialogMessage: '',
+          dialogType: '',
+          heaterButtonDisabled: false,
+          targetTemperature: null,
+          wasTemperatureDrop: false
+        });
+        
+        // Stop CSV logging when reset is pressed
+        stopCsvLogging();
+        console.log('Process reset');
+      } else {
+        console.error('Failed to reset process:', result?.message);
+      }
     } catch (error) {
       console.error('Failed to reset process:', error);
+    }
+  };
+
+  const handleHome = async () => {
+    try {
+      console.log('🏠 Homing...');
+      const result = await window.api.home();
+      
+      if (result && result.success) {
+        setIsHoming(true);
+        setSensorData(prev => ({ ...prev, status: 'HOMING' }));
+        console.log('Homing started');
+      } else {
+        console.error('Failed to home:', result?.message);
+      }
+    } catch (error) {
+      console.error('Failed to home:', error);
     }
   };
 
@@ -662,7 +581,7 @@ const ProcessMode = () => {
   };
 
   const getStartButtonText = () => {
-    return isPaused ? 'RESUME' : 'START';
+    return isProcessRunning ? 'RESTART' : 'START';
   };
 
   const shouldDisableBackButton = () => {
@@ -689,7 +608,7 @@ const ProcessMode = () => {
                 <h2 className="text-xl font-bold text-white">
                   {temperatureStatus.dialogType === 'heating-required' 
                     ? (temperatureStatus.wasTemperatureDrop 
-                        ? (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Process Auto-Paused')
+                        ? (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Process Auto-Stopped')
                         : (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Heating Required')
                       )
                     : 'Heating Complete'}
@@ -762,7 +681,7 @@ const ProcessMode = () => {
                 </p>
                 {temperatureStatus.wasTemperatureDrop && (
                   <p className="text-orange-700 text-sm mt-2 text-center font-semibold">
-                    ⚠️ Process will resume automatically when temperature reaches target
+                    ⚠️ Process will need to be restarted when temperature reaches target
                   </p>
                 )}
               </div>
@@ -836,7 +755,7 @@ const ProcessMode = () => {
                 <div className="mt-3 text-center">
                   <p className="text-orange-600 text-sm font-medium">
                     {temperatureStatus.wasTemperatureDrop 
-                      ? '⚠️ Process paused. Resume when temperature reaches target'
+                      ? '⚠️ Process stopped. Restart when temperature reaches target'
                       : '⚠️ Start button will be enabled when temperature reaches target'
                     }
                   </p>
@@ -954,7 +873,7 @@ const ProcessMode = () => {
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>PAUSE Function:</strong> Use PAUSE button if any issues are observed</span>
+                    <span><strong>STOP Function:</strong> Use STOP button if any issues are observed</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
@@ -1293,7 +1212,7 @@ const ProcessMode = () => {
                     <div className="flex items-center space-x-2">
                       <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
                         sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-                        sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
+                        sensorData.status === 'STOPPED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
                         sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
                         sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
                         'bg-gradient-to-br from-gray-400 to-gray-500'
@@ -1304,14 +1223,14 @@ const ProcessMode = () => {
                     </div>
                     <div className={`w-2 h-2 rounded-full ${
                       sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
-                      sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
+                      sensorData.status === 'STOPPED' ? 'bg-yellow-500' :
                       sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
                       sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
                     }`}></div>
                   </div>
                   <p className={`text-sm font-bold ${
                     sensorData.status === 'RUNNING' ? 'text-green-600' :
-                    sensorData.status === 'PAUSED' ? 'text-yellow-600' :
+                    sensorData.status === 'STOPPED' ? 'text-yellow-600' :
                     sensorData.status === 'HOMING' ? 'text-purple-600' :
                     sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
                   }`}>{sensorData.status}</p>
@@ -1461,7 +1380,7 @@ const ProcessMode = () => {
                     <div className="flex items-center space-x-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
                         sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-                        sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
+                        sensorData.status === 'STOPPED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
                         sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
                         sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
                         'bg-gradient-to-br from-gray-400 to-gray-500'
@@ -1472,14 +1391,14 @@ const ProcessMode = () => {
                     </div>
                     <div className={`w-2.5 h-2.5 rounded-full ${
                       sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
-                      sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
+                      sensorData.status === 'STOPPED' ? 'bg-yellow-500' :
                       sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
                       sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
                     }`}></div>
                   </div>
                   <p className={`text-xl font-bold ${
                     sensorData.status === 'RUNNING' ? 'text-green-600' :
-                    sensorData.status === 'PAUSED' ? 'text-yellow-600' :
+                    sensorData.status === 'STOPPED' ? 'text-yellow-600' :
                     sensorData.status === 'HOMING' ? 'text-purple-600' :
                     sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
                   }`}>{sensorData.status}</p>
@@ -1515,17 +1434,17 @@ const ProcessMode = () => {
               </button>
               
               <button
-                onClick={handlePause}
-                disabled={shouldDisableButtons() || !isProcessRunning || isPaused}
+                onClick={handleStop}
+                disabled={shouldDisableButtons() || !isProcessRunning}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
                   font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableButtons() || !isProcessRunning || isPaused
+                  shouldDisableButtons() || !isProcessRunning
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
                 }`}
               >
                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">PAUSE</span>
+                <span className="text-sm sm:text-base">STOP</span>
               </button>
               
               <button

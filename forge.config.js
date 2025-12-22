@@ -9,7 +9,7 @@ module.exports = {
       unpack: [
         "**/.vite/build/preload/**",
         "**/.vite/build/renderer/**",
-        "**/{@serialport,serialport,bindings-cpp}/**/*"
+        "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
       ],
     },
     ignore: [
@@ -29,7 +29,7 @@ module.exports = {
       unpack: [
         "**/.vite/build/preload/**",
         "**/.vite/build/renderer/**",
-        "**/{@serialport,serialport,bindings-cpp}/**/*"
+        "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
       ],
     },
     ignore: [

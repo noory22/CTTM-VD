@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
 const HandleConfig = ({ mode = 'load' }) => {
@@ -21,7 +21,8 @@ const HandleConfig = ({ mode = 'load' }) => {
   const loadAvailableConfigs = async () => {
     try {
       setLoadingConfigs(true);
-      const configs = await window.serialAPI.readConfigFile();
+    //   const configs = await window.serialAPI.readConfigFile();
+    const configs = await window.api.readConfigFile();
       setAvailableConfigs(configs);
     } catch (error) {
       console.error('Error loading configurations:', error);
@@ -35,15 +36,43 @@ const HandleConfig = ({ mode = 'load' }) => {
     setShowDropdown(false);
   };
 
-  const handleProcessMode = () => {
+  const handleProcessMode = async () => {
     if (!selectedConfig) {
       alert('Please select a configuration first.');
       return;
     }
     
-    // Store selected config for process screen
-    localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-    navigate('/process-mode');
+    setIsLoading(true);
+    
+    try {
+      // ADDED: Include retractionLength in the process mode data
+      const success = await window.api.sendProcessMode({
+        pathlength: selectedConfig.pathlength,
+        thresholdForce: selectedConfig.thresholdForce,
+        temperature: selectedConfig.temperature,
+        retractionLength: selectedConfig.retractionLength
+      });
+      
+      if (success) {
+        console.log('✅ Configuration sent to PLC successfully');
+        
+        // Store selected config for process screen
+        localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
+        
+        // Optional: Show success message before navigating
+        setTimeout(() => {
+          navigate('/process-mode');
+        }, 500);
+        
+      } else {
+        alert('Failed to send configuration to machine. Please check:\n1. Modbus connection\n2. PLC is powered on\n3. Register addresses are correct');
+      }
+    } catch (error) {
+      console.error('Error sending process mode command:', error);
+      alert(`Configuration transfer failed:\n${error.message}\n\nPlease check Modbus connection.`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeleteConfig = async () => {
@@ -55,7 +84,8 @@ const HandleConfig = ({ mode = 'load' }) => {
     setIsLoading(true);
     
     try {
-      const success = await window.serialAPI.deleteConfigFile(selectedConfig.configName);
+    //   const success = await window.serialAPI.deleteConfigFile(selectedConfig.configName);
+    const success = await window.api.deleteConfigFile(selectedConfig.configName);
       
       if (success) {
         // Close the delete confirmation modal
@@ -108,8 +138,9 @@ const HandleConfig = ({ mode = 'load' }) => {
   };
 
   const getButtonIcon = () => {
-    return mode === 'load' ? null : <Trash2 className="w-5 h-5" />;
+    return mode === 'load' ? <Play className="w-5 h-5" /> : <Trash2 className="w-5 h-5" />;
   };
+
   const getHelpContent = () => {
     if (mode === 'load') {
       return [
@@ -117,7 +148,6 @@ const HandleConfig = ({ mode = 'load' }) => {
         'All configuration values will be populated automatically',
         'Click "Process Mode" to continue with the selected configuration',
         'Ensure serial port connection is active before processing',
-      
       ];
     } else {
       return [
@@ -143,13 +173,11 @@ const HandleConfig = ({ mode = 'load' }) => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{getPageTitle()}</h1>
           </div>
           
-          <div className="flex items-center space-x-2 lg:space-x-3">
+           <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Help Button */}
             <button 
               onClick={() => setShowHelpModal(true)}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700
-               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center 
-               transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
@@ -162,15 +190,33 @@ const HandleConfig = ({ mode = 'load' }) => {
                   window.close();
                 }
               }}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
-               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center 
-               justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border
-                border-red-400/30"
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
             >
               <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
           </div>
         </div>
+
+        {/* Serial Port Error (only for Load mode) */}
+        {/* {showSerialError && mode === 'load' && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <div>
+                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
+                  <p className="text-red-600 text-sm mt-1">Please ensure the device is connected and try again.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSerialError(false)}
+                className="text-red-500 hover:text-red-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -180,9 +226,7 @@ const HandleConfig = ({ mode = 'load' }) => {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="w-full bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl
-                   p-4 text-left flex items-center justify-between hover:from-blue-100 hover:to-blue-150 transition-all 
-                   duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="w-full bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-4 text-left flex items-center justify-between hover:from-blue-100 hover:to-blue-150 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <div className="flex items-center space-x-3">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -209,13 +253,14 @@ const HandleConfig = ({ mode = 'load' }) => {
                         <button
                           key={index}
                           onClick={() => handleConfigSelection(config)}
-                          className="w-full p-4 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors 
-                          duration-150 focus:outline-none focus:bg-blue-50"
+                          className="w-full p-4 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors duration-150 focus:outline-none focus:bg-blue-50"
                         >
                           <div>
                             <p className="font-medium text-slate-800">{config.configName}</p>
+                            {/* ADDED: Display retractionLength in the dropdown info */}
                             <p className="text-sm text-slate-500 mt-1">
-                              {config.distance}mm, {config.temperature}°C, {config.peakForce}N
+                              {config.pathlength}mm, {config.temperature}°C, {config.thresholdForce}mN
+                              {config.retractionLength && `, ${config.retractionLength}mm (retraction)`}
                             </p>
                           </div>
                         </button>
@@ -252,18 +297,31 @@ const HandleConfig = ({ mode = 'load' }) => {
                     value={selectedConfig ? selectedConfig.configName : ''}
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
-                    placeholder="Select a configuration to view details"
+                    // placeholder="Select a configuration to view details"
                   />
                 </div>
 
-                {/* Distance */}
+                {/* Path Length */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Distance (mm)
+                    Path Length (mm)
                   </label>
                   <input
                     type="text"
-                    value={selectedConfig ? selectedConfig.distance : ''}
+                    value={selectedConfig ? selectedConfig.pathlength : ''}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
+                  />
+                </div>
+
+                {/* Threshold Force */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Threshold Force (mN)
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedConfig ? selectedConfig.thresholdForce : ''}
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
                   />
@@ -282,28 +340,38 @@ const HandleConfig = ({ mode = 'load' }) => {
                   />
                 </div>
 
-                {/* Peak Force */}
+                {/* ADDED: Retraction Stroke Length Field */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
-                    Peak Force (N)
+                    Retraction Stroke Length (mm)
                   </label>
                   <input
                     type="text"
-                    value={selectedConfig ? selectedConfig.peakForce : ''}
+                    value={selectedConfig ? selectedConfig.retractionLength : ''}
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
+                    // placeholder="Select a configuration to view retraction length"
                   />
                 </div>
+
+                {/* Action Button */}
                 <div className="pt-6">
                   <button
                     onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
                     disabled={!selectedConfig || isLoading}
-                    className={`w-full md:w-auto md:ml-auto ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500
-                    text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 
-                    transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center gap-2 min-w-[160px]`}
+                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
                   >
-                    {getButtonIcon()}
-                    <span>{getButtonText()}</span>
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        {getButtonIcon()}
+                        <span>{getButtonText()}</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -336,8 +404,7 @@ const HandleConfig = ({ mode = 'load' }) => {
               <button
                 onClick={handleDeleteConfig}
                 disabled={isLoading}
-                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium rounded-xl 
-                transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center space-x-2"
               >
                 {isLoading ? (
                   <>
@@ -355,6 +422,7 @@ const HandleConfig = ({ mode = 'load' }) => {
           </div>
         </div>
       )}
+
       {/* Delete Success Modal */}
       {showDeleteSuccess && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -418,7 +486,6 @@ const HandleConfig = ({ mode = 'load' }) => {
           </div>
         </div>
       )}
-
 
     </div>
   );

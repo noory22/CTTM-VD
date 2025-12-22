@@ -5,14 +5,14 @@ import { resolve } from 'path';
 export default defineConfig({
   build: {
     outDir: '.vite/build/preload', // 👈 separate folder from main
-    emptyOutDir: false,
+    emptyOutDir: true,
     lib: {
       entry: resolve(__dirname, 'src/preload.js'), // 👈 only preload, not main
       formats: ['cjs'],
       fileName: () => 'preload.js'
     },
     rollupOptions: {
-      external: ['electron'],
+      external: ['electron',...builtinModules],
       // output: {
       //   entryFileNames: 'preload.js',
       //   dir: '.vite/build/preload'  // Add this line

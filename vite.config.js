@@ -1,9 +1,20 @@
-import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
+// vite.config.js
+const { defineConfig } = require('vite');
+const path = require('path');
 
-export default defineConfig({
-  plugins: [react(),
-    tailwindcss(),
-  ],
-})
+module.exports = defineConfig({
+  build: {
+    outDir: '.vite/build',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'src/main.js'),
+        preload: path.resolve(__dirname, 'src/preload.js'),
+      },
+      output: {
+        entryFileNames: '[name].js',
+        dir: path.resolve(__dirname, '.vite/build/main'),
+        format: 'cjs'
+      }
+    }
+  }
+});

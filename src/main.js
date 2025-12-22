@@ -1,48 +1,164 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import path from 'node:path';
-import fs from 'fs';
-import started from 'electron-squirrel-startup';
-import "./index.css";
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const ModbusRTU = require("modbus-serial"); 
+const path = require("path");
+const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
+const fsPromises = require('fs').promises;  // Keep for async operations
 
-const { SerialPort } = require('serialport');
-import { pathToFileURL } from 'node:url';
-const MAIN_WINDOW_VITE_DEV_SERVER_URL = !app.isPackaged ? 'http://localhost:5173' : null;
+// -------------------------
+// Modbus / PLC settings - UPDATED BASED ON PYTHON CODE
+// -------------------------
+const PORT = "COM4";
+const BAUDRATE = 9600;
+const TIMEOUT = 1;
 
-const TARGET_HWID = "317C39553131"
+const COIL_HOME  = 2001;
+const COIL_START = 2002;
+const COIL_STOP  = 2003;
+const COIL_RESET = 2004;
+const COIL_HEATING = 2005;
+const COIL_RETRACTION = 2006;
+const COIL_MANUAL = 2070;
+const COIL_INSERTION = 2008;
+const COIL_RET = 2009;
+const COIL_CLAMP = 2007;
+const REG_WRITE_DIST = 6000;
+const REG_DISTANCE   = 6116;  // 1 register (16-bit integer) - UPDATED
+const REG_FORCE      = 54;    // 2 registers (32-bit float) - UPDATED
+const REG_TEMP    = 501;// 
+let mainWindow;
+let isConnected = false;
+let dataReadingActive = false;
+const client = new ModbusRTU();
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
-  app.quit();
+// ============================
+// CONFIGURATION FILE SETTINGS
+// ============================
+const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'SCTTM.csv');
+
+// -------------------------
+// Connect Modbus - UPDATED
+// -------------------------
+async function connectModbus() {
+  try {
+    console.log("🔌 Attempting to connect to Modbus on", PORT);
+    
+    // Close existing connection if any
+    if (client.isOpen) {
+      client.close();
+    }
+    
+    await client.connectRTUBuffered(PORT, { 
+      baudRate: BAUDRATE,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'Even'
+    });
+    
+    client.setID(1);
+    // client.setTimeout(TIMEOUT * 1000);
+    isConnected = true;
+    console.log("✅ Modbus connected on", PORT);
+    
+    // Update UI to show connection status
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('modbus-status', 'connected');
+    }
+    
+    return true;
+  } catch (err) {
+    isConnected = false;
+    console.error("❌ Modbus connection error:", err.message);
+    
+    // DON'T show error dialog on auto-connect
+    // Only show dialog for manual connection attempts
+    
+    // Send disconnected status to UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('modbus-status', 'disconnected');
+    }
+    
+    return false;
+  }
 }
 
-let mainWindow;
-let currentPort = null;
+// -------------------------
+// Auto connect to port - UPDATED
+// -------------------------
+async function autoConnectPort() {
+  try {
+    console.log("🔄 Attempting auto-connect...");
+    const connected = await connectModbus();
+    if (connected) {
+      console.log("✅ Auto-connect successful");
+    } else {
+      console.log("⚠️ Auto-connect failed - Device may not be connected");
+    }
+    return connected;
+  } catch (error) {
+    console.log("⚠️ Auto-connect error:", error.message);
+    return false;
+  }
+}
 
-// CSV Logging variables
-let csvWriteStream = null;
-let currentLogFileName = null;
+// -------------------------
+// Manual connect (with error dialog) - NEW FUNCTION
+// -------------------------
+async function manualConnectModbus() {
+  try {
+    console.log("🔌 Manual connection attempt to", PORT);
+    const connected = await connectModbus();
+    
+    if (!connected && mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showErrorBox(
+        'Modbus Connection Error',
+        `Failed to connect to ${PORT}.\n\nPlease check:\n1. COM port number\n2. Cable connection\n3. Device power\n4. Port permissions\n\nCurrent port: ${PORT}`
+      );
+    }
+    
+    return connected;
+  } catch (error) {
+    console.error("Manual connect error:", error.message);
+    return false;
+  }
+}
 
-function createWindow() {
-  // -------------------------
-  // Resolve preload differently in dev vs prod
-  // -------------------------
-  const preloadPath = app.isPackaged
-    ? path.join(
-        process.resourcesPath,
-        'app.asar.unpacked',
-        '.vite',
-        'build',
-        'preload',
-        'preload.js'
-      )
-    : path.join(__dirname, '../../../src/preload.js');
-
-  console.log('Preload path:', preloadPath);
-  console.log('Preload file exists:', require('fs').existsSync(preloadPath));
-
-  // -------------------------
-  // Create the main window
-  // -------------------------
+// -------------------------
+// Create Window - UPDATED
+// -------------------------
+const createWindow = () => {
+  // Get the correct preload path for Electron Forge with Vite
+  let preloadPath;
+  
+  // Try multiple possible locations
+  const possiblePaths = [
+    // Electron Forge Vite plugin default location
+    path.join(process.cwd(), '.vite/build/preload/preload.js'),
+    // Alternative location
+    path.join(__dirname, 'preload.js'),
+    // Development location
+    path.join(process.cwd(), 'src/preload.js'),
+  ];
+  
+  for (const p of possiblePaths) {
+    try {
+      if (fs.existsSync(p)) {  // Use sync version for checking
+        preloadPath = p;
+        console.log('✅ Found preload at:', preloadPath);
+        break;
+      }
+    } catch (e) {
+      // Continue checking other paths
+    }
+  }
+  
+  if (!preloadPath) {
+    console.error('❌ Could not find preload script in any expected location');
+    // Fallback to default
+    preloadPath = path.join(process.cwd(), '.vite/build/preload/preload.js');
+  }
+  
+  console.log('📁 Using preload path:', preloadPath);
+  
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
@@ -50,661 +166,758 @@ function createWindow() {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false
     },
-    // Add these icon properties:
-    icon: path.join(__dirname, 'assets', 'icon.ico'), // For development
   });
 
-  // Remove the menu completely
-  mainWindow.setMenu(null);
-
-  // -------------------------
-  // Load renderer HTML
-  // -------------------------
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    // Development → Vite Dev Server
+    console.log('🌐 Loading from Vite dev server');
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
   } else {
-    // Production → packaged HTML in app.asar.unpacked
-    const indexPath = app.isPackaged
-      ? path.join(
-          process.resourcesPath,
-          'app.asar.unpacked',
-          'src',
-          '.vite',
-          'build',
-          'renderer',
-          'main_window',
-          'index.html'
-        )
-      : path.join(__dirname, '../.vite/build/renderer/main_window/index.html');
-
-    // Load from inside app.asar in production
-    if (app.isPackaged) {
-      console.log('Loading renderer from:', indexPath);
-      mainWindow.loadFile(indexPath);
-    } else {
-      mainWindow.loadURL(pathToFileURL(indexPath).href);
-    }
+    // For production
+    const indexPath = path.join(__dirname, '../renderer/main_window/index.html');
+    console.log('📄 Loading from file:', indexPath);
+    mainWindow.loadFile(indexPath);
   }
 
-  // -------------------------
-  // Auto-connect serial port
-  // -------------------------
-  autoConnectPort();
-}
-
-// Auto-connect function
-async function autoConnectPort() {
-  try {
-    const ports = await SerialPort.list();
-    let selectedPort = null;
-
-    for (const port of ports) {
-      console.log(`Checking port: ${port.path}, HWID: ${port.pnpId || ""}`);
-      if ((port.pnpId || "").includes(TARGET_HWID)) {
-        selectedPort = port.path;
-        break;
-      }
-    }
-
-    if (selectedPort) {
-      console.log(`✅ Found target device on ${selectedPort}, connecting...`);
-      await connectToPort(selectedPort, 9600);
-    } else {
-      console.error("❌ Target device not found.");
-      if (mainWindow) {
-        mainWindow.webContents.send("serial-error", "Target serial device not found");
-      }
-    }
-  } catch (err) {
-    console.error("Error while scanning ports:", err);
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.webContents.openDevTools();
   }
-}
-
-// Wrapper for connecting
-function connectToPort(path, baudRate) {
-  return new Promise((resolve, reject) => {
-    currentPort = new SerialPort({ path, baudRate, autoOpen: true });
-
-    currentPort.on('open', () => {
-      console.log(`✅ Auto-connected to ${path} @ ${baudRate}`);
-      resolve(`Connected to ${path} @ ${baudRate}`);
-    });
-
-    currentPort.on('data', (data) => {
-      const dataString = data.toString().trim();
-      console.log('Received data:', dataString);
-      parseReceivedData(dataString);
-      if (mainWindow) {
-        mainWindow.webContents.send('serial-data', dataString);
-      }
-    });
-
-    currentPort.on('error', (e) => {
-      if (mainWindow) {
-        mainWindow.webContents.send('serial-error', e.message);
-      }
-    });
-
-    currentPort.on('close', () => {
-      if (mainWindow) {
-        mainWindow.webContents.send('serial-error', 'Port was closed');
-      }
-    });
+  
+  // Auto-connect after window is ready
+  mainWindow.on('ready-to-show', () => {
+    console.log('🪟 Window is ready');
+    // Delay auto-connect to ensure UI is loaded
+    setTimeout(() => {
+      autoConnectPort();
+    }, 2000);
   });
-}
-
-// Existing IPC handlers
-ipcMain.handle('list-ports', async () => {
-  return await SerialPort.list();
-});
-
-ipcMain.handle('connect-port', async (event, args) => {
-  const { path, baudRate } = args;
-  return connectToPort(path, baudRate);
-});
-
-ipcMain.handle('send-data', async (event, data) => {
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
+  
+  // Handle window close
+  mainWindow.on('closed', () => {
+    if (client.isOpen) {
+      console.log("Closing Modbus connection...");
+      client.close();
+      isConnected = false;
     }
-    console.log('Sending data:', data);
-    currentPort.write(data, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Data sent');
-    });
+    mainWindow = null;
   });
-});
-
-// Manual mode specific commands
-let motorStates = {
-  forward: false, // false = stopped, true = running
-  backward: false // false = stopped, true = running
 };
 
-ipcMain.handle('move-motor', async (event, direction) => {
-  let command;
+// -------------------------
+// Data conversion helpers - UPDATED BASED ON PYTHON LOGIC
+// -------------------------
+function registersToFloat32LE(register1, register2) {
+  const buffer = new ArrayBuffer(4);
+  const view = new DataView(buffer);
   
-  if (direction === 'forward') {
-    if (motorStates.forward) {
-      // Stop forward motor
-      command = '*2:4:2:2#';
-      motorStates.forward = false;
-      console.log(`🛑 STOP FORWARD MOTOR COMMAND: ${command}`);
-    } else {
-      // Start forward motor and stop backward if running
-      command = '*2:4:1:1#';
-      motorStates.forward = true;
-      motorStates.backward = false; // Stop backward direction
-      console.log(`🔄 START FORWARD MOTOR COMMAND: ${command}`);
-    }
-  } else if (direction === 'backward') {
-    if (motorStates.backward) {
-      // Stop backward motor
-      command = '*2:4:2:1#';
-      motorStates.backward = false;
-      console.log(`🛑 STOP BACKWARD MOTOR COMMAND: ${command}`);
-    } else {
-      // Start backward motor and stop forward if running
-      command = '*2:4:1:2#';
-      motorStates.backward = true;
-      motorStates.forward = false; // Stop forward direction
-      console.log(`🔄 START BACKWARD MOTOR COMMAND: ${command}`);
-    }
-  }
+  view.setUint16(0, register1, true);
+  view.setUint16(2, register2, true);
+  
+  return view.getFloat32(0, true);
+}
 
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Motor command sent');
-    });
-  });
-});
-
-ipcMain.handle('control-heater', async (event, state) => {
-  const command = state === 'on' ? '*2:7:1#' : '*2:7:2#';
-  console.log(`🔥 HEATER COMMAND: ${command} (State: ${state})`);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Heater command sent');
-    });
-  });
-});
-
-ipcMain.handle('control-clamp', async (event, state) => {
-  // Clamp is controlled via Valve 1 (button 5 in protocol)
-  const command = state === 'on' ? '*2:5:1#' : '*2:5:2#';
-  console.log(`🔒 CLAMP COMMAND: ${command} (State: ${state})`);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Clamp command sent');
-    });
-  });
-});
-
-ipcMain.handle('homing-command', async (event, state) => {
-  // Clamp is controlled via Valve 1 (button 5 in protocol)
-  const command = '*2:9:1#';
-  console.log(`🔒 HOMING COMMAND: ${command} `);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Homing command sent');
-    });
-  });
-});
-
-// Process mode specific commands
-ipcMain.handle('process-start-with-values', async (event, distance, temperature, peakForce) => {
-  const command = `*1:1:${distance}:${temperature}:${peakForce}#`;
-  console.log(`▶️ PROCESS START COMMAND: ${command}`);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Process start command sent');
-    });
-  });
-});
-
-ipcMain.handle('process-pause-with-values', async (event, distance, temperature, peakForce) => {
-  const command = `*1:2:${distance}:${temperature}:${peakForce}#`;
-  console.log(`⏸️ PROCESS PAUSE COMMAND: ${command}`);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Process pause command sent');
-    });
-  });
-});
-
-ipcMain.handle('process-reset-with-values', async (event, distance, temperature, peakForce) => {
-  const command = `*1:3:${distance}:${temperature}:${peakForce}#`;
-  console.log(`🔄 PROCESS RESET/HOMING COMMAND: ${command}`);
-  return new Promise((resolve, reject) => {
-    if (!currentPort || !currentPort.isOpen) {
-      return reject('Cannot send data - Port not Open');
-    }
-    currentPort.write(command, (err) => {
-      if (err) return reject(`Error on write: ${err.message}`);
-      resolve('Process reset command sent');
-    });
-  });
-});
-
-function parseReceivedData(data) {
+// -------------------------
+// Safe register reading
+// -------------------------
+async function safeReadRegisters(address, count) {
   try {
-    const mainWindow = BrowserWindow.getFocusedWindow();
-    if (!mainWindow) return;
-    
-    console.log('Raw received data:', data); // Debug log
-    
-    // Handle temperature data - FIXED VERSION
-    if (data.includes('*TEP:')) {
-      // Use a more flexible approach that handles both with and without #
-      const tepIndex = data.indexOf('*TEP:');
-      if (tepIndex !== -1) {
-        // Extract everything after *TEP:
-        const afterTep = data.substring(tepIndex + 5);
-        
-        // Find the next # or end of string
-        let valueEnd = afterTep.indexOf('#');
-        if (valueEnd === -1) {
-          // If no # found, use the rest of the string
-          valueEnd = afterTep.length;
-        }
-        
-        // Extract the temperature value
-        const tempStr = afterTep.substring(0, valueEnd);
-        const temperature = parseFloat(tempStr);
-        
-        if (!isNaN(temperature)) {
-          console.log(`🌡️ TEMPERATURE UPDATE: ${temperature}°C`);
-          mainWindow.webContents.send('temperature-update', temperature);
-        } else {
-          console.log(`❌ Invalid temperature value: ${tempStr}`);
-        }
-      }
+    if (!client.isOpen) {
+      throw new Error('Modbus connection is not open');
     }
-
-    
-    // Parse force data: *FRC:xxxxxx#
-    if (data.includes('*FRC:')) {
-      // FIXED: Added -? to handle negative numbers
-      const forcePattern = /\*FRC:(-?\d+(?:\.\d+)?)/g;
-      let forceMatch;
-      
-      while ((forceMatch = forcePattern.exec(data)) !== null) {
-        const force = parseFloat(forceMatch[1]);
-        if (!isNaN(force)) {
-          console.log(`💪 FORCE UPDATE: ${force}N`);
-          console.log(`📡 Sending to renderer: force-update event with ${force}`);
-          mainWindow.webContents.send('force-update', force);
-        } else {
-          console.log(`❌ Invalid force value: ${forceMatch[1]}`);
-        }
-      }
-    }
-    
-    // Parse distance data: *DST:xxxxxx#
-    if (data.includes('*DIS:') && data.includes('#')) {
-      const distPattern = /\*DIS:(\d+(?:\.\d+)?)#/g;
-      let distMatch;
-      
-      while ((distMatch = distPattern.exec(data)) !== null) {
-        const distance = parseFloat(distMatch[1]);
-        console.log(`📏 DISTANCE UPDATE: ${distance}mm`);
-        mainWindow.webContents.send('distance-update', distance);
-      }
-    }
-    
-    // Parse manual response: *MAN:RES#
-    if (data.includes('*MAN:RES#')) {
-      console.log('✅ MANUAL COMMAND ACKNOWLEDGED');
-      mainWindow.webContents.send('manual-response', 'Command acknowledged');
-    }
-    
-    // Parse process responses
-    if (data.includes('*PRS:STR#')) {
-      console.log('✅ PROCESS STARTED');
-      mainWindow.webContents.send('process-response', 'started');
-    }
-    if (data.includes('*PRS:PUS#')) {
-      console.log('⏸️ PROCESS PAUSED');
-      mainWindow.webContents.send('process-response', 'paused');
-    }
-    if (data.includes('*PRS:HOM#')) {
-      console.log('🔄 HOMING STARTED');
-      mainWindow.webContents.send('homing-status', 'HOMING');
-      mainWindow.webContents.send('process-response', 'homing');
-    }
-    if (data.includes('*PRS:RED#')) {
-      console.log('🔄 HOMING COMPLETED - READY');
-      // mainWindow.webContents.send('homing-status', 'IDLE')
-      mainWindow.webContents.send('process-response', 'ready');
-    }
-  } catch (error) {
-    console.error('Error parsing received data:', error);
+    return await client.readHoldingRegisters(address, count);
+  } catch (err) {
+    console.error(`Error reading register ${address}:`, err.message);
+    throw err;
   }
 }
 
-// IPC handlers for configuration management
-ipcMain.handle('read-config-file', async () => {
-  const configPath = path.join(app.getPath('userData'), 'ConfigFile.csv');
+// -------------------------
+// Read PLC Data Function - UPDATED
+// -------------------------
+async function readPLCData() {
+  if (!isConnected) {
+    // Return simulated data when not connected
+    const simulatedDistance = Math.floor(Math.random() * 1000);
+    const simulatedForce = 1.0 + (Math.random() * 5);
+    const simulatedTemp = 20 + (Math.random() * 10); // Simulated temperature
+    
+    return {
+      success: true,
+      isSimulated: true,
+      distance: simulatedDistance,
+      distanceDisplay: `${simulatedDistance.toFixed(2)} mm`,
+      force: simulatedForce,
+      forceDisplay: `${simulatedForce.toFixed(4)} N`,
+      force_mN: simulatedForce * 1000,
+      force_mN_Display: `${(simulatedForce * 1000).toFixed(2)} mN`,
+      temperature: simulatedTemp,
+      temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
+      message: 'Using simulated data - Modbus not connected'
+    };
+  }
   
-  if (!fs.existsSync(configPath)) {
-    // Create empty file with headers if doesn't exist
-    const headers = 'ConfigName,Distance,Temperature,Peak Force\n';
-    fs.writeFileSync(configPath, headers);
+  try {
+    // Read distance (16-bit integer, already in mm)
+    const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
+    const distanceRegister = distanceResult.data[0];
+    
+    // Read force (32-bit float, already in mN based on your comment)
+    const forceResult = await safeReadRegisters(REG_FORCE, 2);
+    const forceRegisters = forceResult.data;
+    
+    // Read temperature (assuming 16-bit integer, already in °C)
+    const tempResult = await safeReadRegisters(REG_TEMP, 1);
+    const tempRegister = tempResult.data[0];
+    
+    // Convert force to float (from 32-bit float)
+    const forceFloat = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
+    
+    // Note: According to your comment, force is already in mN, not N
+    // So we don't need to multiply by 1000
+    const distanceMM = distanceRegister; // Already in mm
+    const forceMN = forceFloat; // Already in mN
+    const forceN = forceFloat / 1000; // Convert to N if needed
+    const temperatureC = tempRegister; // Already in °C
+    
+    return {
+      success: true,
+      isSimulated: false,
+      // Distance data
+      distance: distanceMM,
+      distanceDisplay: `${distanceMM.toFixed(2)} mm`,
+      
+      // Force data - both mN and N versions
+      force: forceN, // In Newtons
+      forceDisplay: `${forceN.toFixed(4)} N`,
+      force_mN: forceMN, // In milliNewtons
+      force_mN_Display: `${forceMN.toFixed(2)} mN`,
+      
+      // Temperature data
+      temperature: temperatureC,
+      temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
+      
+      // Raw data for debugging
+      rawRegisters: {
+        distance: distanceRegister,
+        force: forceRegisters,
+        temperature: tempRegister
+      }
+    };
+    
+  } catch (err) {
+    console.error("❌ Error reading PLC data:", err.message);
+    
+    // Fallback to simulated data on read error
+    const simulatedDistance = Math.floor(Math.random() * 1000);
+    const simulatedForce = 1.0 + (Math.random() * 5);
+    const simulatedTemp = 20 + (Math.random() * 10);
+    
+    return {
+      success: true,
+      isSimulated: true,
+      distance: simulatedDistance,
+      distanceDisplay: `${simulatedDistance.toFixed(2)} mm`,
+      // force: simulatedForce,
+      // forceDisplay: `${simulatedForce.toFixed(4)} N`,
+      force_mN: simulatedForce * 1000,
+      force_mN_Display: `${(simulatedForce * 1000).toFixed(2)} mN`,
+      temperature: simulatedTemp,
+      temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
+      message: `Using simulated data: ${err.message}`
+    };
+  }
+}
+
+// Add this function to main.js
+async function debugRegisters() {
+  try {
+    console.log("=== DEBUG REGISTER VALUES ===");
+    
+    // Read all three registers
+    const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
+    const forceResult = await safeReadRegisters(REG_FORCE, 2);
+    const tempResult = await safeReadRegisters(REG_TEMP, 1);
+    
+    console.log("Distance register (6116):", distanceResult.data);
+    console.log("Force registers (54-55):", forceResult.data);
+    console.log("Temperature register (501):", tempResult.data);
+    
+    // Show the actual values
+    const distance = distanceResult.data[0];
+    const force = registersToFloat32LE(forceResult.data[0], forceResult.data[1]);
+    const temp = tempResult.data[0];
+    
+    console.log(`Distance: ${distance} mm`);
+    console.log(`Force: ${force} mN (${force/1000} N)`);
+    console.log(`Temperature: ${temp} °C`);
+    
+  } catch (error) {
+    console.error("Debug error:", error);
+  }
+}
+
+// Call this from an IPC handler if needed
+ipcMain.handle("debug-registers", async () => {
+  return await debugRegisters();
+});
+// ============================
+// CONFIGURATION FILE FUNCTIONS
+// ============================
+
+// Helper function to ensure config file exists
+async function ensureConfigFile() {
+  try {
+    await fsPromises.access(CONFIG_FILE_PATH);
+  } catch (error) {
+    const headers = 'configName,pathlength,thresholdForce,temperature,retractionLength,numberOfCurves,curveDistances\n';
+    await fsPromises.writeFile(CONFIG_FILE_PATH, headers, 'utf8');
+    console.log('Created new config file:', CONFIG_FILE_PATH);
+  }
+}
+
+// Read configuration file
+async function readConfigurations() {
+  try {
+    await ensureConfigFile();
+    const content = await fsPromises.readFile(CONFIG_FILE_PATH, 'utf8');
+    const lines = content.trim().split('\n');
+    
+    if (lines.length <= 1) return [];
+    
+    const configs = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const parts = [];
+      let currentPart = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          parts.push(currentPart);
+          currentPart = '';
+        } else {
+          currentPart += char;
+        }
+      }
+      parts.push(currentPart);
+      
+      if (parts.length >= 7) {
+        let curveDistances = {};
+        try {
+          if (parts[6] && parts[6] !== '' && parts[6] !== '{}' && parts[6] !== '""') {
+            const curveStr = parts[6].replace(/^"|"$/g, '');
+            if (curveStr && curveStr !== '{}') {
+              curveDistances = JSON.parse(curveStr);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing curveDistances:', e, 'Value:', parts[6]);
+          curveDistances = {};
+        }
+        
+        configs.push({
+          configName: parts[0],
+          pathlength: parts[1],
+          thresholdForce: parts[2],
+          temperature: parts[3],
+          retractionLength: parts[4],
+          numberOfCurves: parts[5],
+          curveDistances: curveDistances
+        });
+      }
+    }
+    
+    return configs;
+  } catch (error) {
+    console.error('Error reading config file:', error);
     return [];
   }
-  
-  const data = fs.readFileSync(configPath, 'utf8');
-  const lines = data.trim().split('\n');
-  const configs = [];
-  
-  // Skip header row
-  for (let i = 1; i < lines.length; i++) {
-    const [configName, distance, temperature, peakForce] = lines[i].split(',');
-    if (configName && configName.trim() !== '') {
-      configs.push({ 
-        configName: configName.trim(), 
-        distance: distance.trim(), 
-        temperature: temperature.trim(), 
-        peakForce: peakForce.trim() 
-      });
-    }
-  }
-  
-  return configs;
-});
+}
 
-ipcMain.handle('write-config-file', async (event, configs) => {
-  const configPath = path.join(app.getPath('userData'), 'ConfigFile.csv');
-  let csvData = 'ConfigName,Distance,Temperature,Peak Force\n';
-  
-  configs.forEach(config => {
-    csvData += `${config.configName},${config.distance},${config.temperature},${config.peakForce}\n`;
-  });
-  
-  fs.writeFileSync(configPath, csvData);
-  return true;
-});
-
-ipcMain.handle('delete-config-file', async (event, configName) => {
-  const configPath = path.join(app.getPath('userData'), 'ConfigFile.csv');
-  
-  if (!fs.existsSync(configPath)) {
+// Write configuration file
+async function writeConfigurations(configs) {
+  try {
+    await ensureConfigFile();
+    
+    let csvContent = 'configName,pathlength,thresholdForce,temperature,retractionLength,numberOfCurves,curveDistances\n';
+    
+    configs.forEach(config => {
+      const curveDistancesStr = config.curveDistances && Object.keys(config.curveDistances).length > 0 ? 
+        JSON.stringify(config.curveDistances) : '{}';
+      
+      const escapedCurveDistances = `"${curveDistancesStr.replace(/"/g, '""')}"`;
+      
+      csvContent += `${config.configName},${config.pathlength},${config.thresholdForce},${config.temperature},${config.retractionLength},${config.numberOfCurves},${escapedCurveDistances}\n`;
+    });
+    
+    await fsPromises.writeFile(CONFIG_FILE_PATH, csvContent, 'utf8');
+    console.log('Config file saved:', CONFIG_FILE_PATH);
+    return true;
+  } catch (error) {
+    console.error('Error writing config file:', error);
     return false;
   }
-  
-  const data = fs.readFileSync(configPath, 'utf8');
-  const lines = data.trim().split('\n');
-  const header = lines[0];
-  const updatedLines = [header];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const [currentConfigName] = lines[i].split(',');
-    if (currentConfigName.trim() !== configName) {
-      updatedLines.push(lines[i]);
-    }
+}
+
+// -------------------------
+// Pulse coil helper
+// -------------------------
+async function pulseCoil(coil) {
+  if (!isConnected) {
+    throw new Error('Modbus not connected');
   }
   
-  fs.writeFileSync(configPath, updatedLines.join('\n'));
-  return true;
-});
-
-// -----------------------------------------------------------------------------------
-// CSV Logging IPC Handlers
-// -----------------------------------------------------------------------------------
-
-ipcMain.handle('start-csv-logging', async (event, configData) => {
   try {
-    // Create logs directory if it doesn't exist
-    const logsDir = path.join(app.getPath('userData'), 'process_logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-
-    // Create filename with timestamp and config name
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const configName = configData.configName.replace(/[^a-zA-Z0-9]/g, '_');
-    currentLogFileName = `process_${configName}_${timestamp}.csv`;
-    const filePath = path.join(logsDir, currentLogFileName);
-
-    // Create write stream
-    csvWriteStream = fs.createWriteStream(filePath, { flags: 'w' });
+    await client.writeCoil(coil, true);
+    console.log(`Coil ${coil} turned ON`);
     
-    // Write CSV header with configuration details
-    csvWriteStream.write(`# Configuration: ${configData.configName}\n`);
-    csvWriteStream.write(`# Distance: ${configData.distance} mm\n`);
-    csvWriteStream.write(`# Temperature: ${configData.temperature} °C\n`);
-    csvWriteStream.write(`# Peak Force: ${configData.peakForce} N\n`);
-    csvWriteStream.write(`# Start Time: ${new Date().toISOString()}\n`);
-    csvWriteStream.write('Time (s),Distance (mm),Force (N),Timestamp\n');
-    
-    console.log(`📝 Started CSV logging: ${currentLogFileName}`);
-    console.log(`📝 Config: ${configData.configName}, Distance: ${configData.distance}mm, Peak Force: ${configData.peakForce}N, Temp: ${configData.temperature}°C`);
-    return { success: true, fileName: currentLogFileName };
-  } catch (error) {
-    console.error('Error starting CSV logging:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('log-sensor-data', async (event, sensorData) => {
-  if (!csvWriteStream) {
-    console.error('❌ No active CSV write stream');
-    return { success: false, error: 'No active log file' };
-  }
-
-  try {
-    const timestamp = new Date().toISOString();
-    const csvLine = `${sensorData.time},${sensorData.distance},${sensorData.force},${timestamp}\n`;
-    
-    // Use callback to ensure write completion
-    return new Promise((resolve, reject) => {
-      csvWriteStream.write(csvLine, (error) => {
-        if (error) {
-          console.error('Error writing sensor data:', error);
-          reject({ success: false, error: error.message });
-        } else {
-          console.log(`✅ Logged: Time=${sensorData.time}s, Distance=${sensorData.distance}mm, Force=${sensorData.force}N`);
-          resolve({ success: true });
-        }
-      });
-    });
-  } catch (error) {
-    console.error('Error in log-sensor-data:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('stop-csv-logging', async () => {
-  try {
-    if (csvWriteStream) {
-      csvWriteStream.end();
-      csvWriteStream = null;
-      
-      console.log(`📝 Stopped CSV logging: ${currentLogFileName}`);
-      const fileName = currentLogFileName;
-      currentLogFileName = null;
-      
-      return { success: true, fileName };
-    }
-    return { success: false, error: 'No active log file' };
-  } catch (error) {
-    console.error('Error stopping CSV logging:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('get-log-files', async () => {
-  try {
-    const logsDir = path.join(app.getPath('userData'), 'process_logs');
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-      return [];
-    }
-
-    const files = fs.readdirSync(logsDir);
-    console.log('📁 Raw files found:', files); // Debug log
-    
-    const logFiles = files
-      .filter(file => file.endsWith('.csv'))
-      .map(file => {
-        const filePath = path.join(logsDir, file);
-        const stats = fs.statSync(filePath);
-        
-        console.log('📄 Processing file:', file); // Debug log
-        
-        // Parse filename to extract config name
-        let configName = 'Unknown Configuration';
-        const match = file.match(/process_(.+)_\d/);
-        if (match && match[1]) {
-          configName = match[1].replace(/_/g, ' ');
-        }
-        
-        // Use file stats for date/time instead of parsing from filename
-        const date = stats.mtime;
-        
-        const logFile = {
-          filename: file,
-          displayName: configName,
-          date: date.toISOString().split('T')[0],
-          time: date.toTimeString().split(' ')[0],
-          filePath: filePath
-        };
-        
-        console.log('✅ Processed log file:', logFile); // Debug log
-        return logFile;
-      })
-      .sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
-
-    console.log('📁 Final log files count:', logFiles.length); // Debug log
-    return logFiles;
-  } catch (error) {
-    console.error('❌ Error reading log files:', error);
-    return [];
-  }
-});
-
-ipcMain.handle('read-log-file', async (event, filePath) => {
-  try {
-    console.log('📖 Reading log file:', filePath);
-    const data = fs.readFileSync(filePath, 'utf8');
-    const lines = data.trim().split('\n');
-    
-    console.log('📊 Raw file lines:', lines.length);
-    
-    // Skip header and parse data
-    const processData = [];
-    let dataLinesFound = 0;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Skip comment lines, header, and empty lines
-      if (line.startsWith('#') || line.startsWith('Time (s),Distance (mm),Force (N)') || line === '') {
-        console.log('⏩ Skipping header/comment line:', line.substring(0, 50));
-        continue;
+    setTimeout(async () => {
+      try {
+        await client.writeCoil(coil, false);
+        console.log(`Coil ${coil} turned OFF`);
+      } catch (e) {
+        console.error(`Error turning off coil ${coil}:`, e.message);
       }
-      
-      // Skip the simplified header if present
-      if (line === 'Time (s),Distance (mm),Force (N),Timestamp') {
-        console.log('⏩ Skipping simplified header');
-        continue;
-      }
-      
-      const parts = line.split(',');
-      console.log('📝 Parsing line:', parts);
-      
-      if (parts.length >= 3) {
-        const time = parseFloat(parts[0]);
-        const distance = parseFloat(parts[1]);
-        const force = parseFloat(parts[2]);
-        
-        // Only add valid data points
-        if (!isNaN(time) && !isNaN(distance) && !isNaN(force)) {
-          processData.push({
-            time: time,
-            distance: distance,
-            force: force
-          });
-          dataLinesFound++;
-        } else {
-          console.log('⚠️ Skipping invalid data:', parts);
-        }
-      } else {
-        console.log('⚠️ Skipping line with insufficient parts:', parts);
-      }
-    }
-
-    console.log(`📊 Successfully read ${dataLinesFound} data points from ${processData.length} valid entries`);
-    return { success: true, data: processData, rawData: data };
-  } catch (error) {
-    console.error('❌ Error reading log file:', error);
-    return { success: false, error: error.message };
+    }, 2000);
+    
+  } catch (err) {
+    console.error(`Error pulsing coil ${coil}:`, err.message);
+    throw err;
   }
-});
+}
 
-ipcMain.handle('delete-log-file', async (event, filePath) => {
+// -------------------------
+// Safe command execution
+// -------------------------
+async function safeExecute(command, action) {
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      return { success: true };
+    if (!isConnected) {
+      throw new Error('Modbus not connected. Please check COM port.');
     }
-    return { success: false, error: 'File not found' };
-  } catch (error) {
-    console.error('Error deleting log file:', error);
-    return { success: false, error: error.message };
+    
+    const result = await action();
+    return { 
+      success: true, 
+      message: `${command} executed successfully`,
+      ...result
+    };
+    
+  } catch (err) {
+    console.error(`${command} error:`, err.message);
+    return { 
+      success: false, 
+      message: `${command} failed: ${err.message}` 
+    };
   }
+}
+
+const coilState = {
+  heating: false,
+  retraction: false,
+  manualRet: false
+};
+// -------------------------
+// IPC handlers - ADD MANUAL CONNECT HANDLER
+// -------------------------
+
+// NEW: Manual connect handler
+ipcMain.handle("connect-modbus", async () => {
+  return await manualConnectModbus();
 });
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
-  createWindow();
+ipcMain.handle("home", async () => {
+  return await safeExecute("HOME", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
 
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    // Turn ON homing
+    await client.writeCoil(COIL_HOME, true);
+
+    return { success: true };
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+
+ipcMain.handle("start", async () => {
+  return await safeExecute("START", async () => {
+    if (!isConnected) throw new Error('Modbus not connected');
+    
+    await client.writeCoil(COIL_STOP, false);
+    await client.writeCoil(COIL_RESET, false);
+    await client.writeCoil(COIL_START, true);
+    
+    return { startInitiated: true };
+  });
+});
+
+ipcMain.handle("stop", async () => {
+  return await safeExecute("STOP", async () => {
+    if (!isConnected) throw new Error('Modbus not connected');
+    
+    await client.writeCoil(COIL_START, false);
+    await client.writeCoil(COIL_STOP, true);
+    
+    return { stopPressed: true };
+  });
+});
+
+ipcMain.handle("reset", async () => {
+  return await safeExecute("RESET", async () => {
+    if (!isConnected) throw new Error('Modbus not connected');
+    
+    await client.writeCoil(COIL_RESET, true);
+    await client.writeCoil(COIL_STOP, false);
+    
+    return { resetPressed: true };
+  });
+});
+
+ipcMain.handle("heating", async () => {
+  return await safeExecute("HEATING", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    coilState.heating = !coilState.heating;
+    await client.writeCoil(COIL_HEATING, coilState.heating);
+
+    return { heating: coilState.heating };
+  });
+});
+
+ipcMain.handle("retraction", async () => {
+  return await safeExecute("RETRACTION", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    coilState.retraction = !coilState.retraction;
+    await client.writeCoil(COIL_RETRACTION, coilState.retraction);
+
+    return { retraction: coilState.retraction };
+  });
+});
+
+
+ipcMain.handle("manual", async () => {
+  return await safeExecute("MANUAL-MODE", async () => {
+    if (!isConnected) throw new Error('Modbus not connected');
+    await client.writeCoil(COIL_MANUAL, true);
+    await client.writeCoil(COIL_RET, false);
+    await client.writeCoil(COIL_INSERTION, false);
+    await client.writeCoil(COIL_CLAMP, false);
+    return { manualModeActivated: true };
+  });
+});
+
+let clampState = false;
+ipcMain.handle("clamp", async () => {
+  return await safeExecute("CLAMP", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    clampState = !clampState;
+
+    await client.writeCoil(COIL_MANUAL, true);
+    // await client.writeCoil(COIL_RET, false);
+    // await client.writeCoil(COIL_INSERTION, false);
+
+    await client.writeCoil(COIL_CLAMP, clampState);
+
+    return {
+      clampState: clampState ? "ON" : "OFF",
+      message: `Clamp turned ${clampState ? "ON" : "OFF"}`
+    };
+  });
+});
+
+let insertionState = false;
+
+ipcMain.handle("insertion", async () => {
+  return await safeExecute("INSERTION", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    insertionState = !insertionState;
+
+    await client.writeCoil(COIL_MANUAL, true);
+    await client.writeCoil(COIL_RET, false);
+    await client.writeCoil(COIL_INSERTION, insertionState);
+    // await client.writeCoil(COIL_CLAMP, false); // optional safety
+
+    return {
+      insertionState: insertionState ? "ON" : "OFF",
+      message: `Insertion turned ${insertionState ? "ON" : "OFF"}`
+    };
+  });
+});
+
+let retState = false;
+
+ipcMain.handle("ret", async () => {
+  return await safeExecute("RETRACTION_MANUAL", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    retState = !retState;
+
+    await client.writeCoil(COIL_MANUAL, true);
+    await client.writeCoil(COIL_RET, retState);
+    await client.writeCoil(COIL_INSERTION, false);
+    // await client.writeCoil(COIL_CLAMP, false); // optional safety
+
+    return {
+      retState: retState ? "ON" : "OFF",
+      message: `Manual Retraction turned ${retState ? "ON" : "OFF"}`
+    };
+  });
+});
+
+// ipcMain.handle("ret", async () => {
+//   return await safeExecute("RETRACTION-MANUAL", async () => {
+//     if (!isConnected) throw new Error("Modbus not connected");
+
+//     coilState.manualRet = !coilState.manualRet;
+
+//     await client.writeCoil(COIL_MANUAL, true);
+//     await client.writeCoil(COIL_RET, coilState.manualRet);
+//     await client.writeCoil(COIL_INSERTION, false);
+//     await client.writeCoil(COIL_CLAMP, false);
+
+//     return { manualRetraction: coilState.manualRet };
+//   });
+// });
+
+// Read data handler
+ipcMain.handle("read-data", async () => {
+  return await readPLCData();
+});
+
+// Check connection status
+ipcMain.handle("check-connection", () => {
+  return { 
+    connected: isConnected, 
+    port: PORT,
+    timestamp: new Date().toISOString()
+  };
+});
+
+// Reconnect command
+ipcMain.handle("reconnect", async () => {
+  try {
+    console.log("Attempting to reconnect...");
+    
+    if (client.isOpen) {
+      client.close();
+      console.log("Closed existing connection");
+    }
+    
+    isConnected = false;
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('modbus-status', 'disconnected');
+    }
+    
+    const connected = await manualConnectModbus();
+    
+    return { 
+      success: true, 
+      connected: connected,
+      message: connected ? 'Reconnected successfully' : 'Failed to reconnect'
+    };
+    
+  } catch (err) {
+    console.error("Reconnect error:", err.message);
+    return { 
+      success: false, 
+      error: err.message,
+      connected: false
+    };
+  }
+});
+
+// ============================
+// CONFIGURATION IPC HANDLERS
+// ============================
+
+// Read configuration file
+ipcMain.handle("read-config-file", async () => {
+  return await readConfigurations();
+});
+
+// Write configuration file
+ipcMain.handle("write-config-file", async (event, configs) => {
+  return await writeConfigurations(configs);
+});
+
+// Delete configuration
+ipcMain.handle("delete-config-file", async (event, configName) => {
+  try {
+    const configs = await readConfigurations();
+    const updatedConfigs = configs.filter(config => config.configName !== configName);
+    return await writeConfigurations(updatedConfigs);
+  } catch (error) {
+    console.error('Error deleting config:', error);
+    return false;
+  }
+});
+
+// Send process mode configuration to PLC
+// Send process mode configuration to PLC (with float support)
+// Send process mode configuration to PLC
+ipcMain.handle("send-process-mode", async (event, config) => {
+  try {
+    console.log('🔧 Process mode config received:', config);
+    
+    if (!isConnected || !client.isOpen) {
+      console.error('❌ Cannot send process mode: Modbus not connected');
+      return false;
+    }
+    
+    // Parse configuration values
+    const pathLength = parseInt(config.pathlength);
+    const thresholdForce = parseFloat(config.thresholdForce); // mN
+    const temperature = parseFloat(config.temperature); // °C
+    const retractionLength = parseFloat(config.retractionLength); // mm
+    
+    console.log('📊 Parsed config values:', {
+      pathLength: `${pathLength} mm`,
+      thresholdForce: `${thresholdForce} mN`,
+      temperature: `${temperature} °C`,
+      retractionLength: `${retractionLength} mm`
+    });
+    
+    // Validate values
+    if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
+      console.error('❌ Invalid configuration values');
+      return false;
+    }
+    
+    let allSuccess = true;
+    const results = [];
+    
+    try {
+      // 1. Write Path Length to address 6000 (D0)
+      console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
+      await client.writeRegister(6000, pathLength);
+      console.log('✅ Path Length written to address 6000');
+      results.push({ register: '6000 (D0)', value: pathLength, success: true });
+      
+      // 2. Write Threshold Force to R150 (address 150)
+      console.log(`📝 Writing Threshold Force: ${thresholdForce} mN to R150 (address 150)`);
+      const thresholdForceValue = Math.round(thresholdForce);
+      await client.writeRegister(150, thresholdForceValue);
+      console.log('✅ Threshold Force written to R150');
+      results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
+      
+      // 3. Write Temperature to R510 (address 510)
+      console.log(`📝 Writing Temperature: ${temperature}°C to R510 (address 510)`);
+      const temperatureValue = Math.round(temperature * 10); // Store with 0.1°C precision
+      await client.writeRegister(510, temperatureValue);
+      console.log('✅ Temperature written to R510');
+      results.push({ register: '510 (R510)', value: temperatureValue, success: true });
+      
+      // 4. Write Retraction Stroke Length to R122 (address 122)
+      console.log(`📝 Writing Retraction Stroke Length: ${retractionLength} mm to R122 (address 122)`);
+      const retractionValue = Math.round(retractionLength);
+      await client.writeRegister(122, retractionValue);
+      console.log('✅ Retraction Stroke Length written to R122');
+      results.push({ register: '122 (R122)', value: retractionValue, success: true });
+      
+      console.log('✅ All configuration values successfully written to PLC');
+      console.log('📋 Write operation results:', results);
+      
+      // Optional: Verify the writes by reading back
+      console.log('🔄 Verifying written values...');
+      try {
+        const verify6000 = await client.readHoldingRegisters(6000, 1);
+        const verify150 = await client.readHoldingRegisters(150, 1);
+        const verify510 = await client.readHoldingRegisters(510, 1);
+        const verify122 = await client.readHoldingRegisters(122, 1);
+        
+        console.log('🔍 Verification reads:', {
+          '6000 (Path Length)': verify6000.data[0],
+          '150 (Threshold Force)': verify150.data[0],
+          '510 (Temperature)': verify510.data[0],
+          '122 (Retraction)': verify122.data[0]
+        });
+        
+        // Check if values match
+        const verificationPassed = 
+          verify6000.data[0] === pathLength &&
+          verify150.data[0] === thresholdForceValue &&
+          verify510.data[0] === temperatureValue &&
+          verify122.data[0] === retractionValue;
+          
+        if (verificationPassed) {
+          console.log('✅ All values verified successfully!');
+        } else {
+          console.warn('⚠️ Some values may not have been written correctly');
+        }
+        
+      } catch (verifyError) {
+        console.log('⚠️ Could not verify writes (reading failed):', verifyError.message);
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error writing to PLC:', error.message);
+      
+      // More detailed error information
+      if (error.message.includes('6000')) {
+        console.error('⚠️ Specific error writing to address 6000 (Path Length)');
+        console.error('Check if address 6000 is a valid holding register in your PLC');
+      } else if (error.message.includes('150')) {
+        console.error('⚠️ Specific error writing to address 150 (Threshold Force)');
+      } else if (error.message.includes('510')) {
+        console.error('⚠️ Specific error writing to address 510 (Temperature)');
+      } else if (error.message.includes('122')) {
+        console.error('⚠️ Specific error writing to address 122 (Retraction)');
+      }
+      
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending process mode:', error);
+    return false;
+  }
+});
+
+// -------------------------
+// App lifecycle - FIXED
+// -------------------------
+app.whenReady().then(() => {
+  createWindow();
+  // DON'T call connectModbus() here - it's called via autoConnectPort()
+});
+
+// Close port when app quits
 app.on('window-all-closed', () => {
+  if (client.isOpen) {
+    console.log("Closing Modbus connection...");
+    client.close();
+  }
+  
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+
+// Handle unexpected errors
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    dialog.showErrorBox(
+      'Application Error',
+      `An unexpected error occurred:\n${error.message}\n\nThe application may not function correctly.`
+    );
   }
 });

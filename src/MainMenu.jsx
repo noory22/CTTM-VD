@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {Power, LogOut, X} from 'lucide-react';
+import {Power, LogOut, X, User, Wifi, WifiOff, Usb, Cable} from 'lucide-react';
 
 const MainMenu = () => {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -8,6 +8,34 @@ const MainMenu = () => {
   const navigate = useNavigate();
   const [showPowerDropdown, setShowPowerDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  
+  // Get user info from localStorage
+  const [user, setUser] = useState(null);
+  
+  // Connection state
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [connectionChecked, setConnectionChecked] = useState(false);
+  
+  useEffect(() => {
+    // Check if user is logged in
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (!userData) {
+      navigate('/'); // Redirect to login if no user data
+    } else {
+      setUser(userData);
+    }
+
+    // Initial connection check
+    checkInitialConnection();
+
+    // Listen for modbus status updates
+    window.addEventListener('modbus-status-change', handleModbusStatus);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('modbus-status-change', handleModbusStatus);
+    };
+  }, [navigate]);
 
   const menuOptions = [
     {
@@ -19,7 +47,8 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'Load existing configuration files',
-      gradient: 'from-blue-500 to-cyan-500'
+      gradient: 'from-blue-500 to-cyan-500',
+      roles: ['admin', 'operator'] // Both roles can access
     },
     {
       id: 'manual-mode',
@@ -30,7 +59,8 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'Manually control the testing process',
-      gradient: 'from-purple-500 to-pink-500'
+      gradient: 'from-purple-500 to-pink-500',
+      roles: ['admin', 'operator'] // Both roles can access
     },
     {
       id: 'process-logs',
@@ -41,7 +71,8 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'View detailed process logs and history',
-      gradient: 'from-green-500 to-emerald-500'
+      gradient: 'from-green-500 to-emerald-500',
+      roles: ['admin', 'operator'] // Both roles can access
     },
     {
       id: 'create-config',
@@ -53,7 +84,8 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'Create new configuration settings',
-      gradient: 'from-orange-500 to-amber-500'
+      gradient: 'from-orange-500 to-amber-500',
+      roles: ['admin'] // Only admin can access
     },
     {
       id: 'delete-config',
@@ -65,10 +97,67 @@ const MainMenu = () => {
       ),
       description: 'Remove existing configuration files',
       variant: 'danger',
-      gradient: 'from-red-500 to-rose-500'
+      gradient: 'from-red-500 to-rose-500',
+      roles: ['admin'] // Only admin can access
     }
   ];
- // Close dropdown when clicking outside
+
+  // Handle modbus status updates
+  const handleModbusStatus = (event) => {
+    const status = event.detail;
+    setConnectionStatus(status);
+    setConnectionChecked(true);
+    console.log('Modbus status updated:', status);
+  };
+
+  // Check initial connection
+  const checkInitialConnection = async () => {
+    try {
+      console.log('Checking initial connection...');
+      const status = await window.api.checkConnection();
+      setConnectionStatus(status.connected ? 'connected' : 'disconnected');
+      setConnectionChecked(true);
+      console.log('Initial connection status:', status);
+    } catch (error) {
+      console.error('Failed to check connection:', error);
+      setConnectionStatus('disconnected');
+      setConnectionChecked(true);
+    }
+  };
+
+  // Handle manual connection attempt
+  const handleConnect = async () => {
+    try {
+      console.log('Attempting to connect manually...');
+      const connected = await window.api.connectModbus();
+      if (connected) {
+        setConnectionStatus('connected');
+        console.log('Manual connection successful');
+      } else {
+        console.log('Manual connection failed');
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+    }
+  };
+
+  // Handle reconnect
+  const handleReconnect = async () => {
+    try {
+      console.log('Attempting to reconnect...');
+      const result = await window.api.reconnect();
+      if (result.success && result.connected) {
+        setConnectionStatus('connected');
+        console.log('Reconnect successful');
+      } else {
+        console.log('Reconnect failed');
+      }
+    } catch (error) {
+      console.error('Reconnect error:', error);
+    }
+  };
+
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -82,7 +171,13 @@ const MainMenu = () => {
     };
   }, []);
 
-  const handleOptionClick = (option) => {
+  const handleOptionClick = async (option) => {
+    // Check if user has permission to access this option
+    if (!user || !option.roles.includes(user.role)) {
+      alert(`Access Denied: ${user?.role === 'operator' ? 'Operator' : 'Unknown user'} cannot access ${option.title}`);
+      return;
+    }
+    
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
     
@@ -96,12 +191,25 @@ const MainMenu = () => {
       navigate('/handle-config/delete');
     }
     else if (option.id === 'manual-mode') {
-    navigate('/manual-mode');
-  }
+      try {
+        console.log('Activating manual mode...');
+        const res = await window.api.manual();
+
+        if (!res?.success) {
+          throw new Error("Manual mode failed");
+        }
+
+        navigate('/manual-mode');
+      } catch (error) {
+        console.error('Manual mode activation failed:', error);
+        alert("Failed to activate Manual Mode. Check PLC connection.");
+      }
+    }
     else if (option.id === 'process-logs') {
       navigate('/process-logs');
     }
   };
+
   const handleExit = () => {
     const confirmed = window.confirm("Are you sure you want to exit?");
     if (confirmed) {
@@ -111,17 +219,65 @@ const MainMenu = () => {
   };
 
   const handleLogout = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem('user');
     navigate('/');
     setShowPowerDropdown(false);
   };
 
-  // const handleCancel = () => {
-  //   setShowPowerDropdown(false);
-  // };
-
   const togglePowerDropdown = () => {
     setShowPowerDropdown(!showPowerDropdown);
   };
+
+  // Filter menu options based on user role
+  const filteredMenuOptions = menuOptions.filter(option => 
+    user && option.roles.includes(user.role)
+  );
+
+  // Connection status display
+  const getConnectionDisplay = () => {
+    if (!connectionChecked) {
+      return {
+        text: 'Checking connection...',
+        color: 'text-gray-500',
+        bgColor: 'bg-gray-100',
+        borderColor: 'border-gray-200',
+        icon: <Cable className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" />
+      };
+    }
+
+    if (connectionStatus === 'connected') {
+      return {
+        text: 'USB Connected',
+        color: 'text-green-600',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        icon: <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
+      };
+    } else {
+      return {
+        text: 'USB Disconnected',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        icon: <Cable className="w-3 h-3 sm:w-4 sm:h-4" />
+      };
+    }
+  };
+
+  const connectionInfo = getConnectionDisplay();
+
+  // Show loading while checking user
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
@@ -133,6 +289,38 @@ const MainMenu = () => {
           Main Menu
         </h1>
         <p className="text-sm text-gray-500 mt-1">Select an option to continue</p>
+        
+        {/* User info badge */}
+        <div className="flex items-center gap-2 mt-2">
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+            <User className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              {user.username} ({user.role === 'admin' ? 'Administrator' : 'Operator'})
+            </span>
+          </div>
+          <span className="text-xs text-gray-500">
+            {user.role === 'admin' ? 'Full Access' : 'Limited Access'}
+          </span>
+        </div>
+      </div>
+      
+      {/* Connection Status Indicator */}
+      <div className="flex items-center gap-3 mr-4">
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
+          {connectionInfo.icon}
+          <span className={`text-xs font-medium ${connectionInfo.color}`}>
+            {connectionInfo.text}
+          </span>
+        </div>
+        
+        {connectionStatus === 'disconnected' && connectionChecked && (
+          <button
+            onClick={handleReconnect}
+            className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Reconnect
+          </button>
+        )}
       </div>
       
       <div className="relative" ref={dropdownRef}>
@@ -149,6 +337,9 @@ const MainMenu = () => {
                 {/* Dropdown Header */}
                 <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-200/50">
                   <p className="text-sm font-semibold text-gray-700">Power Options</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Logged in as: <span className="font-medium">{user.username}</span>
+                  </p>
                 </div>
                 
                 {/* Exit Button */}
@@ -196,11 +387,57 @@ const MainMenu = () => {
             <div className="w-full xl:flex-1 xl:max-w-3xl">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">System Operations</h2>
-                <p className="text-gray-600">Choose an operation to perform with the CTTM-100 system</p>
+                <p className="text-gray-600">
+                  {user.role === 'admin' 
+                    ? 'You have full access to all system operations' 
+                    : 'You have access to operational features'}
+                </p>
+                
+                {/* Connection Status Banner */}
+                <div className={`mt-4 p-4 rounded-xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100' : 'bg-red-100'}`}>
+                        {connectionInfo.icon}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-800">
+                          {connectionStatus === 'connected' ? 'PLC Connected' : 'PLC Disconnected'}
+                        </h3>
+                        <p className={`text-sm ${connectionInfo.color}`}>
+                          {connectionStatus === 'connected' 
+                            ? 'USB connection to PLC is active and working'
+                            : 'No connection to PLC. Manual mode may not work.'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {connectionStatus === 'disconnected' && (
+                      <button
+                        onClick={handleConnect}
+                        className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Connect USB
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Role info banner */}
+                <div className={`mt-4 p-3 rounded-lg ${user.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                    <span className="text-sm font-medium">
+                      {user.role === 'admin' 
+                        ? 'Administrator Role: Full system access' 
+                        : 'Operator Role: Limited to Load Configuration, Manual Mode, and Process Logs'}
+                    </span>
+                  </div>
+                </div>
               </div>
               
               <div className="grid gap-5">
-                {menuOptions.map((option, index) => (
+                {filteredMenuOptions.map((option, index) => (
                   <button
                     key={option.id}
                     className={`group relative bg-white/70 backdrop-blur-sm border-2 rounded-2xl p-8 cursor-pointer transition-all duration-500 flex items-center gap-6 text-left shadow-xl hover:shadow-2xl transform hover:-translate-y-2 overflow-hidden
@@ -212,6 +449,7 @@ const MainMenu = () => {
                         ? 'border-blue-400 bg-blue-50/80 shadow-blue-200/50' 
                         : ''
                       }
+                      ${!option.roles.includes(user?.role) ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                     onClick={() => handleOptionClick(option)}
                     onMouseEnter={() => setIsHovering(option.id)}
@@ -219,6 +457,7 @@ const MainMenu = () => {
                     style={{
                       animationDelay: `${index * 100}ms`
                     }}
+                    disabled={!option.roles.includes(user?.role)}
                   >
                     {/* Animated background gradient */}
                     <div className={`absolute inset-0 bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
@@ -233,23 +472,42 @@ const MainMenu = () => {
                         ? 'bg-gradient-to-br from-red-100 to-rose-200 text-red-600 group-hover:from-red-200 group-hover:to-rose-300' 
                         : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
                       }
-                      ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}`}>
+                      ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}
+                      ${!option.roles.includes(user?.role) ? 'opacity-70' : ''}`}>
                       {option.icon}
                       
                       {/* Glow effect */}
                       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm`}></div>
+                      
+                      {/* Restricted icon for operators */}
+                      {user.role === 'operator' && !option.roles.includes('operator') && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300
-                        ${option.variant === 'danger' 
-                          ? 'text-red-700 group-hover:text-red-800' 
-                          : 'text-gray-800 group-hover:text-blue-800'
-                        }
-                        ${selectedOption === option.id ? 'text-blue-800' : ''}`}>
-                        {option.title}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className={`text-2xl font-bold transition-colors duration-300
+                          ${option.variant === 'danger' 
+                            ? 'text-red-700 group-hover:text-red-800' 
+                            : 'text-gray-800 group-hover:text-blue-800'
+                          }
+                          ${selectedOption === option.id ? 'text-blue-800' : ''}`}>
+                          {option.title}
+                        </h3>
+                        
+                        {/* Admin-only badge */}
+                        {option.roles.length === 1 && option.roles[0] === 'admin' && (
+                          <span className="px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
+                            Admin Only
+                          </span>
+                        )}
+                      </div>
                       <p className="text-gray-600 leading-relaxed text-base group-hover:text-gray-700 transition-colors duration-300">
                         {option.description}
                       </p>
@@ -261,7 +519,8 @@ const MainMenu = () => {
                         ? 'bg-red-100 text-red-600 group-hover:bg-red-200 group-hover:translate-x-2 group-hover:scale-110' 
                         : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200 group-hover:translate-x-2 group-hover:scale-110'
                       }
-                      ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}`}>
+                      ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}
+                      ${!option.roles.includes(user?.role) ? 'opacity-50' : ''}`}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-125">
                         <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -291,6 +550,65 @@ const MainMenu = () => {
                   A reliable solution for precise catheter navigation and accurate performance 
                   evaluation, designed for accuracy in every test.
                 </p>
+                
+                {/* Connection Status Card */}
+                <div className={`mb-6 p-5 rounded-2xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    {connectionInfo.icon}
+                    <h3 className="text-lg font-bold">PLC Connection Status</h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-800">Status</p>
+                        <p className={`text-sm ${connectionInfo.color}`}>
+                          {connectionStatus === 'connected' ? 'Active' : 'Inactive'}
+                        </p>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    </div>
+                    
+                    <div>
+                      <p className="font-medium text-gray-800">Connection Type</p>
+                      <p className="text-sm text-gray-600">USB (COM4)</p>
+                    </div>
+                    
+                    <div>
+                      <p className="font-medium text-gray-800">Required For</p>
+                      <p className="text-sm text-gray-600">Manual Mode, Real-time Control</p>
+                    </div>
+                    
+                    {connectionStatus === 'disconnected' && (
+                      <button
+                        onClick={handleConnect}
+                        className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Connect to PLC
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* User Access Info */}
+                <div className={`p-5 rounded-2xl ${user.role === 'admin' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200'}`}>
+                  <h3 className="text-lg font-bold mb-2">Current User Access Level</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                      <span className="font-medium">{user.username}</span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {user.role === 'admin' ? 'Administrator' : 'Operator'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {user.role === 'admin' 
+                        ? 'You have full access to all system features including configuration management.'
+                        : 'You have access to operational features only. Configuration management requires administrator privileges.'
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -302,9 +620,18 @@ const MainMenu = () => {
         <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
           <div className="flex items-center gap-4 lg:gap-6">
             <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className={`text-xs ${connectionInfo.color}`}>
+                {connectionStatus === 'connected' ? 'PLC Connected' : 'PLC Disconnected'}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
             <span>Version 1.0.0</span>
+            <span className={`px-2 py-1 rounded ${user.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+              {user.role === 'admin' ? 'Admin Mode' : 'Operator Mode'}
+            </span>
           </div>
         </div>
       </footer>

@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
-import {ArrowLeft, Info,Power, AlertCircle, X} from 'lucide-react';
+import React, { useState, useEffect } from 'react'; // ADDED: Import useEffect
+import { ArrowLeft, Info, Power, AlertCircle, Download, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 
 const CreateConfig = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     configName: '',
-    distance: '',
+    pathlength: '',
+    thresholdForce: '',
     temperature: '',
-    peakForce: ''
+    retractionLength: '', 
+    numberOfCurves: '' 
   });
+  
+  // ADDED: State to store curve distances
+  const [curveDistances, setCurveDistances] = useState({});
   
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -18,43 +22,136 @@ const CreateConfig = () => {
   const [showSerialError, setShowSerialError] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
+  // ADDED: Effect to initialize curve distances when numberOfCurves changes
+  useEffect(() => {
+    const numCurves = parseInt(formData.numberOfCurves);
+    
+    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 10) {
+      const newCurveDistances = {};
+      const curveLetters = 'ABCDEFGHIJ';
+      
+      // Initialize curve distances for all curves
+      for (let i = 0; i < numCurves; i++) {
+        const curveName = curveLetters[i];
+        newCurveDistances[curveName] = curveDistances[curveName] || '';
+      }
+      
+      // Remove any extra curves if number decreased
+      Object.keys(curveDistances).forEach(curveName => {
+        if (!newCurveDistances.hasOwnProperty(curveName)) {
+          delete curveDistances[curveName];
+        }
+      });
+      
+      setCurveDistances(newCurveDistances);
+    } else {
+      // Clear curve distances if numberOfCurves is invalid
+      setCurveDistances({});
+    }
+  }, [formData.numberOfCurves]); // Runs when numberOfCurves changes
+
+  // ADDED: Handler for curve distance input changes
+  const handleCurveDistanceChange = (curveName, value) => {
+    // Validate: only allow numbers and a single decimal point
+    if (!/^\d*\.?\d*$/.test(value) || value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
+      return;
+    }
+    
+    // Prevent multiple decimal points
+    if ((value.match(/\./g) || []).length > 1) {
+      return;
+    }
+    
+    setCurveDistances(prev => ({
+      ...prev,
+      [curveName]: value
+    }));
+    
+    // Clear any existing curve distance errors for this field
+    if (errors[`curveDistance_${curveName}`]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`curveDistance_${curveName}`];
+        return newErrors;
+      });
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
     
     // Validate Configuration Name (alphabets only)
     if (!formData.configName.trim()) {
       newErrors.configName = 'Configuration name is required';
-    } else if (!/^[A-Za-z0-9]+$/.test(formData.configName)) {
-      newErrors.configName = 'Configuration name can contain alphabets and numbers';
-    } else if (formData.configName.length > 30) {
-      newErrors.configName = 'Configuration name cannot exceed 20 characters';
+    } else if (!/^[A-Za-z]+$/.test(formData.configName)) {
+      newErrors.configName = 'Configuration name must contain only alphabets';
     }
     
-    // Validate Distance (numeric)
-    if (!formData.distance.trim()) {
-      newErrors.distance = 'Distance is required';
-    } else if (isNaN(formData.distance) || parseFloat(formData.distance) <= 0 || !/^\d+$/.test(formData.distance)) {
-      newErrors.distance = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.distance) < 50 || parseFloat(formData.distance) > 500) {
-      newErrors.distance = 'Distance must be between 50mm and 500mm';
+    // Validate Path Length (numeric and range)
+    if (!formData.pathlength.trim()) {
+      newErrors.pathlength = 'Path Length is required';
+    } else if (isNaN(formData.pathlength) || parseFloat(formData.pathlength) <= 0) {
+      newErrors.pathlength = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.pathlength) < 50 || parseFloat(formData.pathlength) > 800) {
+      newErrors.pathlength = 'Path Length must be between 50mm and 800mm';
     }
     
-    // Validate Temperature (numeric)
+    // Validate Threshold Force (numeric and range)
+    if (!formData.thresholdForce.trim()) {
+      newErrors.thresholdForce = 'Threshold Force is required';
+    } else if (isNaN(formData.thresholdForce) || parseFloat(formData.thresholdForce) <= 0) {
+      newErrors.thresholdForce = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.thresholdForce) < 1 || parseFloat(formData.thresholdForce) > 2000) {
+      newErrors.thresholdForce = 'Threshold Force must be between 1mN and 2000mN';
+    }
+
+    // Validate Temperature (numeric and range)
     if (!formData.temperature.trim()) {
       newErrors.temperature = 'Temperature is required';
-    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0 || !/^\d+$/.test(formData.temperature)) {
+    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
       newErrors.temperature = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 40) {
-      newErrors.temperature = 'Temperature must be between 37°C and 40°C';
+    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 45) {
+      newErrors.temperature = 'Temperature must be between 37°C and 45°C';
     }
     
-    // Validate Peak Force (numeric)
-    if (!formData.peakForce.trim()) {
-      newErrors.peakForce = 'Peak force is required';
-    } else if (isNaN(formData.peakForce) || parseFloat(formData.peakForce) <= 0 || !/^\d+$/.test(formData.peakForce)) {
-      newErrors.peakForce = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.peakForce) < 1 || parseFloat(formData.peakForce) > 20) {
-      newErrors.peakForce = 'Peak Force must be between 1N and 20N';
+    // Validate Retraction Stroke Length (numeric and range)
+    if (!formData.retractionLength.trim()) {
+      newErrors.retractionLength = 'Retraction Stroke Length is required';
+    } else if (isNaN(formData.retractionLength) || parseFloat(formData.retractionLength) <= 0) {
+      newErrors.retractionLength = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.retractionLength) < 10 || parseFloat(formData.retractionLength) > 100) {
+      newErrors.retractionLength = 'Retraction Stroke Length must be between 10mm and 100mm';
+    }
+    
+    // Validate Number of Curves (integer and range)
+    if (!formData.numberOfCurves.trim()) {
+      newErrors.numberOfCurves = 'Number of Curves is required';
+    } else if (isNaN(formData.numberOfCurves) || parseInt(formData.numberOfCurves) <= 0) {
+      newErrors.numberOfCurves = 'Please enter a valid positive integer';
+    } else if (!Number.isInteger(parseFloat(formData.numberOfCurves))) {
+      newErrors.numberOfCurves = 'Number of Curves must be a whole number';
+    } else if (parseInt(formData.numberOfCurves) < 1 || parseInt(formData.numberOfCurves) > 10) {
+      newErrors.numberOfCurves = 'Number of Curves must be between 1 and 10';
+    }
+    
+    // ADDED: Validate curve distances for each curve
+    const numCurves = parseInt(formData.numberOfCurves);
+    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 10) {
+      const curveLetters = 'ABCDEFGHIJ';
+      
+      for (let i = 0; i < numCurves; i++) {
+        const curveName = curveLetters[i];
+        const distance = curveDistances[curveName];
+        
+        if (!distance || distance.trim() === '') {
+          newErrors[`curveDistance_${curveName}`] = `Distance for Curve ${curveName} is required`;
+        } else if (isNaN(distance) || parseFloat(distance) <= 0) {
+          newErrors[`curveDistance_${curveName}`] = `Please enter a valid positive number for Curve ${curveName}`;
+        } else if (parseFloat(distance) < 1 || parseFloat(distance) > 1000) {
+          // Assuming a reasonable range for curve distances
+          newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 1mm and 1000mm`;
+        }
+      }
     }
     
     setErrors(newErrors);
@@ -67,19 +164,19 @@ const CreateConfig = () => {
     // Validation based on field type
     if (name === 'configName') {
       // Only allow alphabets for config name
-      if (!/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
+      if (!/^[a-zA-Z]*$/.test(value)) {
         return;
       }
     }
     
-    if (name === 'distance' || name === 'temperature' || name === 'peakForce') {
+    if (name === 'pathlength' || name === 'thresholdForce' || name === 'temperature' || name === 'retractionLength' || name === 'numberOfCurves') {
       // Prevent negative numbers, leading zeros, and scientific notation (e, E)
       if (value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
         return;
       }
       
-      // Only allow whole numbers (no decimal points)
-      if (!/^\d*$/.test(value)) {
+      // Allow only numbers and single decimal point (for numberOfCurves, we'll handle integer-only separately)
+      if (!/^\d*\.?\d*$/.test(value)) {
         return;
       }
       
@@ -87,8 +184,12 @@ const CreateConfig = () => {
       if ((value.match(/\./g) || []).length > 1) {
         return;
       }
+      
+      // For numberOfCurves field, ensure it's an integer (no decimal point)
+      if (name === 'numberOfCurves' && value.includes('.')) {
+        return;
+      }
     }
- 
     
     setFormData(prev => ({ 
       ...prev, 
@@ -117,8 +218,15 @@ const CreateConfig = () => {
     setIsLoading(true);
     
     try {
+      // Prepare complete config data including curve distances
+      const configData = {
+        ...formData,
+        curveDistances: { ...curveDistances } // ADDED: Include curve distances in config
+      };
+      
       // Check for duplicate configuration names
-      const existingConfigs = await window.serialAPI.readConfigFile();
+      const existingConfigs = await window.api.readConfigFile(); // ← CORRECTED!
+      
       if (existingConfigs.some(config => config.configName === formData.configName)) {
         setErrors({ configName: 'Configuration Name already exists' });
         setIsLoading(false);
@@ -126,19 +234,28 @@ const CreateConfig = () => {
       }
       
       // Add new config and save
-      const updatedConfigs = [...existingConfigs, formData];
-      await window.serialAPI.writeConfigFile(updatedConfigs);
+      const updatedConfigs = [...existingConfigs, configData];
+      const success = await window.api.writeConfigFile(updatedConfigs); // ← CORRECTED!
       
-      setSuccessMessage('Configuration has been saved successfully');
-      setErrors({});
-      
-      // Reset form
-      setFormData({
-        configName: '',
-        distance: '',
-        temperature: '',
-        peakForce: ''
-      });
+      if (success) {
+        setSuccessMessage('Configuration has been saved successfully');
+        setErrors({});
+        
+        // Reset form
+        setFormData({
+          configName: '',
+          pathlength: '',
+          thresholdForce: '',
+          temperature: '',
+          retractionLength: '',
+          numberOfCurves: ''
+        });
+        
+        // ADDED: Clear curve distances
+        setCurveDistances({});
+      } else {
+        setErrors({ submit: 'Error saving configuration. Please try again.' });
+      }
       
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -147,9 +264,19 @@ const CreateConfig = () => {
       setIsLoading(false);
     }
   };
-
   const handleBack = () => {
     navigate('/main-menu');
+  };
+
+  // ADDED: Generate curve letters based on number of curves
+  const generateCurveLetters = () => {
+    const numCurves = parseInt(formData.numberOfCurves);
+    if (isNaN(numCurves) || numCurves < 1 || numCurves > 10) {
+      return [];
+    }
+    
+    const curveLetters = 'ABCDEFGHIJ';
+    return curveLetters.slice(0, numCurves).split('');
   };
 
   return (
@@ -166,32 +293,31 @@ const CreateConfig = () => {
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Create Configuration</h1>
           </div>
-          
           <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Help Button */}
             <button 
               onClick={() => setShowHelpModal(true)}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700
-               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center 
-               transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
-          <button
+          <button 
             onClick={() => {
               const confirmed = window.confirm("Are you sure you want to exit?");
               if (confirmed) {
                 window.close();
               }
             }}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
-            rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all 
-            duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
           >
-            <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
+              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
           </button>
         </div>
         </div>
+
         {/* Success Message */}
         {successMessage && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg shadow-sm">
@@ -219,7 +345,7 @@ const CreateConfig = () => {
               {/* Configuration Name */}
               <div className="space-y-2">
                 <label htmlFor="configName" className="block text-sm font-semibold text-slate-700">
-                  Configuration Name
+                  Configuration Name (Alphabets only)
                 </label>
                 <input
                   type="text"
@@ -242,38 +368,65 @@ const CreateConfig = () => {
                 )}
               </div>
 
-              {/* Distance and Temperature Row */}
+              {/* Path Length and Temperature Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Distance */}
+                {/* Path Length */}
                 <div className="space-y-2">
-                  <label htmlFor="distance" className="block text-sm font-semibold text-slate-700">
-                    Distance (mm)
+                  <label htmlFor="pathlength" className="block text-sm font-semibold text-slate-700">
+                    Rig Path Length (mm)
                   </label>
                   <input
                     type="text"
-                    id="distance"
-                    name="distance"
-                    value={formData.distance}
+                    id="pathlength"
+                    name="pathlength"
+                    value={formData.pathlength}
                     onChange={handleInputChange}
-                    placeholder="Enter distance in range (50mm - 500mm)"
+                    placeholder="Enter path length in range 50mm - 800mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                      errors.distance 
+                      errors.pathlength 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
                     }`}
                   />
-                  {errors.distance && (
+                  {errors.pathlength && (
                     <p className="text-red-500 text-sm flex items-center space-x-1">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{errors.distance}</span>
+                      <span>{errors.pathlength}</span>
                     </p>
                   )}
                 </div>
 
-                {/* Temperature */}
+                
+              {/* Threshold Force */}
+              <div className="space-y-2">
+                <label htmlFor="thresholdForce" className="block text-sm font-semibold text-slate-700">
+                  Threshold Force (mN)
+                </label>
+                <input
+                  type="text"
+                  id="thresholdForce"
+                  name="thresholdForce"
+                  value={formData.thresholdForce}
+                  onChange={handleInputChange}
+                  placeholder="Enter Threshold Force in range 1mN - 2000mN"
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                    errors.thresholdForce 
+                      ? 'border-red-300 focus:border-red-500' 
+                      : 'border-slate-200 focus:border-blue-500'
+                  }`}
+                />
+                {errors.thresholdForce && (
+                  <p className="text-red-500 text-sm flex items-center space-x-1">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>{errors.thresholdForce}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Temperature */}
                 <div className="space-y-2">
                   <label htmlFor="temperature" className="block text-sm font-semibold text-slate-700">
-                    Temperature (°C)
+                    Bath Temperature (°C)
                   </label>
                   <input
                     type="text"
@@ -281,7 +434,7 @@ const CreateConfig = () => {
                     name="temperature"
                     value={formData.temperature}
                     onChange={handleInputChange}
-                    placeholder="Enter temperature in range (37°C - 40°C)"
+                    placeholder="Enter temperature in range 37°C - 45°C "
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.temperature 
                         ? 'border-red-300 focus:border-red-500' 
@@ -295,43 +448,108 @@ const CreateConfig = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Retraction Stroke Length Field */}
+                <div className="space-y-2">
+                  <label htmlFor="retractionLength" className="block text-sm font-semibold text-slate-700">
+                    Retraction Stroke Length (mm)
+                  </label>
+                  <input
+                    type="text"
+                    id="retractionLength"
+                    name="retractionLength"
+                    value={formData.retractionLength}
+                    onChange={handleInputChange}
+                    placeholder="Enter retraction length in range 10mm - 100mm"
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                      errors.retractionLength 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-slate-200 focus:border-blue-500'
+                    }`}
+                  />
+                  {errors.retractionLength && (
+                    <p className="text-red-500 text-sm flex items-center space-x-1">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{errors.retractionLength}</span>
+                    </p>
+                  )}
+                </div>
+                
+                {/* Number of Curves Field */}
+                <div className="space-y-2">
+                  <label htmlFor="numberOfCurves" className="block text-sm font-semibold text-slate-700">
+                    Number of Curves (Total)
+                  </label>
+                  <input
+                    type="text"
+                    id="numberOfCurves"
+                    name="numberOfCurves"
+                    value={formData.numberOfCurves}
+                    onChange={handleInputChange}
+                    placeholder="Enter number of curves (1-10)"
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                      errors.numberOfCurves 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-slate-200 focus:border-blue-500'
+                    }`}
+                  />
+                  {errors.numberOfCurves && (
+                    <p className="text-red-500 text-sm flex items-center space-x-1">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{errors.numberOfCurves}</span>
+                    </p>
+                  )}
+                  {/* <p className="text-slate-500 text-xs mt-1">
+                    Example: 3 curves means measurements at Curve A, B, C and D positions
+                  </p> */}
+                </div>
               </div>
 
-              {/* Peak Force */}
-              <div className="space-y-2">
-                <label htmlFor="peakForce" className="block text-sm font-semibold text-slate-700">
-                  Peak Force (N)
-                </label>
-                <input
-                  type="text"
-                  id="peakForce"
-                  name="peakForce"
-                  value={formData.peakForce}
-                  onChange={handleInputChange}
-                  placeholder="Enter peak force in range (1N - 20N)"
-                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                    errors.peakForce 
-                      ? 'border-red-300 focus:border-red-500' 
-                      : 'border-slate-200 focus:border-blue-500'
-                  }`}
-                />
-                {errors.peakForce && (
-                  <p className="text-red-500 text-sm flex items-center space-x-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{errors.peakForce}</span>
+              {/* ADDED: Dynamic Curve Distance Inputs Section */}
+              {formData.numberOfCurves && parseInt(formData.numberOfCurves) > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-200">
+                  <h3 className="text-lg font-semibold text-slate-800">Curve Distances (mm)</h3>
+                  <p className="text-slate-600 text-sm">
+                    Enter distance in mm for each curve position:
                   </p>
-                )}
-              </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {generateCurveLetters().map(curveName => (
+                      <div key={curveName} className="space-y-2">
+                        <label htmlFor={`curveDistance_${curveName}`} className="block text-sm font-semibold text-slate-700">
+                          Curve {curveName} Distance (mm)
+                        </label>
+                        <input
+                          type="text"
+                          id={`curveDistance_${curveName}`}
+                          name={`curveDistance_${curveName}`}
+                          value={curveDistances[curveName] || ''}
+                          onChange={(e) => handleCurveDistanceChange(curveName, e.target.value)}
+                          placeholder={`Enter distance for Curve ${curveName}`}
+                          className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                            errors[`curveDistance_${curveName}`] 
+                              ? 'border-red-300 focus:border-red-500' 
+                              : 'border-slate-200 focus:border-blue-500'
+                          }`}
+                        />
+                        {errors[`curveDistance_${curveName}`] && (
+                          <p className="text-red-500 text-sm flex items-center space-x-1">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>{errors[`curveDistance_${curveName}`]}</span>
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Submit Button */}
               <div className="pt-6 flex space-x-4">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
-                   disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl 
-                   shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 
-                   disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
                 >
                   {isLoading ? (
                     <>
@@ -339,7 +557,10 @@ const CreateConfig = () => {
                       <span>Creating...</span>
                     </>
                   ) : (
-                    <span>Create</span>
+                    <>
+                      <Download className="w-5 h-5" />
+                      <span>Create</span>
+                    </>
                   )}
                 </button>
                 
@@ -354,6 +575,7 @@ const CreateConfig = () => {
             </form>
           </div>
         </div>
+
          {showHelpModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
@@ -387,44 +609,66 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      The values of Distance, Peak Force , Temperature <span className="font-semibold">required and must be positive numbers</span>
+                      The values of Path Length, Threshold Force, Temperature, Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers</span>
                     </p>
                   </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Distance</span> should be in range <span className="font-semibold">50 - 500 mm</span> 
+                      <span className="font-semibold">Rig Path Length</span> should be in range <span className="font-semibold">50 - 800 mm</span> 
                     </p>
                   </div>
 
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Peak Force </span> should be in range  <span className="font-semibold"> 1N - 20N </span> 
+                      <span className="font-semibold">Threshold Force </span> should be in range  <span className="font-semibold"> 1mN - 2000mN </span> 
                     </p>
                   </div>
 
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Temperature</span> should be in range  <span className="font-semibold">37°C - 40°C </span> 
+                      <span className="font-semibold">Bath Temperature</span> should be in range  <span className="font-semibold">37°C - 45°C </span> 
                     </p>
                   </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      Configuration will be <span className="font-semibold">saved to CTTM-100.csv</span>
+                      <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">10mm - 100mm</span>
                     </p>
-                  </div>  
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 10</span> (whole numbers only)
+                    </p>
+                  </div>
+                  
+                  {/* ADDED: Help modal entry for Curve Distances */}
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Curve Distances</span> are required for each curve position (A, B, C, etc.) and should be between <span className="font-semibold">1mm and 1000mm</span>
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      Configuration will be <span className="font-semibold">saved to SCTTM.csv</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
-      </div>
+    </div>
     </div>
   );
 };

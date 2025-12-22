@@ -11,6 +11,12 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Define user credentials and roles
+  const users = [
+    { username: 'admin', password: 'admin', role: 'admin' },
+    { username: 'operator', password: 'operator', role: 'operator' }
+  ];
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -20,9 +26,19 @@ const Login = () => {
     setTimeout(() => {
       setIsLoading(false);
       
-      // Check credentials
-      if (username === 'admin' && password === 'admin') {
-        navigate('/main-menu'); // Navigate to main menu on successful login
+      // Check credentials against user list
+      const user = users.find(
+        u => u.username === username && u.password === password
+      );
+      
+      if (user) {
+        // Store user info in localStorage or state management
+        localStorage.setItem('user', JSON.stringify({
+          username: user.username,
+          role: user.role
+        }));
+        
+        navigate('/main-menu');
       } else {
         setError('Invalid credentials');
       }
@@ -69,6 +85,10 @@ const Login = () => {
               {error}
             </div>
           )}
+          
+          {/* Login Info Banner */}
+          
+          
           <form onSubmit={handleLogin} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <label htmlFor="username" className="font-semibold text-gray-700 text-lg">Username</label>
