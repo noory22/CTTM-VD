@@ -25,30 +25,24 @@ const CreateConfig = () => {
   // ADDED: Effect to initialize curve distances when numberOfCurves changes
   useEffect(() => {
     const numCurves = parseInt(formData.numberOfCurves);
-    
+
     if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 10) {
-      const newCurveDistances = {};
       const curveLetters = 'ABCDEFGHIJ';
-      
-      // Initialize curve distances for all curves
-      for (let i = 0; i < numCurves; i++) {
-        const curveName = curveLetters[i];
-        newCurveDistances[curveName] = curveDistances[curveName] || '';
-      }
-      
-      // Remove any extra curves if number decreased
-      Object.keys(curveDistances).forEach(curveName => {
-        if (!newCurveDistances.hasOwnProperty(curveName)) {
-          delete curveDistances[curveName];
+
+      setCurveDistances(prev => {
+        const updated = {};
+
+        for (let i = 0; i < numCurves; i++) {
+          const curveName = curveLetters[i];
+          updated[curveName] = prev[curveName] ?? '';
         }
+
+        return updated;
       });
-      
-      setCurveDistances(newCurveDistances);
     } else {
-      // Clear curve distances if numberOfCurves is invalid
       setCurveDistances({});
     }
-  }, [formData.numberOfCurves]); // Runs when numberOfCurves changes
+  }, [formData.numberOfCurves]);
 
   // ADDED: Handler for curve distance input changes
   const handleCurveDistanceChange = (curveName, value) => {
@@ -208,6 +202,7 @@ const CreateConfig = () => {
     }
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -221,11 +216,11 @@ const CreateConfig = () => {
       // Prepare complete config data including curve distances
       const configData = {
         ...formData,
-        curveDistances: { ...curveDistances } // ADDED: Include curve distances in config
+        curveDistances: { ...curveDistances }
       };
       
       // Check for duplicate configuration names
-      const existingConfigs = await window.api.readConfigFile(); // ← CORRECTED!
+      const existingConfigs = await window.api.readConfigFile();
       
       if (existingConfigs.some(config => config.configName === formData.configName)) {
         setErrors({ configName: 'Configuration Name already exists' });
@@ -235,7 +230,7 @@ const CreateConfig = () => {
       
       // Add new config and save
       const updatedConfigs = [...existingConfigs, configData];
-      const success = await window.api.writeConfigFile(updatedConfigs); // ← CORRECTED!
+      const success = await window.api.writeConfigFile(updatedConfigs);
       
       if (success) {
         setSuccessMessage('Configuration has been saved successfully');
@@ -251,7 +246,7 @@ const CreateConfig = () => {
           numberOfCurves: ''
         });
         
-        // ADDED: Clear curve distances
+        // Clear curve distances
         setCurveDistances({});
       } else {
         setErrors({ submit: 'Error saving configuration. Please try again.' });

@@ -4,14 +4,21 @@ const path = require("path");
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
 
+
+// ============================
+// CSV LOGGING STATE
+// ============================
+let csvStream = null;
+let csvFilePath = null;
 // -------------------------
 // Modbus / PLC settings - UPDATED BASED ON PYTHON CODE
 // -------------------------
 const PORT = "COM4";
-const BAUDRATE = 9600;
+const BAUDRATE = 28800;
 const TIMEOUT = 1;
 
 const COIL_HOME  = 2001;
+const COIL_LLS = 1000;
 const COIL_START = 2002;
 const COIL_STOP  = 2003;
 const COIL_RESET = 2004;
@@ -21,8 +28,7 @@ const COIL_MANUAL = 2070;
 const COIL_INSERTION = 2008;
 const COIL_RET = 2009;
 const COIL_CLAMP = 2007;
-const REG_WRITE_DIST = 6000;
-const REG_DISTANCE   = 6116;  // 1 register (16-bit integer) - UPDATED
+const REG_DISTANCE   = 70;  // 1 register (16-bit integer) - UPDATED
 const REG_FORCE      = 54;    // 2 registers (32-bit float) - UPDATED
 const REG_TEMP    = 501;// 
 let mainWindow;
@@ -33,7 +39,7 @@ const client = new ModbusRTU();
 // ============================
 // CONFIGURATION FILE SETTINGS
 // ============================
-const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'SCTTM.csv');
+const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'SCTTM.json');
 
 // -------------------------
 // Connect Modbus - UPDATED
@@ -119,6 +125,110 @@ async function manualConnectModbus() {
   } catch (error) {
     console.error("Manual connect error:", error.message);
     return false;
+  }
+}
+
+// Add this variable near the top with other state variables
+let lastLLSState = false;
+
+// Add this function to monitor COIL_LLS
+async function checkLLSStatus() {
+  try {
+    if (!isConnected) return;
+    
+    // Read COIL_LLS status
+    const llsResult = await client.readCoils(COIL_LLS, 1);
+    const currentLLSState = llsResult.data[0];
+    
+    // If LLS changed to TRUE
+    if (currentLLSState && !lastLLSState) {
+      console.log("✅ COIL_LLS became TRUE - Homing should be complete");
+      
+      // Send notification to UI that homing is complete
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('lls-status', 'true');
+      }
+    }
+    
+    // Update last state
+    lastLLSState = currentLLSState;
+    
+  } catch (err) {
+    console.error("Error checking COIL_LLS:", err.message);
+  }
+}
+
+// Start checking LLS periodically
+setInterval(checkLLSStatus, 500);
+
+
+// ============================
+// CSV LOGGING FUNCTIONS
+// ============================
+
+async function startCSVLogging(config) {
+  try {
+    const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
+
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    csvFilePath = path.join(
+      logsDir,
+      `${config.configName || "Process"}_${timestamp}.csv`
+    );
+
+    csvStream = fs.createWriteStream(csvFilePath, { flags: "a" });
+
+    // CSV HEADER
+    csvStream.write(
+      "Timestamp,Distance(mm),Force(mN),Temperature(°C),ConfigName,PathLength,ThresholdForce,NumberOfCurves,CurveDistances\n"
+    );
+
+    return { success: true, filePath: csvFilePath };
+  } catch (error) {
+    console.error("CSV start error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function appendCSVData(data, config) {
+  try {
+    if (!csvStream) {
+      throw new Error("CSV stream not initialized");
+    }
+
+    const row = [
+      new Date().toISOString(),
+      data.distance,
+      data.force_mN,
+      data.temperature,
+      config.configName,
+      config.pathlength,
+      config.thresholdForce,
+      config.numberOfCurves,
+      JSON.stringify(config.curveDistances || {})
+    ].join(",") + "\n";
+
+    csvStream.write(row);
+    return { success: true };
+  } catch (error) {
+    console.error("CSV append error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function stopCSVLogging() {
+  try {
+    if (csvStream) {
+      csvStream.end();
+      csvStream = null;
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -239,18 +349,16 @@ async function readPLCData() {
   if (!isConnected) {
     // Return simulated data when not connected
     const simulatedDistance = Math.floor(Math.random() * 1000);
-    const simulatedForce = 1.0 + (Math.random() * 5);
-    const simulatedTemp = 20 + (Math.random() * 10); // Simulated temperature
+    const simulatedForce = 1000 + (Math.random() * 5000); // Simulated force in mN
+    const simulatedTemp = 20 + (Math.random() * 10); // Simulated temperature in °C
     
     return {
       success: true,
       isSimulated: true,
       distance: simulatedDistance,
-      distanceDisplay: `${simulatedDistance.toFixed(2)} mm`,
-      force: simulatedForce,
-      forceDisplay: `${simulatedForce.toFixed(4)} N`,
-      force_mN: simulatedForce * 1000,
-      force_mN_Display: `${(simulatedForce * 1000).toFixed(2)} mN`,
+      distanceDisplay: `${simulatedDistance} mm`,
+      force_mN: simulatedForce,
+      forceDisplay: `${simulatedForce.toFixed(2)} mN`,
       temperature: simulatedTemp,
       temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
       message: 'Using simulated data - Modbus not connected'
@@ -260,48 +368,39 @@ async function readPLCData() {
   try {
     // Read distance (16-bit integer, already in mm)
     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
-    const distanceRegister = distanceResult.data[0];
+    const distanceMM = distanceResult.data[0];
     
-    // Read force (32-bit float, already in mN based on your comment)
+    // Read force (32-bit float, already in mN)
     const forceResult = await safeReadRegisters(REG_FORCE, 2);
     const forceRegisters = forceResult.data;
     
     // Read temperature (assuming 16-bit integer, already in °C)
     const tempResult = await safeReadRegisters(REG_TEMP, 1);
-    const tempRegister = tempResult.data[0];
+    const temperatureC = tempResult.data[0];
     
-    // Convert force to float (from 32-bit float)
-    const forceFloat = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
-    
-    // Note: According to your comment, force is already in mN, not N
-    // So we don't need to multiply by 1000
-    const distanceMM = distanceRegister; // Already in mm
-    const forceMN = forceFloat; // Already in mN
-    const forceN = forceFloat / 1000; // Convert to N if needed
-    const temperatureC = tempRegister; // Already in °C
+    // Convert force registers to float
+    const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
     
     return {
       success: true,
       isSimulated: false,
-      // Distance data
+      // Distance data - already in mm
       distance: distanceMM,
-      distanceDisplay: `${distanceMM.toFixed(2)} mm`,
+      distanceDisplay: `${distanceMM} mm`,
       
-      // Force data - both mN and N versions
-      force: forceN, // In Newtons
-      forceDisplay: `${forceN.toFixed(4)} N`,
-      force_mN: forceMN, // In milliNewtons
-      force_mN_Display: `${forceMN.toFixed(2)} mN`,
+      // Force data - already in mN
+      force_mN: forceMN,
+      forceDisplay: `${forceMN.toFixed(2)} mN`,
       
-      // Temperature data
+      // Temperature data - already in °C
       temperature: temperatureC,
-      temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
+      temperatureDisplay: `${temperatureC} °C`,
       
       // Raw data for debugging
       rawRegisters: {
-        distance: distanceRegister,
+        distance: distanceMM,
         force: forceRegisters,
-        temperature: tempRegister
+        temperature: temperatureC
       }
     };
     
@@ -310,25 +409,22 @@ async function readPLCData() {
     
     // Fallback to simulated data on read error
     const simulatedDistance = Math.floor(Math.random() * 1000);
-    const simulatedForce = 1.0 + (Math.random() * 5);
+    const simulatedForce = 1000 + (Math.random() * 5000);
     const simulatedTemp = 20 + (Math.random() * 10);
     
     return {
       success: true,
       isSimulated: true,
       distance: simulatedDistance,
-      distanceDisplay: `${simulatedDistance.toFixed(2)} mm`,
-      // force: simulatedForce,
-      // forceDisplay: `${simulatedForce.toFixed(4)} N`,
-      force_mN: simulatedForce * 1000,
-      force_mN_Display: `${(simulatedForce * 1000).toFixed(2)} mN`,
+      distanceDisplay: `${simulatedDistance} mm`,
+      force_mN: simulatedForce,
+      forceDisplay: `${simulatedForce.toFixed(2)} mN`,
       temperature: simulatedTemp,
       temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
       message: `Using simulated data: ${err.message}`
     };
   }
 }
-
 // Add this function to main.js
 async function debugRegisters() {
   try {
@@ -339,7 +435,7 @@ async function debugRegisters() {
     const forceResult = await safeReadRegisters(REG_FORCE, 2);
     const tempResult = await safeReadRegisters(REG_TEMP, 1);
     
-    console.log("Distance register (6116):", distanceResult.data);
+    console.log("Distance register (70):", distanceResult.data);
     console.log("Force registers (54-55):", forceResult.data);
     console.log("Temperature register (501):", tempResult.data);
     
@@ -365,103 +461,69 @@ ipcMain.handle("debug-registers", async () => {
 // CONFIGURATION FILE FUNCTIONS
 // ============================
 
+// ============================
+// CONFIGURATION FILE SETTINGS
+// ===========================
+
 // Helper function to ensure config file exists
 async function ensureConfigFile() {
   try {
     await fsPromises.access(CONFIG_FILE_PATH);
   } catch (error) {
-    const headers = 'configName,pathlength,thresholdForce,temperature,retractionLength,numberOfCurves,curveDistances\n';
-    await fsPromises.writeFile(CONFIG_FILE_PATH, headers, 'utf8');
-    console.log('Created new config file:', CONFIG_FILE_PATH);
+    // Create empty JSON array for configurations
+    const emptyConfigs = [];
+    await fsPromises.writeFile(CONFIG_FILE_PATH, JSON.stringify(emptyConfigs, null, 2), 'utf8');
+    console.log('Created new JSON config file:', CONFIG_FILE_PATH);
   }
 }
 
-// Read configuration file
+// Read configuration file (JSON format)
 async function readConfigurations() {
   try {
     await ensureConfigFile();
-    const content = await fsPromises.readFile(CONFIG_FILE_PATH, 'utf8');
-    const lines = content.trim().split('\n');
+
+    const data = await fsPromises.readFile(CONFIG_FILE_PATH, 'utf8');
     
-    if (lines.length <= 1) return [];
-    
-    const configs = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      
-      const parts = [];
-      let currentPart = '';
-      let inQuotes = false;
-      
-      for (let j = 0; j < line.length; j++) {
-        const char = line[j];
-        
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          parts.push(currentPart);
-          currentPart = '';
-        } else {
-          currentPart += char;
-        }
-      }
-      parts.push(currentPart);
-      
-      if (parts.length >= 7) {
-        let curveDistances = {};
-        try {
-          if (parts[6] && parts[6] !== '' && parts[6] !== '{}' && parts[6] !== '""') {
-            const curveStr = parts[6].replace(/^"|"$/g, '');
-            if (curveStr && curveStr !== '{}') {
-              curveDistances = JSON.parse(curveStr);
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing curveDistances:', e, 'Value:', parts[6]);
-          curveDistances = {};
-        }
-        
-        configs.push({
-          configName: parts[0],
-          pathlength: parts[1],
-          thresholdForce: parts[2],
-          temperature: parts[3],
-          retractionLength: parts[4],
-          numberOfCurves: parts[5],
-          curveDistances: curveDistances
-        });
-      }
+    try {
+      const configs = JSON.parse(data);
+      // Ensure curveDistances exists for each config
+      return configs.map(config => ({
+        ...config,
+        curveDistances: config.curveDistances || {}
+      }));
+    } catch (parseError) {
+      console.error('Error parsing JSON config file:', parseError);
+      // If JSON is invalid, return empty array
+      return [];
     }
-    
-    return configs;
   } catch (error) {
     console.error('Error reading config file:', error);
     return [];
   }
 }
 
-// Write configuration file
+// Write configuration file (JSON format)
 async function writeConfigurations(configs) {
   try {
-    await ensureConfigFile();
-    
-    let csvContent = 'configName,pathlength,thresholdForce,temperature,retractionLength,numberOfCurves,curveDistances\n';
-    
-    configs.forEach(config => {
-      const curveDistancesStr = config.curveDistances && Object.keys(config.curveDistances).length > 0 ? 
-        JSON.stringify(config.curveDistances) : '{}';
-      
-      const escapedCurveDistances = `"${curveDistancesStr.replace(/"/g, '""')}"`;
-      
-      csvContent += `${config.configName},${config.pathlength},${config.thresholdForce},${config.temperature},${config.retractionLength},${config.numberOfCurves},${escapedCurveDistances}\n`;
-    });
-    
-    await fsPromises.writeFile(CONFIG_FILE_PATH, csvContent, 'utf8');
-    console.log('Config file saved:', CONFIG_FILE_PATH);
+    // Ensure curveDistances is properly formatted
+    const formattedConfigs = configs.map(config => ({
+      configName: config.configName || '',
+      pathlength: config.pathlength || '',
+      thresholdForce: config.thresholdForce || '',
+      temperature: config.temperature || '',
+      retractionLength: config.retractionLength || '',
+      numberOfCurves: config.numberOfCurves || '',
+      curveDistances: config.curveDistances || {}
+    }));
+
+    await fsPromises.writeFile(
+      CONFIG_FILE_PATH, 
+      JSON.stringify(formattedConfigs, null, 2), 
+      'utf8'
+    );
     return true;
   } catch (error) {
-    console.error('Error writing config file:', error);
+    console.error('Error writing JSON config file:', error);
     return false;
   }
 }
@@ -883,6 +945,24 @@ ipcMain.handle("send-process-mode", async (event, config) => {
     return false;
   }
 });
+
+// ============================
+// CSV LOGGING IPC
+// ============================
+
+ipcMain.handle("csv-start", async (event, config) => {
+  return await startCSVLogging(config);
+});
+
+ipcMain.handle("csv-append", async (event, payload) => {
+  const { data, config } = payload;
+  return await appendCSVData(data, config);
+});
+
+ipcMain.handle("csv-stop", async () => {
+  return await stopCSVLogging();
+});
+
 
 // -------------------------
 // App lifecycle - FIXED

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Play, Pause, RotateCcw, Power, Camera, ArrowLeft, Usb, Info, X, Activity, Thermometer, Gauge, Ruler, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,9 +8,24 @@ const ProcessMode = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [sensorData, setSensorData] = useState({
     temperature: '--',
+    temperatureDisplay: '-- °C',
     force: '--',
+    forceDisplay: '-- mN', // Changed from N to mN
+    force_mN: '--',
+    force_mN_Display: '-- mN',
     distance: '--',
+    distanceDisplay: '-- mm',
     status: 'READY'
+  });
+  const [readData, setReadData] = useState({
+    temperature: '--',
+    temperatureDisplay: '-- °C',
+    force: '--', // This will be in mN
+    forceDisplay: '-- mN', // Changed from N to mN
+    force_mN: '--',
+    force_mN_Display: '-- mN',
+    distance: '--',
+    distanceDisplay: '-- mm'
   });
   const [chartData, setChartData] = useState([]);
   const [isProcessRunning, setIsProcessRunning] = useState(false);
@@ -27,6 +42,12 @@ const ProcessMode = () => {
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
+   // Add this state for retraction
+  const [isRetractionEnabled, setIsRetractionEnabled] = useState(false);
+  const [isRetractionActive, setIsRetractionActive] = useState(false);
+
+  // Track which curve points have been reached
+  // const [reachedCurves, setReachedCurves] = useState({});
   
   // Temperature Control State
   const [temperatureStatus, setTemperatureStatus] = useState({
@@ -77,102 +98,28 @@ const ProcessMode = () => {
     }
   }, []);
 
-    //-----------------------------------------------------------------//
-  // Temperature monitoring effect - UPDATED
-  // useEffect(() => {
-  //   if (!selectedConfig || sensorData.temperature === '--') return;
+  // Add this useEffect hook near other useEffect hooks in ProcessMode.jsx
+  useEffect(() => {
+    const handleLLSStatusChange = (event) => {
+      if (event.detail === 'true') {
+        console.log("🔄 COIL_LLS detected TRUE - Homing complete");
+        
+        // Update homing state
+        setIsHoming(false);
+        
+        // Update status to READY
+        setSensorData(prev => ({ ...prev, status: 'READY' }));
+        
+        console.log("✅ UI updated: Homing inactive, buttons enabled");
+      }
+    };
 
-  //   const currentTemp = parseFloat(sensorData.temperature);
-  //   const targetTemp = parseFloat(selectedConfig.temperature);
-
-  //   if (isNaN(currentTemp) || isNaN(targetTemp)) return;
-
-  //   console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C, ProcessRunning=${isProcessRunning}, Status=${sensorData.status}`);
-
-  //   // NEW: Check if temperature drops below target during running process
-  //   if (isProcessRunning && !isPaused && currentTemp < targetTemp) {
-  //     console.log('❌ Temperature dropped below target during process - Auto-pausing');
-      
-  //     // Set temperature drop flag
-  //     setTemperatureStatus(prev => ({
-  //       ...prev,
-  //       wasTemperatureDrop: true
-  //     }));
-
-  //     // Auto-stop the process using the same command as manual stop
-  //     handleAutoStop();
-      
-  //     // Show heater dialog
-  //     setTemperatureStatus(prev => ({
-  //       ...prev,
-  //       isHeatingRequired: true,
-  //       isHeatingComplete: false,
-  //       showHeaterDialog: true,
-  //       dialogMessage: `Temperature dropped to ${currentTemp}°C (below required ${targetTemp}°C). Process auto-stopped. Please turn ON the heater.`,
-  //       dialogType: 'heating-required',
-  //       heaterButtonDisabled: false,
-  //       targetTemperature: targetTemp
-  //     }));
-      
-  //     return; // Exit early since we're handling the temperature drop case
-  //   }
-
-  //   // Existing temperature monitoring logic for non-running states
-  //   if (currentTemp < targetTemp) {
-  //     // Temperature is below target
-  //     if (!temperatureStatus.isHeatingRequired) {
-  //       setTemperatureStatus(prev => ({
-  //         ...prev,
-  //         isHeatingRequired: true,
-  //         isHeatingComplete: false,
-  //         showHeaterDialog: true,
-  //         dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
-  //         dialogType: 'heating-required',
-  //         heaterButtonDisabled: false,
-  //         targetTemperature: targetTemp,
-  //         wasTemperatureDrop: false
-  //       }));
-  //       console.log('🔥 Heating required - showing dialog');
-  //     }
-  //   } else {
-  //     // Temperature reached or exceeded target
-  //     if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
-  //       setTemperatureStatus(prev => ({
-  //         ...prev,
-  //         isHeatingRequired: false,
-  //         isHeatingComplete: true,
-  //         showHeaterDialog: true,
-  //         dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
-  //         dialogType: 'heating-complete',
-  //         heaterButtonDisabled: false,
-  //         targetTemperature: targetTemp,
-  //         wasTemperatureDrop: false
-  //       }));
-  //       console.log('✅ Heating complete - showing turn off dialog');
-  //     }
-  //   }
-  // }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete, isProcessRunning, isPaused]);
-  //-----------------------------------------------------------------//
-
-  // NEW: Auto-stop function for temperature drops
-  // const handleAutoStop = async () => {
-  //   try {
-  //     if (!selectedConfig) return;
-      
-  //     console.log('🔄 Auto-stop command due to temperature drop');
-      
-  //     // Call the stop function directly
-  //     await window.api.stop();
-      
-  //     // Update local state
-  //     setIsProcessRunning(false);
-  //     setIsPaused(false);
-  //     setSensorData(prev => ({ ...prev, status: 'STOPPED' }));
-      
-  //   } catch (error) {
-  //     console.error('Failed to auto-stop process:', error);
-  //   }
-  // };
+    window.addEventListener('lls-status-change', handleLLSStatusChange);
+    
+    return () => {
+      window.removeEventListener('lls-status-change', handleLLSStatusChange);
+    };
+  }, []);
 
   // CSV Logging functions
   const startCsvLogging = async () => {
@@ -183,7 +130,7 @@ const ProcessMode = () => {
     
     try {
       console.log('🟡 Starting CSV logging with config:', selectedConfig);
-      const result = await window.api.startCsvLogging(selectedConfig);
+      const result = await window.api.startCSV(selectedConfig);
       if (result.success) {
         setIsLogging(true);
         console.log('✅ CSV logging started:', result.fileName);
@@ -199,7 +146,7 @@ const ProcessMode = () => {
   const stopCsvLogging = async () => {
     if (isLogging) {
       try {
-        const result = await window.api.stopCsvLogging();
+        const result = await window.api.stopCSV();
         if (result.success) {
           setIsLogging(false);
           console.log('🟡 CSV logging stopped:', result.fileName);
@@ -228,21 +175,35 @@ const ProcessMode = () => {
     }
     
     try {
-      console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}N, isLogging=${isLogging}`);
+      console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`);
       
-      await window.api.logSensorData({
-        time: timeNum,
-        distance: distNum,
-        force: forceNum
+      await window.api.appendCSV({
+        data: {
+          time: timeNum,
+          distance: distNum,
+          force: forceNum
+        },
+        config: selectedConfig
       });
       
       lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
-      console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}N`);
+      console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN`);
     } catch (error) {
       console.error('❌ Error logging sensor data:', error);
     }
   };
-  //---------------------------------------------------------------------------------//
+
+  // const curveMarkers = React.useMemo(() => {
+  //   if (!selectedConfig || !selectedConfig.curveDistances) return [];
+
+  //   return Object.entries(selectedConfig.curveDistances).map(
+  //     ([curveName, distance]) => ({
+  //       curveName,
+  //       distance: parseFloat(distance)
+  //     })
+  //   ).filter(c => !isNaN(c.distance));
+  // }, [selectedConfig]);
+
   // Heater Control Functions - UPDATED to use window.api.heating()
   const handleHeaterOn = async () => {
     try {
@@ -300,8 +261,23 @@ const ProcessMode = () => {
       }));
     }
   };
-  //---------------------------------------------------------------------------------//
+  const handleRetraction = async () => {
+    try {
+      console.log('🔄 Starting retraction...');
+      const result = await window.api.retraction();
+      
+      if (result && result.success) {
+        setIsRetractionActive(true);
+        console.log('✅ Retraction started');
+      } else {
+        console.error('Failed to start retraction:', result?.message);
+      }
+    } catch (error) {
+      console.error('Failed to start retraction:', error);
+    }
+  };
 
+  // Real-time data polling
   // Real-time data polling
   useEffect(() => {
     let intervalId;
@@ -311,12 +287,64 @@ const ProcessMode = () => {
         const data = await window.api.readData();
         
         if (data && data.success) {
+          // Update the readData state with all the data from PLC
+          setReadData({
+            temperature: data.temperature,
+            temperatureDisplay: data.temperatureDisplay || '-- °C',
+            force: data.force_mN,
+            forceDisplay: data.force_mN_Display || data.forceDisplay || '-- mN',
+            force_mN: data.force_mN,
+            force_mN_Display: data.force_mN_Display || '-- mN',
+            distance: data.distance,
+            distanceDisplay: data.distanceDisplay || '-- mm'
+          });
+          
+          // Also update sensorData for backward compatibility
           setSensorData(prev => ({
             ...prev,
             temperature: data.temperatureDisplay || '--',
-            force: data.forceDisplay || '--',
+            force: data.force_mN_Display || data.forceDisplay || '--',
             distance: data.distanceDisplay || '--'
           }));
+
+          // ============= FIXED: Check if distance equals user-defined distance =============
+          // IMPORTANT: Check if we have valid data first
+          if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
+              !isRetractionEnabled && isProcessRunning) {
+            
+            // const curves = selectedConfig?.curveDistances || {};
+
+            // Object.entries(curves).forEach(([curveLabel, curveVal]) => {
+            // const threshold = Number(curveVal);
+
+            // if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
+            //   console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
+            //     setReachedCurves(prev => ({
+
+            //       ...prev,
+            //       [curveLabel]: true
+            //     }));
+            //   }
+            // });
+
+            // Parse values carefully
+            const currentDistance = parseFloat(data.distance);
+            const targetDistance = parseFloat(selectedConfig.pathlength);
+            
+            // Debug logging
+            console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
+            
+            // Only enable retraction if we have valid numbers AND current distance reaches/exceeds target
+            if (!isNaN(currentDistance) && !isNaN(targetDistance) && 
+                currentDistance >= targetDistance) {
+              console.log(`✅✅✅ Target distance reached! ${currentDistance}mm >= ${targetDistance}mm`);
+              setIsRetractionEnabled(true);
+            } else {
+              // Debug log when not reached
+              console.log(`📏 Not yet reached: ${currentDistance}mm < ${targetDistance}mm`);
+            }
+          }
+          // ============= END FIXED CODE =============
 
           // Add to chart data when process is running or stopped
           if (isProcessRunning || sensorData.status === 'STOPPED') {
@@ -327,7 +355,7 @@ const ProcessMode = () => {
               const newDataPoint = {
                 time: timeFormatted,
                 distance: parseFloat(data.distance) || 0,
-                force: parseFloat(data.force) || 0
+                force: parseFloat(data.force_mN) || 0
               };
               
               // Add to array - keep all data points
@@ -337,9 +365,9 @@ const ProcessMode = () => {
           }
           
           // Log data when process is running
-          if (isProcessRunning && sensorData.distance !== '--' && sensorData.force !== '--') {
+          if (isProcessRunning && data.distance !== '--' && data.force_mN !== '--') {
             const currentTime = (Date.now() - startTimeRef.current) / 1000;
-            logSensorData(currentTime.toFixed(1), data.distance, data.force);
+            logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
           }
         }
       } catch (error) {
@@ -349,7 +377,7 @@ const ProcessMode = () => {
 
     // Start polling if connected
     if (isConnected) {
-      intervalId = setInterval(pollSensorData, 500); // Poll every 500ms
+      intervalId = setInterval(pollSensorData, 500);
       pollSensorData(); // Initial call
     }
 
@@ -358,7 +386,7 @@ const ProcessMode = () => {
         clearInterval(intervalId);
       }
     };
-  }, [isConnected, isProcessRunning, sensorData.status]);
+  }, [isConnected, isProcessRunning, sensorData.status, selectedConfig, isRetractionEnabled]);
 
   // Check connection status
   useEffect(() => {
@@ -480,7 +508,7 @@ const ProcessMode = () => {
         setIsProcessRunning(true);
         setIsPaused(false);
         setIsHoming(false);
-        setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
+        setSensorData(prev => ({ ...prev, status: 'Insertion' }));
         startTimeRef.current = Date.now();
         
         console.log('🟡 Process started, starting CSV logging...');
@@ -524,6 +552,8 @@ const ProcessMode = () => {
         setIsProcessRunning(false);
         setIsPaused(false);
         setIsHoming(true);
+        setIsRetractionEnabled(false); // Add this
+        setIsRetractionActive(false); // Add this
         setChartData([]);
         setSensorData(prev => ({
           ...prev,
@@ -555,25 +585,11 @@ const ProcessMode = () => {
     }
   };
 
-  const handleHome = async () => {
-    try {
-      console.log('🏠 Homing...');
-      const result = await window.api.home();
-      
-      if (result && result.success) {
-        setIsHoming(true);
-        setSensorData(prev => ({ ...prev, status: 'HOMING' }));
-        console.log('Homing started');
-      } else {
-        console.error('Failed to home:', result?.message);
-      }
-    } catch (error) {
-      console.error('Failed to home:', error);
-    }
-  };
-
   const shouldDisableButtons = () => {
     return isHoming || !selectedConfig;
+  };
+  const shouldDisableStartButton = () => {
+    return shouldDisableButtons() || isRetractionEnabled || (isProcessRunning && !isPaused);
   };
 
   const handleBack = () => {
@@ -581,7 +597,7 @@ const ProcessMode = () => {
   };
 
   const getStartButtonText = () => {
-    return isProcessRunning ? 'RESTART' : 'START';
+    return isProcessRunning ? 'RESUME' : 'START';
   };
 
   const shouldDisableBackButton = () => {
@@ -591,7 +607,22 @@ const ProcessMode = () => {
   const shouldDisablePowerButton = () => {
     return sensorData.status !== 'READY';
   };
-
+  const debugDistanceCheck = () => {
+    console.log('=== DEBUG DISTANCE CHECK ===');
+    console.log('Selected Config:', selectedConfig);
+    console.log('Path Length:', selectedConfig?.pathlength);
+    console.log('Current ReadData:', readData);
+    console.log('Current distance:', readData.distance);
+    console.log('Is Retraction Enabled:', isRetractionEnabled);
+    console.log('Is Process Running:', isProcessRunning);
+    
+    if (selectedConfig && readData.distance !== '--') {
+      const currentDistance = parseFloat(readData.distance);
+      const targetDistance = parseFloat(selectedConfig.pathlength);
+      console.log(`Parsed: Current=${currentDistance}, Target=${targetDistance}`);
+      console.log(`Condition: ${currentDistance} >= ${targetDistance} = ${currentDistance >= targetDistance}`);
+    }
+  };
   return (
     <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
       {/* Heater Control Modal */}
@@ -632,7 +663,7 @@ const ProcessMode = () => {
                     <p className="text-sm text-gray-600 mb-1">Real-time Temperature</p>
                     <div className="flex items-center justify-center space-x-2">
                       <Thermometer className="w-5 h-5 text-blue-600" />
-                      <p className="text-2xl font-bold text-blue-700">{sensorData.temperature}°C</p>
+                      <p className="text-2xl font-bold text-blue-700">{readData.temperature}°C</p>
                     </div>
                   </div>
                   <div>
@@ -661,7 +692,7 @@ const ProcessMode = () => {
                           : 'bg-green-500'
                       }`}
                       style={{ 
-                        width: `${Math.min(100, (parseFloat(sensorData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%` 
+                        width: `${Math.min(100, (parseFloat(readData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%` 
                       }}
                     ></div>
                   </div>
@@ -699,7 +730,7 @@ const ProcessMode = () => {
                     Waiting for real-time temperature to reach {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
                   </p>
                   <p className="text-blue-500 text-center text-xs mt-1">
-                    Current: {sensorData.temperature}°C
+                    Current: {readData.temperature}°C
                   </p>
                 </div>
               )}
@@ -760,7 +791,7 @@ const ProcessMode = () => {
                     }
                   </p>
                   <p className="text-gray-500 text-xs mt-1">
-                    Current: {sensorData.temperature}°C / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
+                    Current: {readData.temperature}°C / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
                   </p>
                 </div>
               )}
@@ -835,7 +866,7 @@ const ProcessMode = () => {
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Force Sensor:</strong> Verify force reading is at baseline (near 0 N)</span>
+                    <span><strong>Force Sensor:</strong> Verify force reading is at baseline (near 0 mN)</span>
                   </li>
                 </ul>
               </div>
@@ -852,7 +883,7 @@ const ProcessMode = () => {
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Peak Force:</strong> Confirm safety threshold is set correctly</span>
+                    <span><strong>Peak Force:</strong> Confirm safety threshold is set correctly (in mN)</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
@@ -951,17 +982,21 @@ const ProcessMode = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                   <p className="text-gray-600 text-xs mb-1">Distance</p>
-                  <p className="text-sm font-bold text-green-700">{selectedConfig.distance} mm</p>
+                  <p className="text-sm font-bold text-green-700">{selectedConfig.pathlength} mm</p>
                 </div>
                 
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
-                  <p className="text-gray-600 text-xs mb-1">Peak Force</p>
-                  <p className="text-sm font-bold text-blue-700">{selectedConfig.peakForce} N</p>
+                  <p className="text-gray-600 text-xs mb-1">Threshold Force</p>
+                  <p className="text-sm font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p>
                 </div>
                 
                 <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">Temperature</p>
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.temperature}°C</p>
+                </div>
+                <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                  <p className="text-gray-600 text-xs mb-1">Retraction Stroke Length</p>
+                  <p className="text-sm font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                 </div>
               </div>
             </div>
@@ -1184,7 +1219,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Temperature</p>
                   </div>
-                  <p className="text-sm font-bold text-orange-600">{sensorData.temperature}°C</p>
+                  <p className="text-sm font-bold text-orange-600">{readData.temperatureDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
@@ -1194,7 +1229,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Force</p>
                   </div>
-                  <p className="text-sm font-bold text-blue-600">{sensorData.force} N</p>
+                  <p className="text-sm font-bold text-blue-600">{readData.forceDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200/50 p-2">
@@ -1204,7 +1239,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Distance</p>
                   </div>
-                  <p className="text-sm font-bold text-green-600">{sensorData.distance} mm</p>
+                  <p className="text-sm font-bold text-green-600">{readData.distanceDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
@@ -1240,52 +1275,32 @@ const ProcessMode = () => {
             
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart 
-                  data={chartData} 
-                  margin={{ top: 5, right: 10, left: 0, bottom: 25 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.7} />
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#6b7280"
-                    tick={{ fill: '#6b7280', fontSize: 11 }}
-                    axisLine={{ stroke: '#9ca3af' }}
-                    label={{ value: 'Time (s)', position: 'insideBottom', offset: -3, fontSize: 11 }}
+                <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+
+                  <XAxis
+                    dataKey="distance"
+                    type="number"
+                    domain={['auto', 'auto']}
+                    label={{ value: 'Distance (mm)', position: 'insideBottom', offset: -5 }}
                   />
-                  <YAxis 
-                    stroke="#6b7280"
-                    tick={{ fill: '#6b7280', fontSize: 11 }}
-                    axisLine={{ stroke: '#9ca3af' }}
-                    width={40}
-                    label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft', fontSize: 11 }}
+
+                  <YAxis
+                    type="number"
+                    domain={['auto', 'auto']}
+                    label={{ value: 'Force (mN)', angle: -90, position: 'insideLeft' }}
                   />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '12px',
-                      color: '#1f2937',
-                      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="force" 
-                    stroke="#3b82f6" 
+
+                 
+
+                  <Tooltip />
+
+                  <Line
+                    type="monotone"
+                    dataKey="force"
+                    stroke="#3b82f6"
                     strokeWidth={2.5}
                     dot={false}
-                    name="Force (N)"
-                    activeDot={{ r: 5, fill: '#3b82f6' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="distance" 
-                    stroke="#22c55e" 
-                    strokeWidth={2.5}
-                    dot={false}
-                    name="Distance (mm)"
-                    activeDot={{ r: 5, fill: '#22c55e' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1313,17 +1328,21 @@ const ProcessMode = () => {
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Distance</p>
-                      <p className="text-base font-bold text-green-700">{selectedConfig.distance} mm</p>
+                      <p className="text-base font-bold text-green-700">{selectedConfig.pathlength} mm</p>
                     </div>
                     
                     <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
-                      <p className="text-gray-600 text-xs mb-0.5">Peak Force</p>
-                      <p className="text-base font-bold text-blue-700">{selectedConfig.peakForce} N</p>
+                      <p className="text-gray-600 text-xs mb-0.5">Threshold Force</p>
+                      <p className="text-base font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p> {/* Updated to mN */}
                     </div>
                     
                     <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
+                    </div>
+                    <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                      <p className="text-gray-600 text-xs mb-0.5">Retraction Stroke Length</p>
+                      <p className="text-base font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                     </div>
                   </div>
                 </div>
@@ -1352,7 +1371,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Temperature</p>
                   </div>
-                  <p className="text-xl font-bold text-orange-600">{sensorData.temperature}°C</p>
+                  <p className="text-xl font-bold text-orange-600">{readData.temperatureDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
@@ -1362,7 +1381,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Force</p>
                   </div>
-                  <p className="text-xl font-bold text-blue-600">{sensorData.force} N</p>
+                  <p className="text-xl font-bold text-blue-600">{readData.forceDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
@@ -1372,7 +1391,7 @@ const ProcessMode = () => {
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Distance</p>
                   </div>
-                  <p className="text-xl font-bold text-green-600">{sensorData.distance} mm</p>
+                  <p className="text-xl font-bold text-green-600">{readData.distanceDisplay}</p>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
@@ -1408,60 +1427,86 @@ const ProcessMode = () => {
           )}
 
           {/* Control Buttons - Now fixed at bottom on small & medium screens */}
-          <div className={`${isXlScreen ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white/95 xl:bg-white/70 
-          backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl 
-          xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}>
-            {isXlScreen && (
-              <div className="mb-2">
-                <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
-                <p className="text-gray-600 text-xs">Manage process execution</p>
-              </div>
-            )}
-            
-            <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
-              <button
-                onClick={handleStart}
-                disabled={shouldDisableButtons() || (isProcessRunning && !isPaused)}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 
-                  rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableButtons() || (isProcessRunning && !isPaused)
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
-                }`}
-              >
-                <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">{getStartButtonText()}</span>
-              </button>
-              
-              <button
-                onClick={handleStop}
-                disabled={shouldDisableButtons() || !isProcessRunning}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
-                  font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableButtons() || !isProcessRunning
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
-                }`}
-              >
-                <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">STOP</span>
-              </button>
-              
-              <button
-                onClick={handleReset}
-                disabled={!selectedConfig || isHoming}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
-                  font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  !selectedConfig || isHoming
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
-                }`}
-              >
-                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">RESET</span>
-              </button>
+          {/* Control Buttons - Now fixed at bottom on small & medium screens */}
+        <div className={`${isXlScreen ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white/95 xl:bg-white/70 
+        backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl 
+        xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}>
+          {isXlScreen && (
+            <div className="mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
+              <p className="text-gray-600 text-xs">Manage process execution</p>
             </div>
+          )}
+          
+          <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
+            {/* START Button */}
+            <button
+              onClick={handleStart}
+              disabled={shouldDisableStartButton()}
+              className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 
+                rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                shouldDisableStartButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
+              }`}
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">{getStartButtonText()}</span>
+            </button>
+            
+            {/* STOP Button */}
+            <button
+              onClick={handleStop}
+              disabled={shouldDisableButtons() || !isProcessRunning}
+              className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
+                font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                shouldDisableButtons() || !isProcessRunning
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
+              }`}
+            >
+              <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">STOP</span>
+            </button>
+            
+            {/* NEW: RETRACTION Button */}
+            <button
+              onClick={handleRetraction}
+              disabled={!isRetractionEnabled || isRetractionActive}
+              className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
+                font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                !isRetractionEnabled || isRetractionActive
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">RETRACTION</span>
+            </button>
+            
+            {/* RESET Button */}
+            <button
+              onClick={handleReset}
+              disabled={!selectedConfig || isHoming}
+              className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
+                font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                !selectedConfig || isHoming
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">RESET</span>
+            </button>
+            {/* Add this button temporarily near your other buttons for debugging */}
+            <button
+              onClick={debugDistanceCheck}
+              className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm"
+            >
+              Debug Distance
+            </button>
           </div>
+        </div>
         </section>
       </main>
     </div>

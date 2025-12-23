@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld("api", {
   insertion: () => ipcRenderer.invoke("insertion"),
   ret: () => ipcRenderer.invoke("ret"),
   debugRegisters: () => ipcRenderer.invoke("debug-registers"),
+  // ============= CSV LOGGING =============
+  startCSV: (config) => ipcRenderer.invoke("csv-start", config),
+  appendCSV: (payload) => ipcRenderer.invoke("csv-append", payload),
+  stopCSV: () => ipcRenderer.invoke("csv-stop"),
   
   // ============= DATA FUNCTIONS =============
   readData: () => ipcRenderer.invoke("read-data"),
@@ -34,6 +38,13 @@ contextBridge.exposeInMainWorld("api", {
 ipcRenderer.on('modbus-status', (event, status) => {
   // Dispatch a custom event that the UI can listen for
   window.dispatchEvent(new CustomEvent('modbus-status-change', { 
+    detail: status 
+  }));
+});
+
+// Add this listener to preload.js (add it with the other listeners)
+ipcRenderer.on('lls-status', (event, status) => {
+  window.dispatchEvent(new CustomEvent('lls-status-change', { 
     detail: status 
   }));
 });

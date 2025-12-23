@@ -131,35 +131,53 @@ const Manual = () => {
       }
 
       if (controlName === 'clamp') {
-        const newState = !controls.clamp;
         const result = await window.api.clamp(); // This toggles COIL_CLAMP
         if (result.success) {
-          setControls(prev => ({ ...prev, clamp: newState }));
-          console.log('Clamp toggled:', newState, 'Result:', result);
+          // Update UI based on backend response
+          const newClampState = result.clampState === "ON";
+          setControls(prev => ({ ...prev, clamp: newClampState }));
+          console.log('Clamp toggled:', newClampState, 'Result:', result);
         } else {
           throw new Error(result.message || 'Clamp operation failed');
         }
       } else if (controlName === 'heater') {
-        const newState = !controls.heater;
-        const result = await window.api.heating(); // This activates COIL_HEATING
-        if (result.success) {
-          setControls(prev => ({ ...prev, heater: newState }));
-          console.log('Heater toggled:', newState, 'Result:', result);
-          
-          // Turn off after 2 seconds (simulating pulse)
-          setTimeout(async () => {
-            // Note: The coil will auto-turn off after 2 seconds in main.js
-            // We just update UI after delay
-            setControls(prev => ({ ...prev, heater: false }));
-          }, 2000);
-        } else {
-          throw new Error(result.message || 'Heater operation failed');
+      // Call the API - backend will toggle and return new state
+      const result = await window.api.heating();
+      if (result && result.success) {
+        // Backend returns { heating: true/false } - use that directly
+        setControls(prev => ({ ...prev, heater: result.heating }));
+        console.log('Heater toggled to:', result.heating, 'Result:', result);
+      } else {
+        throw new Error(result?.message || 'Heater operation failed');
+      }
+    }
+  } catch (error) {
+    console.error('Control error:', error.message);
+    setShowConnectionError(true);
+    alert(`Operation failed: ${error.message}`);
+  }
+  };
+
+  // Function to stop all motor movement
+  const stopAllMotors = async () => {
+    try {
+      // If insertion is currently active, toggle it off
+      if (motorState.forward) {
+        const result = await window.api.insertion();
+        if (result.success && !result.insertionState) {
+          setMotorState({ forward: false, backward: false });
+        }
+      }
+      
+      // If retraction is currently active, toggle it off
+      if (motorState.backward) {
+        const result = await window.api.ret();
+        if (result.success && !result.retState) {
+          setMotorState({ forward: false, backward: false });
         }
       }
     } catch (error) {
-      console.error('Control error:', error.message);
-      setShowConnectionError(true);
-      alert(`Operation failed: ${error.message}`);
+      console.error('Stop motors error:', error.message);
     }
   };
 
@@ -174,22 +192,58 @@ const Manual = () => {
       }
 
       if (direction === "forward") {
-        // Turn on COIL_INSERTION
-        const result = await window.api.insertion();
-        if (result.success) {
-          setMotorState({ forward: true, backward: false });
-          console.log('Insertion activated:', result);
+        // If forward is already active, toggle it off
+        if (motorState.forward) {
+          const result = await window.api.insertion();
+          if (result.success) {
+            const newInsertionState = result.insertionState === "ON";
+            setMotorState({ forward: newInsertionState, backward: false });
+            console.log('Insertion toggled:', newInsertionState, 'Result:', result);
+          } else {
+            throw new Error(result.message || 'Insertion operation failed');
+          }
         } else {
-          throw new Error(result.message || 'Insertion failed');
+          // Stop any backward movement first
+          if (motorState.backward) {
+            await window.api.ret(); // Toggle retraction off
+          }
+          
+          // Turn on COIL_INSERTION
+          const result = await window.api.insertion();
+          if (result.success) {
+            const newInsertionState = result.insertionState === "ON";
+            setMotorState({ forward: newInsertionState, backward: false });
+            console.log('Insertion activated:', newInsertionState, 'Result:', result);
+          } else {
+            throw new Error(result.message || 'Insertion failed');
+          }
         }
       } else if (direction === "backward") {
-        // Turn on COIL_RET
-        const result = await window.api.ret();
-        if (result.success) {
-          setMotorState({ forward: false, backward: true });
-          console.log('Retraction activated:', result);
+        // If backward is already active, toggle it off
+        if (motorState.backward) {
+          const result = await window.api.ret();
+          if (result.success) {
+            const newRetState = result.retState === "ON";
+            setMotorState({ forward: false, backward: newRetState });
+            console.log('Retraction toggled:', newRetState, 'Result:', result);
+          } else {
+            throw new Error(result.message || 'Retraction operation failed');
+          }
         } else {
-          throw new Error(result.message || 'Retraction failed');
+          // Stop any forward movement first
+          if (motorState.forward) {
+            await window.api.insertion(); // Toggle insertion off
+          }
+          
+          // Turn on COIL_RET
+          const result = await window.api.ret();
+          if (result.success) {
+            const newRetState = result.retState === "ON";
+            setMotorState({ forward: false, backward: newRetState });
+            console.log('Retraction activated:', newRetState, 'Result:', result);
+          } else {
+            throw new Error(result.message || 'Retraction failed');
+          }
         }
       }
     } catch (error) {
@@ -209,6 +263,9 @@ const Manual = () => {
         return;
       }
 
+      // Stop any motor movement first
+      await stopAllMotors();
+      
       // Activate homing (COIL_HOME)
       setControls(prev => ({ ...prev, homing: true }));
       const result = await window.api.home(); // This pulses COIL_HOME
@@ -222,10 +279,8 @@ const Manual = () => {
         // Update motor state to idle
         setMotorState({ forward: false, backward: false });
         
-        // Homing will complete after 2 seconds (coil pulse duration)
-        // setTimeout(() => {
-        //   setControls(prev => ({ ...prev, homing: false }));
-        // }, 2000);
+        // Note: The homing will be completed when LLS status changes
+        // We'll handle that in the useEffect below
       } else {
         throw new Error(result.message || 'Homing failed');
         setControls(prev => ({ ...prev, homing: false }));
@@ -237,6 +292,7 @@ const Manual = () => {
       alert(`Homing failed: ${error.message}`);
     }
   };
+  
 
   const handleReconnect = async () => {
     try {
@@ -281,6 +337,26 @@ const Manual = () => {
       setCameraLoading(false);
     }
   };
+  
+  // Add this useEffect hook near other useEffect hooks in Manual.jsx
+  useEffect(() => {
+    const handleLLSStatusChange = (event) => {
+      if (event.detail === 'true') {
+        console.log("🔄 Manual Mode: COIL_LLS detected TRUE - Homing complete");
+        
+        // Update homing state in UI
+        setControls(prev => ({ ...prev, homing: false }));
+        
+        console.log("✅ Manual mode UI updated: Homing inactive");
+      }
+    };
+
+    window.addEventListener('lls-status-change', handleLLSStatusChange);
+    
+    return () => {
+      window.removeEventListener('lls-status-change', handleLLSStatusChange);
+    };
+  }, []);
 
   // Read PLC data periodically
   useEffect(() => {
@@ -527,39 +603,6 @@ const Manual = () => {
 
           {/* Control Panel */}
           <div className="space-y-6">
-            {/* Connection Status Card */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Usb className="w-5 h-5" />
-                PLC Connection
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Status:</span>
-                  <span className={`font-semibold ${connectionStatus.connected ? 'text-green-600' : 'text-red-600'}`}>
-                    {connectionStatus.connected ? 'CONNECTED' : 'DISCONNECTED'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Port:</span>
-                  <span className="font-semibold text-slate-800">{connectionStatus.port}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Last Check:</span>
-                  <span className="text-sm text-slate-500">
-                    {connectionStatus.lastCheck ? new Date(connectionStatus.lastCheck).toLocaleTimeString() : 'Never'}
-                  </span>
-                </div>
-                <button
-                  onClick={handleReconnect}
-                  disabled={connectionStatus.connected}
-                  className={`w-full mt-4 py-2.5 rounded-lg font-medium transition-all ${connectionStatus.connected ? 'bg-green-100 text-green-700 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
-                >
-                  {connectionStatus.connected ? 'Connected ✓' : 'Reconnect to PLC'}
-                </button>
-              </div>
-            </div>
-
             {/* Clamp Control */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp (Press to toggle ON/OFF)</h3>
@@ -593,9 +636,9 @@ const Manual = () => {
               <div className="flex justify-center space-x-4 mb-4">
                 <button
                   onClick={() => moveCatheter('backward')}
-                  disabled={!connectionStatus.connected || controls.homing || motorState.forward}
+                  disabled={!connectionStatus.connected || controls.homing}
                   className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
-                    ${!connectionStatus.connected || controls.homing || motorState.forward
+                    ${!connectionStatus.connected || controls.homing
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                       : motorState.backward
                         ? 'bg-blue-500 border-blue-600 text-white'
@@ -606,9 +649,9 @@ const Manual = () => {
                 </button>
                 <button
                   onClick={() => moveCatheter('forward')}
-                  disabled={!connectionStatus.connected || controls.homing || motorState.backward}
+                  disabled={!connectionStatus.connected || controls.homing}
                   className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
-                    ${!connectionStatus.connected || controls.homing || motorState.backward
+                    ${!connectionStatus.connected || controls.homing
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                       : motorState.forward
                         ? 'bg-blue-500 border-blue-600 text-white'
@@ -619,7 +662,8 @@ const Manual = () => {
                 </button>
               </div>
               <p className="text-center text-sm text-slate-500">
-                {motorState.forward ? 'Inserting...' : motorState.backward ? 'Retracting...' : 'Ready'}
+                {motorState.forward ? 'Inserting... (Press again to stop)' : 
+                 motorState.backward ? 'Retracting... (Press again to stop)' : 'Ready - Press to move'}
               </p>
             </div>
 
