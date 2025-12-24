@@ -28,6 +28,7 @@ const ProcessMode = () => {
     distanceDisplay: '-- mm'
   });
   const [chartData, setChartData] = useState([]);
+  const [reachedCurves, setReachedCurves] = useState({});
   const [isProcessRunning, setIsProcessRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isHoming, setIsHoming] = useState(false);
@@ -307,44 +308,63 @@ const ProcessMode = () => {
             distance: data.distanceDisplay || '--'
           }));
 
-          // ============= FIXED: Check if distance equals user-defined distance =============
+          // ============= MODIFIED: Check if distance equals user-defined distance =============
           // IMPORTANT: Check if we have valid data first
           if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
               !isRetractionEnabled && isProcessRunning) {
             
-            // const curves = selectedConfig?.curveDistances || {};
-
-            // Object.entries(curves).forEach(([curveLabel, curveVal]) => {
-            // const threshold = Number(curveVal);
-
-            // if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
-            //   console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
-            //     setReachedCurves(prev => ({
-
-            //       ...prev,
-            //       [curveLabel]: true
-            //     }));
-            //   }
-            // });
-
             // Parse values carefully
             const currentDistance = parseFloat(data.distance);
             const targetDistance = parseFloat(selectedConfig.pathlength);
+
+            // -----------------------------------------------
+            const curves = selectedConfig?.curveDistances || {};
+
+            Object.entries(curves).forEach(([curveLabel, curveVal]) => {
+              const threshold = Number(curveVal);
+
+              if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
+
+                console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
+                setReachedCurves(prev => ({
+
+                  ...prev,
+                  [curveLabel]: true
+
+                }));
+              }
+            });
+            // ----------------------------------------------------
             
             // Debug logging
             console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
             
-            // Only enable retraction if we have valid numbers AND current distance reaches/exceeds target
-            if (!isNaN(currentDistance) && !isNaN(targetDistance) && 
-                currentDistance >= targetDistance) {
-              console.log(`✅✅✅ Target distance reached! ${currentDistance}mm >= ${targetDistance}mm`);
-              setIsRetractionEnabled(true);
-            } else {
-              // Debug log when not reached
-              console.log(`📏 Not yet reached: ${currentDistance}mm < ${targetDistance}mm`);
+            // Only enable retraction if we have valid numbers AND current distance equals target
+            if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
+              // OPTION 1: For integer values only (rounded comparison)
+              if (Math.round(currentDistance) === Math.round(targetDistance)) {
+                console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
+                setIsRetractionEnabled(true);
+              } else {
+                // Debug log when not reached
+                console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
+              }
+              
+              /*
+              // OPTION 2: With tolerance (uncomment if you prefer this)
+              const tolerance = 0.01;
+              const difference = Math.abs(currentDistance - targetDistance);
+              
+              if (difference <= tolerance) {
+                console.log(`✅✅✅ Target distance reached! ${currentDistance}mm ≈ ${targetDistance}mm (within ${tolerance}mm tolerance)`);
+                setIsRetractionEnabled(true);
+              } else {
+                console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (difference: ${difference.toFixed(3)}mm)`);
+              }
+              */
             }
           }
-          // ============= END FIXED CODE =============
+          // ============= END MODIFIED CODE =============
 
           // Add to chart data when process is running or stopped
           if (isProcessRunning || sensorData.status === 'STOPPED') {
@@ -607,22 +627,22 @@ const ProcessMode = () => {
   const shouldDisablePowerButton = () => {
     return sensorData.status !== 'READY';
   };
-  const debugDistanceCheck = () => {
-    console.log('=== DEBUG DISTANCE CHECK ===');
-    console.log('Selected Config:', selectedConfig);
-    console.log('Path Length:', selectedConfig?.pathlength);
-    console.log('Current ReadData:', readData);
-    console.log('Current distance:', readData.distance);
-    console.log('Is Retraction Enabled:', isRetractionEnabled);
-    console.log('Is Process Running:', isProcessRunning);
+  // const debugDistanceCheck = () => {
+  //   console.log('=== DEBUG DISTANCE CHECK ===');
+  //   console.log('Selected Config:', selectedConfig);
+  //   console.log('Path Length:', selectedConfig?.pathlength);
+  //   console.log('Current ReadData:', readData);
+  //   console.log('Current distance:', readData.distance);
+  //   console.log('Is Retraction Enabled:', isRetractionEnabled);
+  //   console.log('Is Process Running:', isProcessRunning);
     
-    if (selectedConfig && readData.distance !== '--') {
-      const currentDistance = parseFloat(readData.distance);
-      const targetDistance = parseFloat(selectedConfig.pathlength);
-      console.log(`Parsed: Current=${currentDistance}, Target=${targetDistance}`);
-      console.log(`Condition: ${currentDistance} >= ${targetDistance} = ${currentDistance >= targetDistance}`);
-    }
-  };
+  //   if (selectedConfig && readData.distance !== '--') {
+  //     const currentDistance = parseFloat(readData.distance);
+  //     const targetDistance = parseFloat(selectedConfig.pathlength);
+  //     console.log(`Parsed: Current=${currentDistance}, Target=${targetDistance}`);
+  //     console.log(`Condition: ${currentDistance} >= ${targetDistance} = ${currentDistance >= targetDistance}`);
+  //   }
+  // };
   return (
     <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
       {/* Heater Control Modal */}
@@ -1290,7 +1310,26 @@ const ProcessMode = () => {
                     domain={['auto', 'auto']}
                     label={{ value: 'Force (mN)', angle: -90, position: 'insideLeft' }}
                   />
-
+                   {/* 🔥 Curve Markers Added Here */}
+                  {selectedConfig?.curveDistances &&
+                    Object.entries(selectedConfig.curveDistances).map(([label, value]) => (
+                      reachedCurves[label] && (
+                        <ReferenceLine
+                          key={label}
+                          x={Number(value)}
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          strokeDasharray="4 4"
+                          label={{
+                            value: `Curve ${label}`,
+                            position: 'top',
+                            fill: '#ef4444',
+                            fontSize: 12
+                          }}
+                        />
+                      )
+                    ))
+                  }
                  
 
                   <Tooltip />
@@ -1499,12 +1538,12 @@ const ProcessMode = () => {
               <span className="text-sm sm:text-base">RESET</span>
             </button>
             {/* Add this button temporarily near your other buttons for debugging */}
-            <button
+            {/* <button
               onClick={debugDistanceCheck}
               className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm"
             >
               Debug Distance
-            </button>
+            </button> */}
           </div>
         </div>
         </section>

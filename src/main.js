@@ -14,7 +14,7 @@ let csvFilePath = null;
 // Modbus / PLC settings - UPDATED BASED ON PYTHON CODE
 // -------------------------
 const PORT = "COM4";
-const BAUDRATE = 28800;
+const BAUDRATE = 9600;
 const TIMEOUT = 1;
 
 const COIL_HOME  = 2001;
@@ -425,38 +425,38 @@ async function readPLCData() {
     };
   }
 }
-// Add this function to main.js
-async function debugRegisters() {
-  try {
-    console.log("=== DEBUG REGISTER VALUES ===");
+// // Add this function to main.js
+// async function debugRegisters() {
+//   try {
+//     console.log("=== DEBUG REGISTER VALUES ===");
     
-    // Read all three registers
-    const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
-    const forceResult = await safeReadRegisters(REG_FORCE, 2);
-    const tempResult = await safeReadRegisters(REG_TEMP, 1);
+//     // Read all three registers
+//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
+//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
+//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
     
-    console.log("Distance register (70):", distanceResult.data);
-    console.log("Force registers (54-55):", forceResult.data);
-    console.log("Temperature register (501):", tempResult.data);
+//     console.log("Distance register (70):", distanceResult.data);
+//     console.log("Force registers (54-55):", forceResult.data);
+//     console.log("Temperature register (501):", tempResult.data);
     
-    // Show the actual values
-    const distance = distanceResult.data[0];
-    const force = registersToFloat32LE(forceResult.data[0], forceResult.data[1]);
-    const temp = tempResult.data[0];
+//     // Show the actual values
+//     const distance = distanceResult.data[0];
+//     const force = registersToFloat32LE(forceResult.data[0], forceResult.data[1]);
+//     const temp = tempResult.data[0];
     
-    console.log(`Distance: ${distance} mm`);
-    console.log(`Force: ${force} mN (${force/1000} N)`);
-    console.log(`Temperature: ${temp} °C`);
+//     console.log(`Distance: ${distance} mm`);
+//     console.log(`Force: ${force} mN (${force/1000} N)`);
+//     console.log(`Temperature: ${temp} °C`);
     
-  } catch (error) {
-    console.error("Debug error:", error);
-  }
-}
+//   } catch (error) {
+//     console.error("Debug error:", error);
+//   }
+// }
 
-// Call this from an IPC handler if needed
-ipcMain.handle("debug-registers", async () => {
-  return await debugRegisters();
-});
+// // Call this from an IPC handler if needed
+// ipcMain.handle("debug-registers", async () => {
+//   return await debugRegisters();
+// });
 // ============================
 // CONFIGURATION FILE FUNCTIONS
 // ============================
@@ -558,13 +558,22 @@ async function pulseCoil(coil) {
 // -------------------------
 // Safe command execution
 // -------------------------
+// -------------------------
+// Safe command execution - UPDATED FIXED VERSION
+// -------------------------
 async function safeExecute(command, action) {
   try {
-    if (!isConnected) {
-      throw new Error('Modbus not connected. Please check COM port.');
+    if (!isConnected || !client.isOpen) {
+      console.log(`❌ ${command}: Modbus not connected`);
+      return { 
+        success: false, 
+        message: 'Modbus not connected. Please check COM port.',
+        error: 'NOT_CONNECTED'
+      };
     }
     
     const result = await action();
+    console.log(`✅ ${command}: executed successfully`);
     return { 
       success: true, 
       message: `${command} executed successfully`,
@@ -572,10 +581,11 @@ async function safeExecute(command, action) {
     };
     
   } catch (err) {
-    console.error(`${command} error:`, err.message);
+    console.error(`❌ ${command} error:`, err.message);
     return { 
       success: false, 
-      message: `${command} failed: ${err.message}` 
+      message: `${command} failed: ${err.message}`,
+      error: err.message
     };
   }
 }
