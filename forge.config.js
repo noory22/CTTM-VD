@@ -21,8 +21,8 @@ module.exports = {
       CompanyName: 'Revive Medical Technologies',
       FileDescription: 'Desktop App',
       OriginalFileName: 'Catheter Trackability Testing Machine',
-      ProductName: 'CTTM',
-      InternalName: 'Catheter Trackability Testing Machine',
+      ProductName: 'SCTTM',
+      InternalName: 'Specialized Catheter Trackability Testing Machine',
     },
   },asar: {
       // Unpack preload & renderer so Electron can access them in production
@@ -41,8 +41,8 @@ module.exports = {
       CompanyName: 'Revive Medical Technologies',
       FileDescription: 'Desktop App',
       OriginalFileName: 'Catheter Trackability Testing Machine',
-      ProductName: 'CTTM',
-      InternalName: 'Catheter Trackability Testing Machine',
+      ProductName: 'SCTTM',
+      InternalName: 'Specialized Catheter Trackability Testing Machine',
     },
   rebuildConfig: {},
   makers: [

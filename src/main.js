@@ -1,10 +1,17 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const ModbusRTU = require("modbus-serial"); 
 const path = require("path");
+import "./index.css";
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
 
+import { pathToFileURL } from 'node:url';
+const MAIN_WINDOW_VITE_DEV_SERVER_URL = !app.isPackaged ? 'http://localhost:5173' : null;
 
+let mainWindow;
+// if (started){
+//   app.quit();
+// }
 // ============================
 // CSV LOGGING STATE
 // ============================
@@ -32,7 +39,6 @@ const REG_DISTANCE   = 70;  // 1 register (16-bit integer) - UPDATED
 const REG_FORCE      = 54;    // 2 registers (32-bit float) - UPDATED
 const REG_TEMP    = 501;// 
 const REG_MANUAL_DISTANCE = 6550;
-let mainWindow;
 let isConnected = false;
 let dataReadingActive = false;
 const client = new ModbusRTU();
@@ -385,40 +391,27 @@ async function deleteLogFile(filePath) {
 // -------------------------
 // Create Window - UPDATED
 // -------------------------
-const createWindow = () => {
-  // Get the correct preload path for Electron Forge with Vite
-  let preloadPath;
-  
-  // Try multiple possible locations
-  const possiblePaths = [
-    // Electron Forge Vite plugin default location
-    path.join(process.cwd(), '.vite/build/preload/preload.js'),
-    // Alternative location
-    path.join(__dirname, 'preload.js'),
-    // Development location
-    path.join(process.cwd(), 'src/preload.js'),
-  ];
-  
-  for (const p of possiblePaths) {
-    try {
-      if (fs.existsSync(p)) {  // Use sync version for checking
-        preloadPath = p;
-        console.log('✅ Found preload at:', preloadPath);
-        break;
-      }
-    } catch (e) {
-      // Continue checking other paths
-    }
-  }
-  
-  if (!preloadPath) {
-    console.error('❌ Could not find preload script in any expected location');
-    // Fallback to default
-    preloadPath = path.join(process.cwd(), '.vite/build/preload/preload.js');
-  }
-  
-  console.log('📁 Using preload path:', preloadPath);
-  
+function createWindow() {
+  // -------------------------
+  // Resolve preload differently in dev vs prod
+  // -------------------------
+  const preloadPath = app.isPackaged
+    ? path.join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        '.vite',
+        'build',
+        'preload',
+        'preload.js'
+      )
+    : path.join(__dirname, '../../../src/preload.js');
+
+  console.log('Preload path:', preloadPath);
+  console.log('Preload file exists:', require('fs').existsSync(preloadPath));
+
+  // -------------------------
+  // Create the main window
+  // -------------------------
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
@@ -426,24 +419,42 @@ const createWindow = () => {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
     },
   });
 
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    console.log('🌐 Loading from Vite dev server');
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    // For production
-    const indexPath = path.join(__dirname, '../renderer/main_window/index.html');
-    console.log('📄 Loading from file:', indexPath);
-    mainWindow.loadFile(indexPath);
-  }
+  // Remove the menu completely
+  mainWindow.setMenu(null);
 
+  // -------------------------
+  // Load renderer HTML
+  // -------------------------
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    // Development → Vite Dev Server
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
-  }
-  
+  } else {
+    // Production → packaged HTML in app.asar.unpacked
+    const indexPath = app.isPackaged
+      ? path.join(
+          process.resourcesPath,
+          'app.asar.unpacked',
+          'src',
+          '.vite',
+          'build',
+          'renderer',
+          'main_window',
+          'index.html'
+        )
+      : path.join(__dirname, '../.vite/build/renderer/main_window/index.html');
+
+    // Load from inside app.asar in production
+    if (app.isPackaged) {
+      console.log('Loading renderer from:', indexPath);
+      mainWindow.loadFile(indexPath);
+    } else {
+      mainWindow.loadURL(pathToFileURL(indexPath).href);
+    }
+  }  
   // Auto-connect after window is ready
   mainWindow.on('ready-to-show', () => {
     console.log('🪟 Window is ready');

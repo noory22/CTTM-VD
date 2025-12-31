@@ -1,7 +1,7 @@
 {
-  "name": "cttm-100-new",
-  "productName": "cttm-100-new",
-  "version": "1.0.0",
+  "name": "scttm",
+  "productName": "scttm",
+  "version": "2.0.0",
   "description": "My Electron application description",
   "main": ".vite/build/main/main.js",
   "scripts": {
