@@ -654,7 +654,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      Configuration will be <span className="font-semibold">saved to SCTTM.csv</span>
+                      Configuration will be <span className="font-semibold">saved to SCTTM.json</span>
                     </p>
                   </div>
                 </div>

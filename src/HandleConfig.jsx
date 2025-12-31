@@ -62,14 +62,14 @@ const HandleConfig = ({ mode = 'load' }) => {
         // Optional: Show success message before navigating
         setTimeout(() => {
           navigate('/process-mode');
-        }, 1500);
+        }, 500);
         
       } else {
-        alert('Failed to send configuration to machine. Please check:\n1. Modbus connection\n2. PLC is powered on\n3. Register addresses are correct');
+        // alert('Failed to send configuration to machine. Please check:\n1. Modbus connection\n2. PLC is powered on\n3. Register addresses are correct');
       }
     } catch (error) {
-      console.error('Error sending process mode command:', error);
-      alert(`Configuration transfer failed:\n${error.message}\n\nPlease check Modbus connection.`);
+      // console.error('Error sending process mode command:', error);
+      // alert(`Configuration transfer failed:\n${error.message}\n\nPlease check Modbus connection.`);
     } finally {
       setIsLoading(false);
     }

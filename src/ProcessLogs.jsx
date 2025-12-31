@@ -33,6 +33,8 @@ const ProcessLogs = () => {
     }
   };
 
+
+
   const handleLogSelection = async (log) => {
     try {
       setIsLoading(true);
@@ -43,14 +45,41 @@ const ProcessLogs = () => {
       if (result.success) {
         // Use the config data from CSV
         const configData = result.configData;
-        
+        // ----------------------------------
+        let prevDistance = null;
+        let phase = 'insertion';
+        const processedData = result.data.map((point, index) => {
+          const d = Number(point.distance);
+          const f = Number(point.force);
+
+          // Detect first true decrease -> switch permanently to retraction
+          if (prevDistance !== null && phase === 'insertion') {
+            // treat equal distance as same phase (plateau), only strict decrease switches
+            if (d < prevDistance) phase = 'retraction';
+          }
+          prevDistance = d;
+
+          return {
+            ...point,
+            time: index,
+
+            // ✅ X axis remains distance
+            distance: d,
+
+            // ✅ Y axis remains force
+            // Split FORCE into two series so we can color phases
+            forceInsertion: phase === 'insertion' ? f : null,
+            forceRetraction: phase === 'retraction' ? f : null,
+          };
+        });
         // Process graph data
-        const processedData = result.data.map((point, index) => ({
-          ...point,
-          time: index, // Use index as time for better visualization
-          forceN: point.force, // Force in Newtons
-          distanceMm: point.distance // Distance in mm
-        }));
+        // const processedData = result.data.map((point, index) => ({
+        //   ...point,
+        //   time: index,
+        //   forceN: point.force, 
+        //   distanceMm: point.distance 
+        // }));
+
         
         setGraphData(processedData);
         setSelectedLog({
@@ -166,6 +195,7 @@ const ProcessLogs = () => {
     if (!selectedLog?.configData?.curveDistances) return null;
     
     const curveDistances = selectedLog.configData.curveDistances;
+
     return Object.entries(curveDistances).map(([curveName, distance]) => (
       <ReferenceLine
         key={curveName}
@@ -490,7 +520,7 @@ const ProcessLogs = () => {
                         }}
                         formatter={(value, name) => {
                           if (name === 'force') {
-                            return [`${value.toFixed(3)} N`, 'Force'];
+                            return [`${value.toFixed(3)} mN`, 'Force'];
                           } else if (name === 'distance') {
                             return [`${value} mm`, 'Distance'];
                           }
@@ -498,9 +528,11 @@ const ProcessLogs = () => {
                         }}
                         labelFormatter={(label) => `Distance: ${label} mm`}
                       />
-                      {/* <Legend /> */}
+
+
+
                       {renderCurveReferenceLines()}
-                      <Line 
+                      {/* <Line 
                         type="monotone" 
                         dataKey="force" 
                         stroke="#3b82f6" 
@@ -508,7 +540,31 @@ const ProcessLogs = () => {
                         dot={false}
                         activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
                         name="Force (N)"
+                      /> */}
+                      {/* Force during insertion (green) */}
+                      <Line
+                        type="linear"
+                        dataKey="forceInsertion"
+                        stroke="#22c55e"
+                        strokeWidth={3}
+                        dot={false}
+                        isAnimationActive={false}
+                        name="Force (Insertion)"
                       />
+
+                      {/* Force during retraction (red) */}
+                      <Line
+                        type="linear"
+                        dataKey="forceRetraction"
+                        stroke="#ef4444"
+                        strokeWidth={3}
+                        dot={false}
+                        isAnimationActive={false}
+                        name="Force (Retraction)"
+                      />
+
+
+
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -528,7 +584,7 @@ const ProcessLogs = () => {
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
                     <p className="text-blue-700 text-sm font-medium mb-1">Max Force</p>
                     <p className="text-blue-800 font-bold text-lg">
-                      {Math.max(...graphData.map(d => d.force)).toFixed(3)} N
+                      {Math.max(...graphData.map(d => d.force)).toFixed(3)} mN
                     </p>
                   </div>
                   <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
@@ -544,7 +600,7 @@ const ProcessLogs = () => {
                   <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
                     <p className="text-amber-700 text-sm font-medium mb-1">Avg Force</p>
                     <p className="text-amber-800 font-bold text-lg">
-                      {(graphData.reduce((sum, d) => sum + d.force, 0) / graphData.length).toFixed(3)} N
+                      {(graphData.reduce((sum, d) => sum + d.force, 0) / graphData.length).toFixed(3)} mN
                     </p>
                   </div>
                 </div>
@@ -561,7 +617,7 @@ const ProcessLogs = () => {
                       <tr className="bg-slate-50">
                         <th className="p-3 text-left text-slate-700 font-medium">Time Index</th>
                         <th className="p-3 text-left text-slate-700 font-medium">Distance (mm)</th>
-                        <th className="p-3 text-left text-slate-700 font-medium">Force (N)</th>
+                        <th className="p-3 text-left text-slate-700 font-medium">Force (mN)</th>
                         <th className="p-3 text-left text-slate-700 font-medium">Temperature (°C)</th>
                       </tr>
                     </thead>

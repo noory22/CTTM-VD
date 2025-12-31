@@ -569,7 +569,7 @@ const Manual = () => {
         </div>
 
         {/* PLC Connection Error */}
-        {showConnectionError && (
+        {/* {showConnectionError && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -604,7 +604,7 @@ const Manual = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -617,12 +617,12 @@ const Manual = () => {
                     <div className={`w-3 h-3 ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`}></div>
                     <span>Live Feed</span>
                   </h2>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                     <span className="text-xs text-gray-300">
                       PLC: {connectionStatus.connected ? 'Online' : 'Offline'} | Data: {connectionStatus.dataSource === 'real' ? 'Live' : 'Simulated'}
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
               
