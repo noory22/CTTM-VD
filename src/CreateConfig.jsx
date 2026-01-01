@@ -113,8 +113,8 @@ const CreateConfig = () => {
       newErrors.retractionLength = 'Retraction Stroke Length is required';
     } else if (isNaN(formData.retractionLength) || parseFloat(formData.retractionLength) <= 0) {
       newErrors.retractionLength = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.retractionLength) < 10 || parseFloat(formData.retractionLength) > 100) {
-      newErrors.retractionLength = 'Retraction Stroke Length must be between 10mm and 100mm';
+    } else if (parseFloat(formData.retractionLength) < 5 || parseFloat(formData.retractionLength) > 30) {
+      newErrors.retractionLength = 'Retraction Stroke Length must be between 5mm and 30mm';
     }
     
     // Validate Number of Curves (integer and range)
@@ -455,7 +455,7 @@ const CreateConfig = () => {
                     name="retractionLength"
                     value={formData.retractionLength}
                     onChange={handleInputChange}
-                    placeholder="Enter retraction length in range 10mm - 100mm"
+                    placeholder="Enter retraction length in range 5mm - 30mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.retractionLength 
                         ? 'border-red-300 focus:border-red-500' 
@@ -632,7 +632,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">10mm - 100mm</span>
+                      <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">5mm - 30mm</span>
                     </p>
                   </div>
                   

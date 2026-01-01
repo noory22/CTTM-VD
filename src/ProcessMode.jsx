@@ -48,15 +48,14 @@ const ProcessMode = () => {
   const [isRetractionPaused, setIsRetractionPaused] = useState(false);
   const [isRetractionCompleted, setIsRetractionCompleted] = useState(false);
 
+  // Temperature check state
   const [temperatureStatus, setTemperatureStatus] = useState({
     isHeatingRequired: false,
-    isHeatingComplete: false,
-    showHeaterDialog: false,
-    dialogMessage: '',
-    dialogType: '',
+    isHeatingActive: false,
+    showHeatingDialog: false,
     heaterButtonDisabled: false,
     targetTemperature: null,
-    wasTemperatureDrop: false
+    lastHeatingState: null
   });
 
   const [isLogging, setIsLogging] = useState(false);
@@ -83,6 +82,164 @@ const ProcessMode = () => {
   const isLgScreen = screenSize.width >= 1366 && screenSize.width < 1920;
   const isMdScreen = screenSize.width >= 1024 && screenSize.width < 1366;
   const isSmScreen = screenSize.width < 1024;
+  //-------------------------------------------------------------------------//
+  // Check temperature when component mounts or config changes
+  // Check temperature whenever real-time temperature or config changes
+  useEffect(() => {
+    if (selectedConfig && readData.temperature !== '--') {
+      const realTimeTemp = parseFloat(readData.temperature);
+      const targetTemp = parseFloat(selectedConfig.temperature);
+      
+      if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
+        // Check if real-time temperature is LESS THAN user-defined temperature
+        const isTempBelowTarget = realTimeTemp < (targetTemp - 0.5); // 0.5°C tolerance
+        
+        console.log(`🌡️ Temperature Check: Real=${realTimeTemp}°C, Target=${targetTemp}°C, isBelowTarget=${isTempBelowTarget}`);
+        
+        if (isTempBelowTarget && !temperatureStatus.isHeatingActive) {
+          // Show heating dialog if temperature is below target
+          setTemperatureStatus(prev => ({
+            ...prev,
+            isHeatingRequired: true,
+            showHeatingDialog: true,
+            targetTemperature: targetTemp,
+            heaterButtonDisabled: false
+          }));
+        } else if (!isTempBelowTarget) {
+          // If temperature is equal to or greater than target, close dialog and disable heating
+          if (temperatureStatus.isHeatingActive) {
+            // Turn off heater if it's active
+            turnOffHeater();
+          }
+          
+          // Close dialog and reset state
+          setTemperatureStatus(prev => ({
+            ...prev,
+            isHeatingRequired: false,
+            showHeatingDialog: false,
+            isHeatingActive: false,
+            heaterButtonDisabled: false
+          }));
+          
+          console.log('✅ Temperature requirement satisfied - dialog closed');
+        }
+      }
+    }
+  }, [readData.temperature, selectedConfig]);
+
+  // Monitor temperature to auto-close dialog when target is reached or exceeded
+  useEffect(() => {
+    if (temperatureStatus.isHeatingActive && selectedConfig && readData.temperature !== '--') {
+      const realTimeTemp = parseFloat(readData.temperature);
+      const targetTemp = temperatureStatus.targetTemperature || parseFloat(selectedConfig.temperature);
+      
+      if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
+        // Check if temperature is equal to or greater than target
+        const isTempReached = realTimeTemp >= (targetTemp - 0.5); // 0.5°C tolerance
+        
+        if (isTempReached) {
+          console.log(`✅ Target temperature reached or exceeded! Real=${realTimeTemp}°C, Target=${targetTemp}°C`);
+          
+          // Turn off heater
+          turnOffHeater();
+          
+          // Close dialog and reset state
+          setTemperatureStatus(prev => ({
+            ...prev,
+            isHeatingRequired: false,
+            showHeatingDialog: false,
+            isHeatingActive: false,
+            heaterButtonDisabled: false
+          }));
+        }
+      }
+    }
+  }, [readData.temperature, temperatureStatus.isHeatingActive, selectedConfig]);
+
+  // Check temperature when component mounts
+  useEffect(() => {
+    if (selectedConfig) {
+      // Small delay to ensure data is loaded
+      setTimeout(() => {
+        if (readData.temperature !== '--') {
+          const realTimeTemp = parseFloat(readData.temperature);
+          const targetTemp = parseFloat(selectedConfig.temperature);
+          
+          if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
+            const isTempBelowTarget = realTimeTemp < (targetTemp - 0.5);
+            
+            if (isTempBelowTarget) {
+              console.log('🔥 Temperature check on entry: Heating required');
+              setTemperatureStatus(prev => ({
+                ...prev,
+                isHeatingRequired: true,
+                showHeatingDialog: true,
+                targetTemperature: targetTemp,
+                heaterButtonDisabled: false
+              }));
+            }
+          }
+        }
+      }, 1000);
+    }
+  }, [selectedConfig]);
+
+  const turnOnHeater = async () => {
+    try {
+      console.log('🔥 Turning heater ON...');
+      setTemperatureStatus(prev => ({
+        ...prev,
+        heaterButtonDisabled: true
+      }));
+      
+      const result = await window.api.heating();
+      
+      if (result && result.success) {
+        console.log('✅ Heater turned ON successfully');
+        setTemperatureStatus(prev => ({
+          ...prev,
+          isHeatingActive: true
+        }));
+      } else {
+        console.error('❌ Failed to turn heater ON');
+        setTemperatureStatus(prev => ({
+          ...prev,
+          heaterButtonDisabled: false
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error turning heater ON:', error);
+      setTemperatureStatus(prev => ({
+        ...prev,
+        heaterButtonDisabled: false
+      }));
+    }
+  };
+
+  const turnOffHeater = async () => {
+    try {
+      console.log('🔥 Turning heater OFF...');
+      
+      const result = await window.api.heating();
+      
+      if (result && result.success) {
+        console.log('✅ Heater turned OFF successfully');
+        // Don't reset state here - let the temperature check handle it
+      }
+    } catch (error) {
+      console.error('❌ Error turning heater OFF:', error);
+    }
+  };
+
+  const closeHeatingDialog = () => {
+    // Allow closing dialog
+    setTemperatureStatus(prev => ({
+      ...prev,
+      showHeatingDialog: false
+    }));
+  };
+
+  //-------------------------------------------------------------------------//
 
   useEffect(() => {
     const config = localStorage.getItem('selectedConfig');
@@ -196,58 +353,58 @@ const ProcessMode = () => {
 
 
 
-  const handleHeaterOn = async () => {
-    try {
-      setTemperatureStatus(prev => ({
-        ...prev,
-        heaterButtonDisabled: true
-      }));
+  // const handleHeaterOn = async () => {
+  //   try {
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       heaterButtonDisabled: true
+  //     }));
       
-      console.log('🔥 Turning heater ON...');
-      await window.api.heating();
-      console.log('✅ Heater ON command sent');
+  //     console.log('🔥 Turning heater ON...');
+  //     await window.api.heating();
+  //     console.log('✅ Heater ON command sent');
       
-    } catch (error) {
-      console.error('❌ Failed to turn heater ON:', error);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('❌ Failed to turn heater ON:', error);
+  //   }
+  // };
 
-  const handleHeaterOff = async () => {
-    try {
-      setTemperatureStatus(prev => ({
-        ...prev,
-        heaterButtonDisabled: true
-      }));
+  // const handleHeaterOff = async () => {
+  //   try {
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       heaterButtonDisabled: true
+  //     }));
       
-      console.log('🔥 Turning heater OFF...');
-      await window.api.heating();
+  //     console.log('🔥 Turning heater OFF...');
+  //     await window.api.heating();
       
-      setTemperatureStatus({
-        isHeatingRequired: false,
-        isHeatingComplete: false,
-        showHeaterDialog: false,
-        dialogMessage: '',
-        dialogType: '',
-        heaterButtonDisabled: false,
-        targetTemperature: null,
-        wasTemperatureDrop: false
-      });
-      console.log('✅ Heater OFF command sent, dialog closed');
+  //     setTemperatureStatus({
+  //       isHeatingRequired: false,
+  //       isHeatingComplete: false,
+  //       showHeaterDialog: false,
+  //       dialogMessage: '',
+  //       dialogType: '',
+  //       heaterButtonDisabled: false,
+  //       targetTemperature: null,
+  //       wasTemperatureDrop: false
+  //     });
+  //     console.log('✅ Heater OFF command sent, dialog closed');
       
-    } catch (error) {
-      console.error('❌ Failed to turn heater OFF:', error);
-    }
-  };
+  //   } catch (error) {
+  //     console.error('❌ Failed to turn heater OFF:', error);
+  //   }
+  // };
 
-  const closeHeaterDialog = () => {
-    if (temperatureStatus.dialogType === 'heating-complete') {
-      setTemperatureStatus(prev => ({
-        ...prev,
-        showHeaterDialog: false,
-        wasTemperatureDrop: false
-      }));
-    }
-  };
+  // const closeHeaterDialog = () => {
+  //   if (temperatureStatus.dialogType === 'heating-complete') {
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       showHeaterDialog: false,
+  //       wasTemperatureDrop: false
+  //     }));
+  //   }
+  // };
 
   useEffect(() => {
     let intervalId;
@@ -484,12 +641,73 @@ const ProcessMode = () => {
     };
   }, [isDraggingCamera, isDraggingConfig, dragOffset]);
 
+  // const handleStart = async () => {
+  //   if (!selectedConfig) {
+  //     console.error('No configuration selected');
+  //     return;
+  //   }
+  //   if (temperatureStatus.isHeatingRequired && !temperatureStatus.wasTemperatureDrop) {
+  //     console.log('❌ Cannot start process - heating required');
+  //     return;
+  //   }
+
+  //   try {
+  //     console.log('🚀 Starting process...');
+  //     let result;
+      
+  //     if (isPaused || isRetractionPaused) {
+  //       // Resume from pause
+  //       console.log('⏯️ Resuming process from pause...');
+  //       result = await window.api.start(); // Assuming same API call for resume
+        
+  //       if (result && result.success) {
+  //         setIsProcessRunning(true);
+  //         setIsPaused(false);
+  //         setIsRetractionPaused(false);
+          
+  //         if (isRetractionEnabled && isRetractionActive) {
+  //           setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
+  //         } else {
+  //           setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
+  //         }
+  //       }
+  //     } else {
+  //       // Start fresh
+  //       result = await window.api.start();
+        
+  //       if (result && result.success) {
+  //         setIsProcessRunning(true);
+  //         setIsPaused(false);
+  //         setIsRetractionCompleted(false);
+  //         setIsHoming(false);
+  //         setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
+  //         startTimeRef.current = Date.now();
+  //       }
+  //     }
+      
+  //     if (result && result.success) {
+  //       console.log('🟡 Process started/resumed, starting CSV logging...');
+  //       if (selectedConfig) {
+  //         startCsvLogging();
+  //       } else { 
+  //         console.error('❌ Cannot start logging: missing config');
+  //       }
+  //     } else {
+  //       console.error('Failed to start process:', result?.message);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to start process:', error);
+  //   }
+  // };
+
   const handleStart = async () => {
     if (!selectedConfig) {
       console.error('No configuration selected');
       return;
     }
-    if (temperatureStatus.isHeatingRequired && !temperatureStatus.wasTemperatureDrop) {
+    
+    // Prevent start if heating is required
+    if (temperatureStatus.isHeatingRequired) {
       console.log('❌ Cannot start process - heating required');
       return;
     }
@@ -499,9 +717,8 @@ const ProcessMode = () => {
       let result;
       
       if (isPaused || isRetractionPaused) {
-        // Resume from pause
         console.log('⏯️ Resuming process from pause...');
-        result = await window.api.start(); // Assuming same API call for resume
+        result = await window.api.start();
         
         if (result && result.success) {
           setIsProcessRunning(true);
@@ -515,7 +732,6 @@ const ProcessMode = () => {
           }
         }
       } else {
-        // Start fresh
         result = await window.api.start();
         
         if (result && result.success) {
@@ -611,15 +827,14 @@ const ProcessMode = () => {
           status: 'HOMING'
         }));
 
+        // Reset temperature status
         setTemperatureStatus({
           isHeatingRequired: false,
-          isHeatingComplete: false,
-          showHeaterDialog: false,
-          dialogMessage: '',
-          dialogType: '',
+          isHeatingActive: false,
+          showHeatingDialog: false,
           heaterButtonDisabled: false,
           targetTemperature: null,
-          wasTemperatureDrop: false
+          lastHeatingState: null
         });
         
         stopCsvLogging();
@@ -636,12 +851,14 @@ const ProcessMode = () => {
     return isHoming || !selectedConfig;
   };
   
+  // Add this to prevent process start when heating is required
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
-    if (isRetractionEnabled && !isRetractionPaused) return true; // Disable when retraction is enabled but not paused
-    if (isRetractionPaused) return true; // Disable when retraction is paused
-    if (isRetractionCompleted) return false; // Enable when retraction is completed
-    if (isProcessRunning && !isPaused && !isRetractionPaused) return true; // Disable when process is running
+    if (temperatureStatus.isHeatingRequired) return true; // Disable if heating is required
+    if (isRetractionEnabled && !isRetractionPaused) return true;
+    if (isRetractionPaused) return true;
+    if (isRetractionCompleted) return false;
+    if (isProcessRunning && !isPaused && !isRetractionPaused) return true;
     return false;
   };
 
@@ -694,33 +911,27 @@ const ProcessMode = () => {
 
   return (
     <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
-      {temperatureStatus.showHeaterDialog && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Heating Dialog */}
+      {temperatureStatus.showHeatingDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200/80">
-            <div className={`p-6 rounded-t-2xl flex items-center justify-between ${
-              temperatureStatus.dialogType === 'heating-required' 
-                ? 'bg-gradient-to-r from-orange-500 to-red-500' 
-                : 'bg-gradient-to-r from-green-500 to-emerald-500'
-            }`}>
-              <div className="flex items-center space-x-3">
-                <Flame className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-bold text-white">
-                  {temperatureStatus.dialogType === 'heating-required' 
-                    ? (temperatureStatus.wasTemperatureDrop 
-                        ? (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Process Auto-Stopped')
-                        : (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Heating Required')
-                      )
-                    : 'Heating Complete'}
-                </h2>
+            <div className="p-6 rounded-t-2xl bg-gradient-to-r from-orange-500 to-red-500">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Flame className="w-6 h-6 text-white" />
+                  <h2 className="text-xl font-bold text-white">
+                    {temperatureStatus.isHeatingActive ? 'Heating In Progress' : 'Heating Required'}
+                  </h2>
+                </div>
+                {!temperatureStatus.isHeatingRequired && (
+                  <button
+                    onClick={closeHeatingDialog}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-all"
+                  >
+                    <X className="w-6 h-6 text-white" />
+                  </button>
+                )}
               </div>
-              {temperatureStatus.dialogType === 'heating-complete' && (
-                <button
-                  onClick={closeHeaterDialog}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
-              )}
             </div>
             
             <div className="p-6">
@@ -730,11 +941,11 @@ const ProcessMode = () => {
                     <p className="text-sm text-gray-600 mb-1">Real-time Temperature</p>
                     <div className="flex items-center justify-center space-x-2">
                       <Thermometer className="w-5 h-5 text-blue-600" />
-                      <p className="text-2xl font-bold text-blue-700">{readData.temperature}°C</p>
+                      <p className="text-2xl font-bold text-blue-700">{readData.temperatureDisplay}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">User-Defined Temperature</p>
+                    <p className="text-sm text-gray-600 mb-1">Target Temperature</p>
                     <div className="flex items-center justify-center space-x-2">
                       <Flame className="w-5 h-5 text-orange-600" />
                       <p className="text-2xl font-bold text-orange-700">
@@ -752,11 +963,7 @@ const ProcessMode = () => {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full transition-all duration-1000 ${
-                        temperatureStatus.dialogType === 'heating-required' 
-                          ? 'bg-orange-500' 
-                          : 'bg-green-500'
-                      }`}
+                      className="h-2 rounded-full transition-all duration-1000 bg-orange-500"
                       style={{ 
                         width: `${Math.min(100, (parseFloat(readData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%` 
                       }}
@@ -765,54 +972,24 @@ const ProcessMode = () => {
                 </div>
               </div>
               
-              <div className={`p-4 rounded-xl mb-4 ${
-                temperatureStatus.dialogType === 'heating-required' 
-                  ? 'bg-orange-50 border border-orange-200' 
-                  : 'bg-green-50 border border-green-200'
-              }`}>
-                <p className={`font-medium text-center ${
-                  temperatureStatus.dialogType === 'heating-required' ? 'text-orange-800' : 'text-green-800'
-                }`}>
-                  {temperatureStatus.dialogMessage}
+              <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg mb-4">
+                <p className="font-medium text-orange-800 text-center">
+                  {temperatureStatus.isHeatingActive 
+                    ? `Heating in progress. Waiting for temperature to reach ${temperatureStatus.targetTemperature || selectedConfig?.temperature}°C`
+                    : `Real-time temperature (${readData.temperatureDisplay}) is below target (${temperatureStatus.targetTemperature || selectedConfig?.temperature}°C). Please turn on heating.`
+                  }
                 </p>
-                {temperatureStatus.wasTemperatureDrop && (
-                  <p className="text-orange-700 text-sm mt-2 text-center font-semibold">
-                    ⚠️ Process will need to be restarted when temperature reaches target
+                {temperatureStatus.isHeatingActive && (
+                  <p className="text-orange-700 text-sm mt-2 text-center">
+                    Current: {readData.temperatureDisplay} / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
                   </p>
                 )}
               </div>
 
-              {temperatureStatus.dialogType === 'heating-required' && temperatureStatus.heaterButtonDisabled && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <Flame className="w-3 h-3 text-white" />
-                    </div>
-                    <p className="text-blue-700 font-bold text-lg">Heater is ON</p>
-                  </div>
-                  <p className="text-blue-600 text-center text-sm">
-                    Waiting for real-time temperature to reach {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
-                  </p>
-                  <p className="text-blue-500 text-center text-xs mt-1">
-                    Current: {readData.temperature}°C
-                  </p>
-                </div>
-              )}
-              
               <div className="flex space-x-3">
-                {temperatureStatus.dialogType === 'heating-required' && !temperatureStatus.heaterButtonDisabled && (
+                {!temperatureStatus.isHeatingActive ? (
                   <button
-                    onClick={handleBack}
-                    className="flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span>Cancel</span>
-                  </button>
-                )}
-                
-                {temperatureStatus.dialogType === 'heating-required' ? (
-                  <button
-                    onClick={handleHeaterOn}
+                    onClick={turnOnHeater}
                     disabled={temperatureStatus.heaterButtonDisabled}
                     className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
                       temperatureStatus.heaterButtonDisabled
@@ -822,40 +999,32 @@ const ProcessMode = () => {
                   >
                     <Flame className="w-5 h-5" />
                     <span>
-                      {temperatureStatus.heaterButtonDisabled ? 'Turned ON...' : 'Turn Heater ON'}
+                      {temperatureStatus.heaterButtonDisabled ? 'Turning ON...' : 'Turn ON Heater'}
                     </span>
                   </button>
                 ) : (
-                  <button
-                    onClick={handleHeaterOff}
-                    disabled={temperatureStatus.heaterButtonDisabled}
-                    className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
-                      temperatureStatus.heaterButtonDisabled
-                        ? 'bg-gray-400 cursor-not-allowed text-gray-200'
-                        : 'bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg'
-                    }`}
-                  >
-                    <Flame className="w-5 h-5" />
-                    <span>
-                      {temperatureStatus.heaterButtonDisabled ? 'Turned OFF...' : 'Turn Heater OFF'}
-                    </span>
-                  </button>
+                  <div className="w-full bg-green-50 border border-green-200 rounded-xl p-4">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                        <Flame className="w-3 h-3 text-white" />
+                      </div>
+                      <p className="text-green-700 font-bold">Heater is ON</p>
+                    </div>
+                    <p className="text-green-600 text-center text-sm mt-1">
+                      Waiting for temperature to reach target...
+                    </p>
+                  </div>
                 )}
               </div>
               
-              {temperatureStatus.dialogType === 'heating-required' && (
-                <div className="mt-3 text-center">
-                  <p className="text-orange-600 text-sm font-medium">
-                    {temperatureStatus.wasTemperatureDrop 
-                      ? '⚠️ Process stopped. Restart when temperature reaches target'
-                      : '⚠️ Start button will be enabled when temperature reaches target'
-                    }
-                  </p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    Current: {readData.temperature}°C / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
-                  </p>
-                </div>
-              )}
+              <div className="mt-4 text-center">
+                <p className="text-gray-500 text-sm">
+                  {temperatureStatus.isHeatingActive 
+                    ? 'Dialog will close automatically when temperature reaches target'
+                    : 'Process start will be enabled when temperature reaches target'
+                  }
+                </p>
+              </div>
             </div>
           </div>
         </div>

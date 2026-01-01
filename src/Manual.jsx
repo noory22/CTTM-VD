@@ -145,136 +145,136 @@ const Manual = () => {
   }, []);
 
   // Handle control toggles using window.api
-  const handleControlToggle = async (controlName) => {
-    try {
-      // Check connection first
-      const status = await window.api.checkConnection();
-      if (!status.connected) {
-        alert('PLC is not connected. Please connect to PLC first.');
-        setShowConnectionError(true);
-        return;
-      }
+  // const handleControlToggle = async (controlName) => {
+  //   try {
+  //     // Check connection first
+  //     const status = await window.api.checkConnection();
+  //     if (!status.connected) {
+  //       alert('PLC is not connected. Please connect to PLC first.');
+  //       setShowConnectionError(true);
+  //       return;
+  //     }
 
-      if (controlName === 'clamp') {
-        const result = await window.api.clamp();
-        if (result.success) {
-          const newClampState = result.clampState === "ON";
-          setControls(prev => ({ ...prev, clamp: newClampState }));
-          console.log('Clamp toggled:', newClampState, 'Result:', result);
-        } else {
-          throw new Error(result.message || 'Clamp operation failed');
-        }
-      } else if (controlName === 'heater') {
-        const result = await window.api.heating();
-        if (result && result.success) {
-          setControls(prev => ({ ...prev, heater: result.heating }));
-          console.log('Heater toggled to:', result.heating, 'Result:', result);
-        }else {
-          throw new Error(result?.message || 'Heater operation failed');
-        }
-      }
-    } catch (error) {
-      console.error('Control error:', error.message);
-      setShowConnectionError(true);
-      // alert(`Operation failed: ${error.message}`);
-    }
-  };
+  //     if (controlName === 'clamp') {
+  //       const result = await window.api.clamp();
+  //       if (result.success) {
+  //         const newClampState = result.clampState === "ON";
+  //         setControls(prev => ({ ...prev, clamp: newClampState }));
+  //         console.log('Clamp toggled:', newClampState, 'Result:', result);
+  //       } else {
+  //         throw new Error(result.message || 'Clamp operation failed');
+  //       }
+  //     } else if (controlName === 'heater') {
+  //       const result = await window.api.heating();
+  //       if (result && result.success) {
+  //         setControls(prev => ({ ...prev, heater: result.heating }));
+  //         console.log('Heater toggled to:', result.heating, 'Result:', result);
+  //       }else {
+  //         throw new Error(result?.message || 'Heater operation failed');
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Control error:', error.message);
+  //     setShowConnectionError(true);
+  //     // alert(`Operation failed: ${error.message}`);
+  //   }
+  // };
 
-  // Function to stop all motor movement
-  const stopAllMotors = async () => {
-    try {
-      // If insertion is currently active, toggle it off
-      if (motorState.forward) {
-        const result = await window.api.insertion();
-        if (result.success && !result.insertionState) {
-          setMotorState({ forward: false, backward: false });
-        }
-      }
+  // // Function to stop all motor movement
+  // const stopAllMotors = async () => {
+  //   try {
+  //     // If insertion is currently active, toggle it off
+  //     if (motorState.forward) {
+  //       const result = await window.api.insertion();
+  //       if (result.success && !result.insertionState) {
+  //         setMotorState({ forward: false, backward: false });
+  //       }
+  //     }
       
-      // If retraction is currently active, toggle it off
-      if (motorState.backward) {
-        const result = await window.api.ret();
-        if (result.success && !result.retState) {
-          setMotorState({ forward: false, backward: false });
-        }
-      }
-    } catch (error) {
-      console.error('Stop motors error:', error.message);
-    }
-  };
+  //     // If retraction is currently active, toggle it off
+  //     if (motorState.backward) {
+  //       const result = await window.api.ret();
+  //       if (result.success && !result.retState) {
+  //         setMotorState({ forward: false, backward: false });
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Stop motors error:', error.message);
+  //   }
+  // };
 
-  const moveCatheter = async (direction) => {
-    try {
-      // Check connection first
-      const status = await window.api.checkConnection();
-      if (!status.connected) {
-        alert('PLC is not connected. Please connect to PLC first.');
-        setShowConnectionError(true);
-        return;
-      }
+  // const moveCatheter = async (direction) => {
+  //   try {
+  //     // Check connection first
+  //     const status = await window.api.checkConnection();
+  //     if (!status.connected) {
+  //       alert('PLC is not connected. Please connect to PLC first.');
+  //       setShowConnectionError(true);
+  //       return;
+  //     }
 
-      if (direction === "forward") {
-        // If forward is already active, toggle it off
-        if (motorState.forward) {
-          const result = await window.api.insertion();
-          if (result.success) {
-            const newInsertionState = result.insertionState === "ON";
-            setMotorState({ forward: newInsertionState, backward: false });
-            console.log('Insertion toggled:', newInsertionState, 'Result:', result);
-          } else {
-            throw new Error(result.message || 'Insertion operation failed');
-          }
-        } else {
-          // Stop any backward movement first
-          if (motorState.backward) {
-            await window.api.ret();
-          }
+  //     if (direction === "forward") {
+  //       // If forward is already active, toggle it off
+  //       if (motorState.forward) {
+  //         const result = await window.api.insertion();
+  //         if (result.success) {
+  //           const newInsertionState = result.insertionState === "ON";
+  //           setMotorState({ forward: newInsertionState, backward: false });
+  //           console.log('Insertion toggled:', newInsertionState, 'Result:', result);
+  //         } else {
+  //           throw new Error(result.message || 'Insertion operation failed');
+  //         }
+  //       } else {
+  //         // Stop any backward movement first
+  //         if (motorState.backward) {
+  //           await window.api.ret();
+  //         }
           
-          // Turn on COIL_INSERTION
-          const result = await window.api.insertion();
-          if (result.success) {
-            const newInsertionState = result.insertionState === "ON";
-            setMotorState({ forward: newInsertionState, backward: false });
-            console.log('Insertion activated:', newInsertionState, 'Result:', result);
-          }else {
-            throw new Error(result.message || 'Insertion failed');
-          }
-        }
-      } else if (direction === "backward") {
-        // If backward is already active, toggle it off
-        if (motorState.backward) {
-          const result = await window.api.ret();
-          if (result.success) {
-            const newRetState = result.retState === "ON";
-            setMotorState({ forward: false, backward: newRetState });
-            console.log('Retraction toggled:', newRetState, 'Result:', result);
-          } 
-          else {
-            throw new Error(result.message || 'Retraction operation failed');
-          }
-        } else {
-          // Stop any forward movement first
-          if (motorState.forward) {
-            await window.api.insertion();
-          }
+  //         // Turn on COIL_INSERTION
+  //         const result = await window.api.insertion();
+  //         if (result.success) {
+  //           const newInsertionState = result.insertionState === "ON";
+  //           setMotorState({ forward: newInsertionState, backward: false });
+  //           console.log('Insertion activated:', newInsertionState, 'Result:', result);
+  //         }else {
+  //           throw new Error(result.message || 'Insertion failed');
+  //         }
+  //       }
+  //     } else if (direction === "backward") {
+  //       // If backward is already active, toggle it off
+  //       if (motorState.backward) {
+  //         const result = await window.api.ret();
+  //         if (result.success) {
+  //           const newRetState = result.retState === "ON";
+  //           setMotorState({ forward: false, backward: newRetState });
+  //           console.log('Retraction toggled:', newRetState, 'Result:', result);
+  //         } 
+  //         else {
+  //           throw new Error(result.message || 'Retraction operation failed');
+  //         }
+  //       } else {
+  //         // Stop any forward movement first
+  //         if (motorState.forward) {
+  //           await window.api.insertion();
+  //         }
           
-          // Turn on COIL_RET
-          const result = await window.api.ret();
-          if (result.success) {
-            const newRetState = result.retState === "ON";
-            setMotorState({ forward: false, backward: newRetState });
-            console.log('Retraction activated:', newRetState, 'Result:', result);
-          } else {
-            throw new Error(result.message || 'Retraction failed');
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Motor movement error:", error.message);
-      setShowConnectionError(true);
-      // alert(`Movement failed: ${error.message}`);
-    }
-  };
+  //         // Turn on COIL_RET
+  //         const result = await window.api.ret();
+  //         if (result.success) {
+  //           const newRetState = result.retState === "ON";
+  //           setMotorState({ forward: false, backward: newRetState });
+  //           console.log('Retraction activated:', newRetState, 'Result:', result);
+  //         } else {
+  //           throw new Error(result.message || 'Retraction failed');
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Motor movement error:", error.message);
+  //     setShowConnectionError(true);
+  //     // alert(`Movement failed: ${error.message}`);
+  //   }
+  // };
 
   const resetCatheter = async () => {
     try {
@@ -287,11 +287,14 @@ const Manual = () => {
       }
 
       // Stop any motor movement first
-      await stopAllMotors();
+      // await stopAllMotors();
       
       // Activate homing (COIL_HOME)
       setControls(prev => ({ ...prev, homing: true }));
       const result = await window.api.home();
+
+      // ✅ Clear graph data when homing completes
+      setGraphData([]);
       
       if (result.success) {
         console.log('Homing initiated:', result);
@@ -836,69 +839,8 @@ const Manual = () => {
 
           {/* Control Panel */}
           <div className="space-y-6">
-            {/* Clamp Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp (Press to toggle ON/OFF)</h3>
-              <div className="flex justify-center">
-                <button
-                  onClick={() => handleControlToggle('clamp')}
-                  disabled={!connectionStatus.connected || controls.homing}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                    !connectionStatus.connected || controls.homing
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.clamp 
-                        ? 'bg-green-500 border-green-600 text-white hover:bg-green-600' 
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                  }`}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M16 4h4v4h-4V4zM4 16h4v4H4v-4zM16 8h4v8h-4V8zM8 4h8v4H8V4zM4 8h4v4H4V8zM8 12h8v8H8v-8z"/>
-                    </svg>
-                  </div>
-                  {controls.clamp && connectionStatus.connected && (
-                    <div className="absolute -inset-1 bg-green-500 rounded-full animate-ping opacity-30"></div>
-                  )}
-                </button>
-              </div>
-            </div>
+            
 
-            {/* Catheter Movement */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Catheter Movement</h3>
-              <div className="flex justify-center space-x-4 mb-4">
-                <button
-                  onClick={() => moveCatheter('backward')}
-                  disabled={!connectionStatus.connected || controls.homing}
-                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
-                    ${!connectionStatus.connected || controls.homing
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : motorState.backward
-                        ? 'bg-blue-500 border-blue-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
-                    }`}
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={() => moveCatheter('forward')}
-                  disabled={!connectionStatus.connected || controls.homing}
-                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
-                    ${!connectionStatus.connected || controls.homing
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : motorState.forward
-                        ? 'bg-blue-500 border-blue-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
-                    }`}
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </div>
-              <p className="text-center text-sm text-slate-500">
-                {motorState.forward ? 'Inserting... (Press again to stop)' : 
-                 motorState.backward ? 'Retracting... (Press again to stop)' : 'Ready - Press to move'}
-              </p>
-            </div>
 
             {/* Heater and Homing */}
             <div className="grid grid-cols-2 gap-4">
@@ -957,12 +899,12 @@ const Manual = () => {
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">System Status</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <span className="text-slate-600">Clamp:</span>
                   <span className={`font-semibold ${controls.clamp ? 'text-green-600' : 'text-red-600'}`}>
                     {controls.clamp ? 'ON' : 'OFF'}
                   </span>
-                </div>
+                </div> */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Heater:</span>
                   <span className={`font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
@@ -975,7 +917,7 @@ const Manual = () => {
                     {controls.homing ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <span className="text-slate-600">Movement:</span>
                   <span className={`font-semibold ${
                     motorState.forward ? 'text-blue-600' : 
@@ -984,13 +926,13 @@ const Manual = () => {
                   }`}>
                     {motorState.forward ? 'FORWARD' : motorState.backward ? 'BACKWARD' : 'IDLE'}
                   </span>
-                </div>
-                <div className="flex items-center justify-between">
+                </div> */}
+                {/* <div className="flex items-center justify-between">
                   <span className="text-slate-600">Data Source:</span>
                   <span className={`font-semibold ${connectionStatus.dataSource === 'real' ? 'text-green-600' : 'text-gray-600'}`}>
                     {connectionStatus.dataSource === 'real' ? 'LIVE PLC' : 'SIMULATED'}
                   </span>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
