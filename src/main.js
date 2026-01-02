@@ -245,6 +245,47 @@ async function stopCSVLogging() {
 // CSV LOGGING - FILE READING FUNCTIONS
 // ============================
 
+// async function getLogFiles() {
+//   try {
+//     const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
+    
+//     if (!fs.existsSync(logsDir)) {
+//       return [];
+//     }
+    
+//     const files = await fsPromises.readdir(logsDir);
+//     const csvFiles = files.filter(file => file.endsWith('.csv'));
+    
+//     const logFiles = [];
+    
+//     for (const file of csvFiles) {
+//       const filePath = path.join(logsDir, file);
+//       const stats = await fsPromises.stat(filePath);
+      
+//       // Extract configuration name and timestamp from filename
+//       const fileNameWithoutExt = file.replace('.csv', '');
+//       const parts = fileNameWithoutExt.split('_');
+//       const configName = parts.slice(0, -1).join('_');
+//       const timestamp = parts[parts.length - 1];
+      
+//       logFiles.push({
+//         filename: file,
+//         displayName: `${configName} - ${new Date(timestamp.replace(/-/g, ':')).toLocaleString()}`,
+//         filePath: filePath,
+//         date: stats.mtime.toISOString().split('T')[0],
+//         time: timestamp,
+//         configName: configName
+//       });
+//     }
+    
+//     // Sort by date (newest first)
+//     return logFiles.sort((a, b) => new Date(b.time) - new Date(a.time));
+    
+//   } catch (error) {
+//     console.error('Error getting log files:', error);
+//     return [];
+//   }
+// }
 async function getLogFiles() {
   try {
     const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
@@ -268,9 +309,24 @@ async function getLogFiles() {
       const configName = parts.slice(0, -1).join('_');
       const timestamp = parts[parts.length - 1];
       
+      // Parse the date properly
+      let formattedDate = 'Invalid Date';
+      try {
+        // The timestamp is in format: 2026-01-02T10-01-00-000Z
+        // Extract date parts
+        const match = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/);
+        if (match) {
+          const [_, year, month, day, hour, minute, second] = match;
+          const date = new Date(year, month - 1, day, hour, minute, second);
+          formattedDate = date.toLocaleString();
+        }
+      } catch (e) {
+        console.log('Date parsing error:', e.message);
+      }
+      
       logFiles.push({
         filename: file,
-        displayName: `${configName} - ${new Date(timestamp.replace(/-/g, ':')).toLocaleString()}`,
+        displayName: `${configName}`,
         filePath: filePath,
         date: stats.mtime.toISOString().split('T')[0],
         time: timestamp,

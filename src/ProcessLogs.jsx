@@ -177,19 +177,44 @@ const ProcessLogs = () => {
     });
   };
 
-  const formatTime = (timeStr) => {
+  const formatTime = (dateStr, timeStr) => {
     try {
-      // Convert ISO timestamp to readable time
-      const date = new Date(timeStr.replace(/-/g, ':'));
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+      if (!dateStr || !timeStr) return '--';
+
+      // Parse date string like "Jan 2, 2026"
+      const baseDate = new Date(dateStr);
+      if (isNaN(baseDate.getTime())) return '--';
+
+      // Parse time "HH-MM-SS"
+      const [hours, minutes, seconds] = timeStr.split('-').map(Number);
+
+      baseDate.setHours(hours, minutes, seconds || 0);
+
+      return baseDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
       });
-    } catch (e) {
-      return timeStr;
+    } catch {
+      return '--';
     }
   };
+
+
+
+  // const formatTime = (timeStr) => {
+  //   try {
+  //     // Convert ISO timestamp to readable time
+  //     const date = new Date(timeStr.replace(/-/g, ':'));
+  //     return date.toLocaleTimeString('en-US', { 
+  //       hour: '2-digit', 
+  //       minute: '2-digit',
+  //       second: '2-digit'
+  //     });
+  //   } catch (e) {
+  //     return timeStr;
+  //   }
+  // };
 
   const renderCurveReferenceLines = () => {
     if (!selectedLog?.configData?.curveDistances) return null;
@@ -292,7 +317,9 @@ const ProcessLogs = () => {
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Clock className="w-3 h-3" />
-                                <span>{formatTime(log.time)}</span>
+                                {/* <span>{formatTime(log.time)}</span> */}
+                                <span>{formatTime(log.date, log.time)}</span>
+
                               </div>
                             </div>
                           </div>
@@ -318,7 +345,9 @@ const ProcessLogs = () => {
                     </div>
                     <div className="flex items-center space-x-1">
                       <Clock className="w-3 h-3" />
-                      <span>{formatTime(selectedLog.time)}</span>
+                      {/* <span>{formatTime(selectedLog.time)}</span> */}
+                      <span>{formatTime(selectedLog.date, selectedLog.time)}</span>
+
                     </div>
                   </div>
                 </div>
