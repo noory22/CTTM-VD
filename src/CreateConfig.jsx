@@ -86,8 +86,8 @@ const CreateConfig = () => {
       newErrors.pathlength = 'Path Length is required';
     } else if (isNaN(formData.pathlength) || parseFloat(formData.pathlength) <= 0) {
       newErrors.pathlength = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.pathlength) < 50 || parseFloat(formData.pathlength) > 800) {
-      newErrors.pathlength = 'Path Length must be between 50mm and 800mm';
+    } else if (parseFloat(formData.pathlength) < 30 || parseFloat(formData.pathlength) > 2000) {
+      newErrors.pathlength = 'Path Length must be between 30mm and 2000mm';
     }
     
     // Validate Threshold Force (numeric and range)
@@ -95,8 +95,8 @@ const CreateConfig = () => {
       newErrors.thresholdForce = 'Threshold Force is required';
     } else if (isNaN(formData.thresholdForce) || parseFloat(formData.thresholdForce) <= 0) {
       newErrors.thresholdForce = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.thresholdForce) < 1 || parseFloat(formData.thresholdForce) > 2000) {
-      newErrors.thresholdForce = 'Threshold Force must be between 1mN and 2000mN';
+    } else if (parseFloat(formData.thresholdForce) < 1 || parseFloat(formData.thresholdForce) > 10000) {
+      newErrors.thresholdForce = 'Threshold Force must be between 1mN and 10000mN';
     }
 
     // Validate Temperature (numeric and range)
@@ -104,8 +104,8 @@ const CreateConfig = () => {
       newErrors.temperature = 'Temperature is required';
     } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
       newErrors.temperature = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.temperature) < 22 || parseFloat(formData.temperature) > 45) {
-      newErrors.temperature = 'Temperature must be between 37°C and 45°C';
+    } else if (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 45) {
+      newErrors.temperature = 'Temperature must be between 35°C and 45°C';
     }
     
     // Validate Retraction Stroke Length (numeric and range)
@@ -113,8 +113,8 @@ const CreateConfig = () => {
       newErrors.retractionLength = 'Retraction Stroke Length is required';
     } else if (isNaN(formData.retractionLength) || parseFloat(formData.retractionLength) <= 0) {
       newErrors.retractionLength = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.retractionLength) < 5 || parseFloat(formData.retractionLength) > 30) {
-      newErrors.retractionLength = 'Retraction Stroke Length must be between 5mm and 30mm';
+    } else if (parseFloat(formData.retractionLength) < 10 || parseFloat(formData.retractionLength) > 30) {
+      newErrors.retractionLength = 'Retraction Stroke Length must be between 10mm and 30mm';
     }
     
     // Validate Number of Curves (integer and range)
@@ -376,7 +376,7 @@ const CreateConfig = () => {
                     name="pathlength"
                     value={formData.pathlength}
                     onChange={handleInputChange}
-                    placeholder="Enter path length in range 50mm - 800mm"
+                    placeholder="Enter path length in range 30mm - 2000mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.pathlength 
                         ? 'border-red-300 focus:border-red-500' 
@@ -403,7 +403,7 @@ const CreateConfig = () => {
                   name="thresholdForce"
                   value={formData.thresholdForce}
                   onChange={handleInputChange}
-                  placeholder="Enter Threshold Force in range 1mN - 2000mN"
+                  placeholder="Enter Threshold Force in range 1mN - 10000mN"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                     errors.thresholdForce 
                       ? 'border-red-300 focus:border-red-500' 
@@ -429,7 +429,7 @@ const CreateConfig = () => {
                     name="temperature"
                     value={formData.temperature}
                     onChange={handleInputChange}
-                    placeholder="Enter temperature in range 37°C - 45°C "
+                    placeholder="Enter temperature in range 35°C - 45°C "
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.temperature 
                         ? 'border-red-300 focus:border-red-500' 
@@ -455,7 +455,7 @@ const CreateConfig = () => {
                     name="retractionLength"
                     value={formData.retractionLength}
                     onChange={handleInputChange}
-                    placeholder="Enter retraction length in range 5mm - 30mm"
+                    placeholder="Enter retraction length in range 10mm - 30mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.retractionLength 
                         ? 'border-red-300 focus:border-red-500' 

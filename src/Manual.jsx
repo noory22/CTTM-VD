@@ -157,7 +157,7 @@ const Manual = () => {
     } catch (error) {
       console.error('Heater control error:', error.message);
       setShowConnectionError(true);
-      alert(`Heater operation failed: ${error.message}`);
+      // alert(`Heater operation failed: ${error.message}`);
     }
   };
 
@@ -189,7 +189,7 @@ const Manual = () => {
       console.error('Homing error:', error.message);
       setShowConnectionError(true);
       setControls(prev => ({ ...prev, homing: false }));
-      alert(`Homing failed: ${error.message}`);
+      // alert(`Homing failed: ${error.message}`);
     }
   };
 
