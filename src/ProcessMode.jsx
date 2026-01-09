@@ -128,141 +128,271 @@ const ProcessMode = () => {
   }, [sensorData.status]);
   
   // Also check COIL_LLS in PLC data when reading sensor data
+  // useEffect(() => {
+  //   let intervalId;
+    
+  //   const pollSensorData = () => {
+  //     window.api.readData()
+  //       .then(data => {
+  //         if (data && data.success) {
+  //           setReadData({
+  //             temperature: data.temperature || '--',
+  //             temperatureDisplay: data.temperatureDisplay || '-- °C',
+  //             force: data.force_mN || '--',
+  //             forceDisplay: data.forceDisplay || '-- mN',
+  //             force_mN: data.force_mN || '--',
+  //             force_mN_Display: data.forceDisplay || '-- mN',
+  //             distance: data.distance || '--',
+  //             distanceDisplay: data.distanceDisplay || '-- mm'
+  //           });
+            
+  //           setSensorData(prev => ({
+  //             ...prev,
+  //             temperature: data.temperatureDisplay || '--',
+  //             force: data.forceDisplay || '--',
+  //             distance: data.distanceDisplay || '--'
+  //           }));
+
+  //           // NEW: Update COIL_LLS status from PLC data if available
+  //           if (data.coilLLS !== undefined) {
+  //             const newCoilLLSStatus = Boolean(data.coilLLS);
+  //             setCoilLLSStatus(newCoilLLSStatus);
+              
+  //             // If COIL_LLS becomes TRUE and we were homing, update status
+  //             if (newCoilLLSStatus && sensorData.status === 'HOMING') {
+  //               console.log("✅ Homing complete (from PLC data) - changing status to READY");
+  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
+  //               setIsHoming(false);
+  //             }
+  //           }
+
+  //           // Handle curve and distance logic
+  //           if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
+  //               !isRetractionEnabled && isProcessRunning && !isPaused) {
+              
+  //             const currentDistance = parseFloat(data.distance);
+  //             const targetDistance = parseFloat(selectedConfig.pathlength);
+
+  //             const curves = selectedConfig?.curveDistances || {};
+  //             Object.entries(curves).forEach(([curveLabel, curveVal]) => {
+  //               const threshold = Number(curveVal);
+
+  //               if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
+  //                 console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
+  //                 setReachedCurves(prev => ({
+  //                   ...prev,
+  //                   [curveLabel]: true
+  //                 }));
+  //               }
+  //             });
+              
+  //             console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
+              
+  //             if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
+  //               if (Math.round(currentDistance) === Math.round(targetDistance)) {
+  //                 console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
+  //                 setIsRetractionEnabled(true);
+  //                 setSensorData(prev => ({ ...prev, status: 'INSERTION COMPLETED' }));
+  //               } else {
+  //                 console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
+  //               }
+  //             }
+  //           }
+
+  //           // Check retraction completion
+  //           if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
+  //             const currentDistance = parseFloat(data.distance);
+  //             console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
+              
+  //             if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
+  //               console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
+  //               setIsRetractionCompleted(true);
+  //               setIsRetractionActive(false);
+  //               setIsRetractionEnabled(false);
+  //               setIsProcessRunning(false);
+  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
+
+  //               // Clear chart data
+  //               setChartData([]);
+                
+  //               // Clear reached curves
+  //               setReachedCurves({});
+      
+  //               // Stop CSV logging
+  //               stopCsvLogging();
+                
+  //               console.log('🔄 System reset to READY state after retraction completion');
+  //             }
+  //           }
+
+  //           // Update chart data and logging
+  //           if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
+  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
+  //             const timeFormatted = parseFloat(currentTime.toFixed(1));
+              
+  //             setChartData(prev => {
+  //               const newDataPoint = {
+  //                 time: timeFormatted,
+  //                 distance: parseFloat(data.distance) || 0,
+  //                 force: parseFloat(data.force_mN) || 0
+  //               };
+                
+  //               const newData = [...prev, newDataPoint];
+  //               return newData;
+  //             });
+  //           }
+            
+  //           if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
+  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
+  //             logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
+  //           }
+  //         } else if (data && !data.success) {
+  //           setReadData(prev => ({
+  //             ...prev,
+  //             temperatureDisplay: '-- °C',
+  //             forceDisplay: '-- mN',
+  //             distanceDisplay: '-- mm'
+  //           }));
+  //         }
+  //       })
+  //       .catch(error => {
+  //         console.error('Error polling sensor data:', error);
+  //       });
+  //   };
+
+  //   if (isConnected) {
+  //     intervalId = setInterval(pollSensorData, 1500);
+  //     pollSensorData(); // Initial call
+  //   }
+
+  //   return () => {
+  //     if (intervalId) {
+  //       clearInterval(intervalId);
+  //     }
+  //   };
+  // }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled, isRetractionActive, isRetractionPaused]);
+
+
   useEffect(() => {
     let intervalId;
     
-    const pollSensorData = () => {
-      window.api.readData()
-        .then(data => {
-          if (data && data.success) {
-            setReadData({
-              temperature: data.temperature || '--',
-              temperatureDisplay: data.temperatureDisplay || '-- °C',
-              force: data.force_mN || '--',
-              forceDisplay: data.forceDisplay || '-- mN',
-              force_mN: data.force_mN || '--',
-              force_mN_Display: data.forceDisplay || '-- mN',
-              distance: data.distance || '--',
-              distanceDisplay: data.distanceDisplay || '-- mm'
+    const pollSensorData = async () => {
+      try {
+        const data = await window.api.readData();
+        
+        if (data && data.success) {
+          setReadData({
+            temperature: data.temperature || '--',
+            temperatureDisplay: data.temperatureDisplay || '-- °C',
+            force: data.force_mN || '--',
+            forceDisplay: data.forceDisplay || '-- mN',
+            force_mN: data.force_mN || '--',
+            force_mN_Display: data.forceDisplay || '-- mN',
+            distance: data.distance || '--',
+            distanceDisplay: data.distanceDisplay || '-- mm'
+          });
+          
+          setSensorData(prev => ({
+            ...prev,
+            temperature: data.temperatureDisplay || '--',
+            force: data.forceDisplay || '--',
+            distance: data.distanceDisplay || '--'
+          }));
+
+          if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
+              !isRetractionEnabled && isProcessRunning && !isPaused) {
+            
+            const currentDistance = parseFloat(data.distance);
+            const targetDistance = parseFloat(selectedConfig.pathlength);
+
+            const curves = selectedConfig?.curveDistances || {};
+            Object.entries(curves).forEach(([curveLabel, curveVal]) => {
+              const threshold = Number(curveVal);
+
+              if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
+                console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
+                setReachedCurves(prev => ({
+                  ...prev,
+                  [curveLabel]: true
+                }));
+              }
             });
             
-            setSensorData(prev => ({
-              ...prev,
-              temperature: data.temperatureDisplay || '--',
-              force: data.forceDisplay || '--',
-              distance: data.distanceDisplay || '--'
-            }));
-
-            // NEW: Update COIL_LLS status from PLC data if available
-            if (data.coilLLS !== undefined) {
-              const newCoilLLSStatus = Boolean(data.coilLLS);
-              setCoilLLSStatus(newCoilLLSStatus);
-              
-              // If COIL_LLS becomes TRUE and we were homing, update status
-              if (newCoilLLSStatus && sensorData.status === 'HOMING') {
-                console.log("✅ Homing complete (from PLC data) - changing status to READY");
-                setSensorData(prev => ({ ...prev, status: 'READY' }));
-                setIsHoming(false);
-              }
-            }
-
-            // Handle curve and distance logic
-            if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
-                !isRetractionEnabled && isProcessRunning && !isPaused) {
-              
-              const currentDistance = parseFloat(data.distance);
-              const targetDistance = parseFloat(selectedConfig.pathlength);
-
-              const curves = selectedConfig?.curveDistances || {};
-              Object.entries(curves).forEach(([curveLabel, curveVal]) => {
-                const threshold = Number(curveVal);
-
-                if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
-                  console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
-                  setReachedCurves(prev => ({
-                    ...prev,
-                    [curveLabel]: true
-                  }));
-                }
-              });
-              
-              console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
-              
-              if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
-                if (Math.round(currentDistance) === Math.round(targetDistance)) {
-                  console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
-                  setIsRetractionEnabled(true);
-                  setSensorData(prev => ({ ...prev, status: 'INSERTION COMPLETED' }));
-                } else {
-                  console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
-                }
-              }
-            }
-
-            // Check retraction completion
-            if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
-              const currentDistance = parseFloat(data.distance);
-              console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
-              
-              if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
-                console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
-                setIsRetractionCompleted(true);
-                setIsRetractionActive(false);
-                setIsRetractionEnabled(false);
-                setIsProcessRunning(false);
-                setSensorData(prev => ({ ...prev, status: 'READY' }));
-
-                // Clear chart data
-                setChartData([]);
-                
-                // Clear reached curves
-                setReachedCurves({});
-      
-                // Stop CSV logging
-                stopCsvLogging();
-                
-                console.log('🔄 System reset to READY state after retraction completion');
-              }
-            }
-
-            // Update chart data and logging
-            if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
-              const currentTime = (Date.now() - startTimeRef.current) / 1000;
-              const timeFormatted = parseFloat(currentTime.toFixed(1));
-              
-              setChartData(prev => {
-                const newDataPoint = {
-                  time: timeFormatted,
-                  distance: parseFloat(data.distance) || 0,
-                  force: parseFloat(data.force_mN) || 0
-                };
-                
-                const newData = [...prev, newDataPoint];
-                return newData;
-              });
-            }
+            console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
             
-            if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
-              const currentTime = (Date.now() - startTimeRef.current) / 1000;
-              logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
+            if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
+              if (Math.round(currentDistance) === Math.round(targetDistance)) {
+                console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
+                setIsRetractionEnabled(true);
+                setSensorData(prev => ({ ...prev, status: 'INSERTION COMPLETED' }));
+              } else {
+                console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
+              }
             }
-          } else if (data && !data.success) {
-            setReadData(prev => ({
-              ...prev,
-              temperatureDisplay: '-- °C',
-              forceDisplay: '-- mN',
-              distanceDisplay: '-- mm'
-            }));
           }
-        })
-        .catch(error => {
-          console.error('Error polling sensor data:', error);
-        });
+
+          // Check if retraction is completed (distance = 0)
+          if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
+            const currentDistance = parseFloat(data.distance);
+            console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
+            
+            if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
+              console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
+              setIsRetractionCompleted(true);
+              setIsRetractionActive(false);
+              setIsRetractionEnabled(false);
+              setIsProcessRunning(false);
+              setSensorData(prev => ({ ...prev, status: 'READY' }));
+
+              // Clear chart data
+              setChartData([]);
+              
+              // Clear reached curves
+              setReachedCurves({});
+    
+              // Stop CSV logging
+              stopCsvLogging();
+              
+              console.log('🔄 System reset to READY state after retraction completion');
+            }
+          }
+
+          if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
+            const currentTime = (Date.now() - startTimeRef.current) / 1000;
+            const timeFormatted = parseFloat(currentTime.toFixed(1));
+            
+            setChartData(prev => {
+              const newDataPoint = {
+                time: timeFormatted,
+                distance: parseFloat(data.distance) || 0,
+                force: parseFloat(data.force_mN) || 0
+              };
+              
+              const newData = [...prev, newDataPoint];
+              return newData;
+            });
+          }
+          
+          if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
+            const currentTime = (Date.now() - startTimeRef.current) / 1000;
+            logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
+          }
+        } else if (data && !data.success) {
+          setReadData(prev => ({
+            ...prev,
+            temperatureDisplay: '-- °C',
+            forceDisplay: '-- mN',
+            distanceDisplay: '-- mm'
+          }));
+        }
+      } catch (error) {
+        console.error('Error polling sensor data:', error);
+      }
     };
 
     if (isConnected) {
       intervalId = setInterval(pollSensorData, 1500);
-      pollSensorData(); // Initial call
+      pollSensorData();
     }
 
     return () => {
@@ -271,6 +401,7 @@ const ProcessMode = () => {
       }
     };
   }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled, isRetractionActive, isRetractionPaused]);
+
 
   // Check temperature when component mounts or config changes
   useEffect(() => {
