@@ -915,10 +915,10 @@ async function readPLCData() {
   return {
     success: true,
     distance: plcState.distance,
-    distanceDisplay: `${plcState.distance.toFixed(2)} mm`,
+    distanceDisplay: `${plcState.distance} mm`,
 
     force_mN: plcState.force_mN,
-    forceDisplay: `${plcState.force_mN.toFixed(1)} mN`,
+    forceDisplay: `${plcState.force_mN} mN`,
 
     temperature: plcState.temperature,
     temperatureDisplay: `${plcState.temperature.toFixed(1)} °C`,
@@ -1129,7 +1129,7 @@ ipcMain.handle("stop", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
     coilState.retraction = false;
-    coilState.heating = false;
+    coilState.heater = false;
     coilState.manualRet = false;
 
     await client.writeCoil(COIL_RETRACTION, false);
@@ -1204,19 +1204,19 @@ ipcMain.handle("manual", async () => {
     return { manualModeActivated: true };
   });
 });
+
 ipcMain.handle("heater", async () => {
   return await safeExecute("HEATER", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
-    // Only write to coil if it's currently OFF
-    if (!coilState.heater) {
-      coilState.heater = true;
-      await client.writeCoil(COIL_HEATER, true);
-    }
+    // Always turn ON, regardless of state
+    coilState.heater = true;
+    await client.writeCoil(COIL_HEATER, true);
 
     return { heater: coilState.heater };
   });
 });
+
 let clampState = false;
 ipcMain.handle("clamp", async () => {
   return await safeExecute("CLAMP", async () => {

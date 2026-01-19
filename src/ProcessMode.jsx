@@ -461,10 +461,13 @@ const ProcessMode = () => {
         // Check if real-time temperature is LESS THAN user-defined temperature
         const isTempBelowTarget = realTimeTemp < (targetTemp - 0.5); // 0.5°C tolerance
 
-        console.log(`🌡️ Temperature Check: Real=${realTimeTemp}°C, Target=${targetTemp}°C, isBelowTarget=${isTempBelowTarget}`);
+        // Check if process is active (running, paused, or retracting)
+        const isProcessActive = isProcessRunning || isRetractionActive || isPaused || isRetractionPaused;
 
-        if (isTempBelowTarget && !temperatureStatus.isHeatingActive) {
-          // Show heating dialog if temperature is below target
+        console.log(`🌡️ Temperature Check: Real=${realTimeTemp}°C, Target=${targetTemp}°C, isBelowTarget=${isTempBelowTarget}, isProcessActive=${isProcessActive}`);
+
+        if (isTempBelowTarget && !temperatureStatus.isHeatingActive && !isProcessActive) {
+          // Show heating dialog if temperature is below target AND process is NOT active
           setTemperatureStatus(prev => ({
             ...prev,
             isHeatingRequired: true,
@@ -492,7 +495,7 @@ const ProcessMode = () => {
         }
       }
     }
-  }, [readData.temperature, selectedConfig]);
+  }, [readData.temperature, selectedConfig, isProcessRunning, isRetractionActive, isPaused, isRetractionPaused]);
 
   // Monitor temperature to auto-close dialog when target is reached or exceeded
   useEffect(() => {
@@ -587,12 +590,12 @@ const ProcessMode = () => {
     // try {
     //   console.log('🔥 Turning heater OFF...');
 
-      // const result = await window.api.heating();
+    // const result = await window.api.heating();
 
-      if (result && result.success) {
-        console.log('✅ Heater turned OFF successfully');
-        // Don't reset state here - let the temperature check handle it
-      }
+    if (result && result.success) {
+      console.log('✅ Heater turned OFF successfully');
+      // Don't reset state here - let the temperature check handle it
+    }
     // } catch (error) {
     //   console.error('❌ Error turning heater OFF:', error);
     // }
@@ -1434,8 +1437,8 @@ const ProcessMode = () => {
               </div>
 
               {/* NEW: COIL_LLS Status Display */}
-              {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
-                <div className="flex items-center justify-between">
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
+                {/* <div className="flex items-center justify-between">
                   <p className="text-gray-600 text-xs mb-1">COIL_LLS Status</p>
                   <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {getCoilLLSDisplay()}
@@ -1445,8 +1448,8 @@ const ProcessMode = () => {
                   {coilLLSStatus
                     ? '✅ Machine is at home position. Reset disabled.'
                     : '🔄 Machine is away from home. Reset enabled.'}
-                </p>
-              </div> */}
+                </p> */}
+              </div>
             </div>
           ) : (
             <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
@@ -1811,8 +1814,8 @@ const ProcessMode = () => {
                   </div>
 
                   {/* NEW: COIL_LLS Status Display for large screens */}
-                  {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
+                    {/* <div className="flex items-center justify-between">
                       <p className="text-gray-600 text-xs mb-0.5">COIL_LLS Status</p>
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {getCoilLLSDisplay()}
@@ -1822,8 +1825,8 @@ const ProcessMode = () => {
                       {coilLLSStatus
                         ? '✅ Machine is at home position. Reset disabled.'
                         : '🔄 Machine is away from home. Reset enabled.'}
-                    </p>
-                  </div> */}
+                    </p> */}
+                  </div>
                 </div>
               ) : (
                 <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
