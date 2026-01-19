@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
 const path = require("path");
+import { log } from "node:console";
 import "./index.css";
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
@@ -877,7 +878,10 @@ async function processModbusLoop() {
       // Read Manual Distance (Reg 6550)
       try {
         const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 1);
-        plcState.manualDistance = mdRes.data[0];
+        // plcState.manualDistance = mdRes.data[0];
+        plcState.manualDistance = new Int16Array(new Uint16Array([mdRes.data[0]]).buffer)[0];
+        console.log(typeof(plcState,manualDistance));
+        
       } catch (e) { }
 
       plcState.lastUpdated = Date.now();
