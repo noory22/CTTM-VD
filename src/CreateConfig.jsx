@@ -8,7 +8,7 @@ const CreateConfig = () => {
     configName: '',
     pathlength: '',
     thresholdForce: '',
-    temperature: '',
+    // temperature: '',
     retractionLength: '', 
     numberOfCurves: '' 
   });
@@ -102,13 +102,13 @@ const CreateConfig = () => {
     }
 
     // Validate Temperature (numeric and range)
-    if (!formData.temperature.trim()) {
-      newErrors.temperature = 'Temperature is required';
-    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
-      newErrors.temperature = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 45) {
-      newErrors.temperature = 'Temperature must be between 35°C and 45°C';
-    }
+    // if (!formData.temperature.trim()) {
+    //   newErrors.temperature = 'Temperature is required';
+    // } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
+    //   newErrors.temperature = 'Please enter a valid positive number';
+    // } else if (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 45) {
+    //   newErrors.temperature = 'Temperature must be between 35°C and 45°C';
+    // }
     
     // Validate Retraction Stroke Length (numeric and range)
     if (!formData.retractionLength.trim()) {
@@ -424,7 +424,7 @@ const CreateConfig = () => {
               </div>
 
               {/* Temperature */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <label htmlFor="temperature" className="block text-sm font-semibold text-slate-700">
                     Bath Temperature (°C)
                   </label>
@@ -447,7 +447,7 @@ const CreateConfig = () => {
                       <span>{errors.temperature}</span>
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">
@@ -609,7 +609,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      The values of Path Length, Threshold Force, Temperature, Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers.</span>
+                      The values of Path Length, Threshold Force,Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers.</span>
                     </p>
                   </div>
                   
@@ -627,12 +627,12 @@ const CreateConfig = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-start space-x-3">
+                  {/* <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       <span className="font-semibold">Bath Temperature</span> should be in range  <span className="font-semibold">37°C - 45°C </span> 
                     </p>
-                  </div>
+                  </div> */}
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>

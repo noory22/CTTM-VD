@@ -266,7 +266,7 @@ async function startCSVLogging(config) {
 
     // CSV HEADER
     csvStream.write(
-      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,BathTemperature,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
+      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
     );
 
     return { success: true, filePath: csvFilePath };
@@ -290,7 +290,7 @@ async function appendCSVData(data, config) {
       config.configName,
       config.pathlength,
       config.thresholdForce,
-      config.temperature,
+      // config.temperature,
       config.retractionLength,
       config.numberOfCurves,
       JSON.stringify(config.curveDistances || {})
@@ -482,7 +482,7 @@ function extractConfigFromCsv(csvData) {
     configName: 'Unknown',
     pathlength: '--',
     thresholdForce: '--',
-    temperature: '--',        // BathTemperature
+    // temperature: '--',        // BathTemperature
     retractionLength: '--',   // RetractionStrokelength
     numberOfCurves: '--',
     curveDistances: {}
@@ -497,7 +497,7 @@ function extractConfigFromCsv(csvData) {
       config.configName = firstDataRow[4] || 'Unknown';
       config.pathlength = firstDataRow[5] || '--';
       config.thresholdForce = firstDataRow[6] || '--';
-      config.temperature = firstDataRow[7] || '--';   // ✅ BathTemperature
+      // config.temperature = firstDataRow[7] || '--';   // ✅ BathTemperature
       config.retractionLength = firstDataRow[8] || '--';   // ✅ RetractionStrokelength
       config.numberOfCurves = firstDataRow[9] || '--';
 

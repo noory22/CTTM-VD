@@ -46,7 +46,7 @@ const HandleConfig = ({ mode = 'load' }) => {
       const success = await window.api.sendProcessMode({
         pathlength: selectedConfig.pathlength,
         thresholdForce: selectedConfig.thresholdForce,
-        temperature: selectedConfig.temperature,
+        // temperature: selectedConfig.temperature,
         retractionLength: selectedConfig.retractionLength
       });
 
@@ -298,7 +298,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                 </div>
 
                 {/* Temperature */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
                     Temperature (°C)
                   </label>
@@ -308,7 +308,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
                   />
-                </div>
+                </div> */}
 
                 {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">
