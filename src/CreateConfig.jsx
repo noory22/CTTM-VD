@@ -145,7 +145,7 @@ const CreateConfig = () => {
           newErrors[`curveDistance_${curveName}`] = `Please enter a valid positive number for Curve ${curveName}`;
         } else if (parseFloat(distance) < 1 || parseFloat(distance) > 2000) {
           // Assuming a reasonable range for curve distances
-          newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 1mm and 1000mm`;
+          newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 1mm and 2000mm`;
         }
       }
     }
@@ -602,7 +602,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Configuration Name</span> must contain only alphabets(no special characters)
+                      <span className="font-semibold">Configuration Name</span> must contain only alphabets and numbers(no special characters)
                     </p>
                   </div>
                   

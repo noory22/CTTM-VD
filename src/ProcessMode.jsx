@@ -1191,11 +1191,11 @@ const ProcessMode = () => {
                 <ul className="space-y-2 text-red-800">
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Serial Connection:</strong> Verify "CONNECTED" status is shown in green</span>
+                    <span><strong>Serial Connection:</strong> Verify "CONNECTED" status is shown in green.</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Status READY:</strong> System must be in READY state before starting</span>
+                    <span><strong>Status READY:</strong> System must be in READY state before starting.</span>
                   </li>
                 </ul>
               </div>
@@ -1206,17 +1206,17 @@ const ProcessMode = () => {
                   <span>Equipment & Safety Checks</span>
                 </h3>
                 <ul className="space-y-2 text-blue-800">
-                  <li className="flex items-start space-x-2">
+                  {/* <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span><strong>Camera Feed:</strong> Verify live camera feed is active and clear</span>
-                  </li>
+                  </li> */}
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span><strong>Machine Position:</strong> Ensure machine is at home position (Distance = 0.0 mm)</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Sample Placement:</strong> Verify sample is properly positioned and secured</span>
+                    <span><strong>Sample Placement:</strong> Verify sample is properly positioned and secured.</span>
                   </li>
                 </ul>
               </div>
@@ -1229,11 +1229,11 @@ const ProcessMode = () => {
                 <ul className="space-y-2 text-green-800">
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Temperature Reading:</strong> Check temperature sensor shows valid readings</span>
+                    <span><strong>Temperature Reading:</strong> Check temperature sensor shows valid readings.</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Force Sensor:</strong> Verify force reading is at baseline (near 0 mN)</span>
+                    <span><strong>Force Sensor:</strong> Verify force reading is at baseline (near 0 mN).</span>
                   </li>
                 </ul>
               </div>
@@ -1246,15 +1246,15 @@ const ProcessMode = () => {
                 <ul className="space-y-2 text-yellow-800">
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Distance:</strong> Verify matches your test requirements</span>
+                    <span><strong>Distance:</strong> Verify matches your test requirements.</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Peak Force:</strong> Confirm safety threshold is set correctly (in mN)</span>
+                    <span><strong>Peak Force:</strong> Confirm safety threshold is set correctly (in mN).</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Temperature:</strong> Ensure temperature setting is appropriate</span>
+                    <span><strong>Temperature:</strong> Ensure temperature setting is appropriate.</span>
                   </li>
                 </ul>
               </div>
@@ -1267,15 +1267,15 @@ const ProcessMode = () => {
                 <ul className="space-y-2 text-purple-800">
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Monitor Graph:</strong> Watch real-time force-distance plot for anomalies</span>
+                    <span><strong>Monitor Graph:</strong> Watch real-time force-distance plot for anomalies.</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>STOP Function:</strong> Use STOP button if any issues are observed</span>
+                    <span><strong>STOP Function:</strong> Use STOP button if any issues are observed.</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
-                    <span><strong>Stay Present:</strong> Never leave the machine unattended during operation</span>
+                    <span><strong>Stay Present:</strong> Never leave the machine unattended during operation.</span>
                   </li>
                 </ul>
               </div>

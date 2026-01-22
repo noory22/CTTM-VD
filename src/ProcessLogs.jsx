@@ -888,7 +888,7 @@ const ProcessLogs = () => {
                     <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
                   </div>
                   <h3 className="text-lg lg:text-xl font-bold text-blue-900">
-                    Process Logs Guide
+                    Process Logs Guideline
                   </h3>
                 </div>
                 <button
@@ -940,7 +940,7 @@ const ProcessLogs = () => {
                     <p className="text-blue-800 text-sm lg:text-base">
                       Each log contains complete test data including{" "}
                       <span className="font-semibold">
-                        force, distance, temperature, and configuration details
+                        force, distance and configuration details
                       </span>
                       .
                     </p>
@@ -958,7 +958,7 @@ const ProcessLogs = () => {
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       <span className="font-semibold">Warning:</span> Deleted
-                      logs cannot be recovered. Always backup important data.
+                      logs cannot be recovered.
                     </p>
                   </div>
                 </div>
