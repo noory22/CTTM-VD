@@ -729,7 +729,7 @@ const Manual = () => {
               </div>
 
               {/* Status Messages */}
-              {coilLLSStatus && !controls.homing && (
+              {/* {coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-green-500 text-center mt-2">
                   ✅ Gripper is at home position. Homing disabled.
                 </p>
@@ -745,7 +745,7 @@ const Manual = () => {
                 <p className="text-xs text-blue-500 text-center mt-2">
                   ⚙️ Homing in progress... Waiting for COIL_LLS = TRUE
                 </p>
-              )}
+              )} */}
             </div>
 
             {/* Status Panel */}

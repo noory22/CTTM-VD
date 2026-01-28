@@ -190,7 +190,7 @@ const Login = () => {
       <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
         <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
           <div className="flex items-center gap-4 lg:gap-6">
-            <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
+            <p className="text-gray-400 text-sm">Copyright 2026 © Revive Medical Technologies Inc.</p>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
             <span>Version 2.0.0</span>

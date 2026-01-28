@@ -90,6 +90,7 @@ async function connectModbus(targetPort) {
     });
 
     client.setID(1);
+    client.setTimeout(200); // 200ms timeout for faster disconnection detection
     isConnected = true;
     PORT = targetPort; // Update global
     console.log("✅ Modbus connected on", PORT);
@@ -811,12 +812,24 @@ async function safeReadRegisters(address, count) {
 // -------------------------
 // Background Modbus Processing Loop
 // -------------------------
+let consecutiveErrors = 0;
+
 async function processModbusLoop() {
   if (isLoopRunning) return;
   isLoopRunning = true;
   console.log("🔄 Background Modbus Loop Started");
 
   while (true) {
+    // 0. Critical Check: Unexpected Port Closure
+    if (isConnected && !client.isOpen) {
+      console.error("❌ Port closed unexpectedly (client.isOpen is false). Triggering disconnect.");
+      isConnected = false;
+      consecutiveErrors = 0;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('modbus-status', 'disconnected');
+      }
+    }
+
     // 1. Check Connection
     if (!isConnected || !client.isOpen) {
       // Wait before checking again
@@ -841,12 +854,15 @@ async function processModbusLoop() {
       }
 
       // 3. Read Data Cycle (Only if no commands pending)
+      let cycleSuccess = false;
 
       // Read COIL_LLS (Coil 1000)
       try {
         const llsResult = await client.readCoils(COIL_LLS, 1);
         const currentLLSState = Boolean(llsResult.data[0]);
         plcState.coilLLS = currentLLSState;
+
+        cycleSuccess = true;
 
         // Emit change event
         if (currentLLSState !== lastLLSState) {
@@ -864,18 +880,21 @@ async function processModbusLoop() {
       try {
         const dRes = await client.readHoldingRegisters(REG_DISTANCE, 1);
         plcState.distance = dRes.data[0]; // Already in mm
+        cycleSuccess = true;
       } catch (e) { }
 
       // Read Force (Reg 54-55)
       try {
         const fRes = await client.readHoldingRegisters(REG_FORCE, 2);
         plcState.force_mN = registersToFloat32LE(fRes.data[0], fRes.data[1]);
+        cycleSuccess = true;
       } catch (e) { }
 
       // Read Temperature (Reg 501)
       try {
         const tRes = await client.readHoldingRegisters(REG_TEMP, 1);
         plcState.temperature = tRes.data[0] / 10.0; // Scale to degrees C
+        cycleSuccess = true;
       } catch (e) { }
 
       // Read Manual Distance (Reg 6550)
@@ -883,9 +902,40 @@ async function processModbusLoop() {
         const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 1);
         // plcState.manualDistance = mdRes.data[0];
         plcState.manualDistance = new Int16Array(new Uint16Array([mdRes.data[0]]).buffer)[0];
-        console.log(typeof (plcState, manualDistance));
-
+        // console.log(typeof (plcState, manualDistance));
+        cycleSuccess = true;
       } catch (e) { }
+
+      // 4. Check Cycle Success & Disconnection
+      if (cycleSuccess) {
+        if (consecutiveErrors > 0) {
+          console.log(`✅ Connection recovered after ${consecutiveErrors} errors`);
+        }
+        consecutiveErrors = 0;
+      } else {
+        consecutiveErrors++;
+        console.warn(`⚠️ Read cycle failed (TIMEOUT/ERR). Consecutive errors: ${consecutiveErrors}`);
+
+        // Threshold: 
+        // 5 reads * 200ms = 1000ms per cycle in worst case (timeout).
+        // 5 cycles = ~5 seconds worst case. 
+        if (consecutiveErrors >= 5) {
+          console.error("❌ Disconnection detected: Too many consecutive read failures.");
+          isConnected = false;
+          consecutiveErrors = 0;
+
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('modbus-status', 'disconnected');
+          }
+
+          // Force close internal client to ensure clean state
+          try {
+            if (client.isOpen) {
+              client.close();
+            }
+          } catch (e) { console.error("Error closing client:", e); }
+        }
+      }
 
       plcState.lastUpdated = Date.now();
 
@@ -896,7 +946,7 @@ async function processModbusLoop() {
       continue;
     }
 
-    // 4. Yield / Wait
+    // 5. Yield / Wait
     // Short wait to prevent blocking event loop, but keep high poll rate
     // 20ms = ~50 polls/sec theoretical max (in practice less due to serial latency)
     await new Promise(resolve => setTimeout(resolve, 20));

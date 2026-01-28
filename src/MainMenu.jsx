@@ -347,7 +347,7 @@ const MainMenu = () => {
         <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
           Main Menu
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Select an option to continue</p>
+        {/* <p className="text-sm text-gray-500 mt-1">Select an option to continue</p> */}
         
         {/* User info badge */}
         <div className="flex items-center gap-2 mt-2">
@@ -445,7 +445,8 @@ const MainMenu = () => {
             {/* Left Section - Menu Options */}
             <div className="w-full xl:flex-1 xl:max-w-3xl">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">System Operations</h2>
+                {/* <h2 className="text-2xl font-bold text-gray-800 mb-2">System Operations</h2> */}
+                <p className="text-xl font-semibold text-gray-500">Select an option to continue</p>
                 {/* <p className="text-gray-600">
                   {user.role === 'admin' 
                     ? 'You have full access to all system operations' 
@@ -501,7 +502,7 @@ const MainMenu = () => {
                     key={option.id}
                     className={`group relative bg-white/70 backdrop-blur-sm border-2 rounded-2xl p-8 cursor-pointer transition-all duration-500 flex items-center gap-6 text-left shadow-xl hover:shadow-2xl transform hover:-translate-y-2 overflow-hidden
                       ${option.variant === 'danger' 
-                        ? 'border-red-200/50 bg-gradient-to-r from-red-50/80 to-rose-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90' 
+                        ? 'border-gray-200/50 bg-gradient-to-r from-gray-50/80 to-gray-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90' 
                         : 'border-gray-200/50 hover:border-blue-400/80 hover:bg-white/90'
                       }
                       ${selectedOption === option.id 
@@ -528,7 +529,7 @@ const MainMenu = () => {
                     {/* Icon container */}
                     <div className={`relative w-16 h-16 flex items-center justify-center rounded-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3
                       ${option.variant === 'danger' 
-                        ? 'bg-gradient-to-br from-red-100 to-rose-200 text-red-600 group-hover:from-red-200 group-hover:to-rose-300' 
+                        ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300' 
                         : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
                       }
                       ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}
@@ -553,7 +554,7 @@ const MainMenu = () => {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className={`text-2xl font-bold transition-colors duration-300
                           ${option.variant === 'danger' 
-                            ? 'text-red-700 group-hover:text-red-800' 
+                            ? 'text-gray-800 group-hover:text-red-800' 
                             : 'text-gray-800 group-hover:text-blue-800'
                           }
                           ${selectedOption === option.id ? 'text-blue-800' : ''}`}>
@@ -575,7 +576,7 @@ const MainMenu = () => {
                     {/* Arrow with enhanced animation */}
                     <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-500 transform
                       ${option.variant === 'danger' 
-                        ? 'bg-red-100 text-red-600 group-hover:bg-red-200 group-hover:translate-x-2 group-hover:scale-110' 
+                        ? 'bg-blue-100 text-blue-600 group-hover:bg-red-200 group-hover:text-red-600 group-hover:translate-x-2 group-hover:scale-110' 
                         : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200 group-hover:translate-x-2 group-hover:scale-110'
                       }
                       ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}
@@ -678,7 +679,7 @@ const MainMenu = () => {
      <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
         <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
           <div className="flex items-center gap-4 lg:gap-6">
-            <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
+            <p className="text-gray-400 text-sm">Copyright 2026 © Revive Medical Technologies Inc.</p>
             <div className="flex items-center gap-2">
               {/* <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
               <span className={`text-xs ${connectionInfo.color}`}>

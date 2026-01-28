@@ -585,7 +585,7 @@ const CreateConfig = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center min-w-[140px]"
                 >
                   {isLoading ? (
                     <>
@@ -594,7 +594,7 @@ const CreateConfig = () => {
                     </>
                   ) : (
                     <>
-                      <Download className="w-5 h-5" />
+                      {/* <Download className="w-5 h-5" /> */}
                       <span>Create</span>
                     </>
                   )}
@@ -603,7 +603,7 @@ const CreateConfig = () => {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                  className="min-w-[140px] py-4 px-8 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center"
                 >
                   Cancel
                 </button>
@@ -645,7 +645,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      The values of Path Length, Threshold Force,Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers.</span>
+                      The values of Path Length, Threshold Force,Retraction Stroke Length, and Number of Curves required and must be positive numbers
                     </p>
                   </div>
                   
@@ -680,7 +680,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 20</span> (whole numbers only)
+                      <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 20</span> (natural numbers only)
                     </p>
                   </div>
                   
@@ -700,7 +700,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      Configuration will be <span className="font-semibold">saved to SCTTM.json</span>
+                      Configuration will be saved to SCTTM.json
                     </p>
                   </div>
                 </div>
