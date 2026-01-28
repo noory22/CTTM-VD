@@ -390,7 +390,7 @@ const CreateConfig = () => {
                   value={formData.configName}
                   onChange={handleInputChange}
                   placeholder="Enter configuration name"
-                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
                     errors.configName 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500'
@@ -418,7 +418,7 @@ const CreateConfig = () => {
                     value={formData.pathlength}
                     onChange={handleInputChange}
                     placeholder="Enter path length in range 30mm - 2000mm"
-                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
                       errors.pathlength 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
@@ -445,7 +445,7 @@ const CreateConfig = () => {
                   value={formData.thresholdForce}
                   onChange={handleInputChange}
                   placeholder="Enter Threshold Force in range 10mN - 10000mN"
-                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                  className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
                     errors.thresholdForce 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500'
@@ -497,7 +497,7 @@ const CreateConfig = () => {
                     value={formData.retractionLength}
                     onChange={handleInputChange}
                     placeholder="Enter retraction length in range 10mm - 30mm"
-                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
                       errors.retractionLength 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
@@ -523,7 +523,7 @@ const CreateConfig = () => {
                     value={formData.numberOfCurves}
                     onChange={handleInputChange}
                     placeholder="Enter number of curves (1-20)"
-                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
                       errors.numberOfCurves 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
@@ -562,7 +562,7 @@ const CreateConfig = () => {
                           value={curveDistances[curveName] || ''}
                           onChange={(e) => handleCurveDistanceChange(curveName, e.target.value)}
                           placeholder={`Enter distance (0-${formData.pathlength || 'path length'})`}
-                          className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
+                          className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400  ${
                             errors[`curveDistance_${curveName}`] 
                               ? 'border-red-300 focus:border-red-500' 
                               : 'border-slate-200 focus:border-blue-500'
