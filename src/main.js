@@ -505,8 +505,8 @@ function extractConfigFromCsv(csvData) {
       // Parse curve distances - CurveDistances is from index 9 onwards
       try {
         if (firstDataRow.length >= 10) {
-          // Join parts from index 9 onwards to handle JSON strings with commas
-          let curveDistancesStr = firstDataRow.slice(9).join(',').trim();
+          // Join parts from index 10 onwards to handle JSON strings with commas
+          let curveDistancesStr = firstDataRow.slice(10).join(',').trim();
 
           // Handle potential issues with surrounding quotes or escapes
           if (curveDistancesStr.startsWith('"') && curveDistancesStr.endsWith('"')) {

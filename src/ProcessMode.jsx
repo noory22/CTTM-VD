@@ -1709,7 +1709,10 @@ const ProcessMode = () => {
               </div>
             )}
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 relative">
+              <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none z-10">
+                <span className="text-sm text-gray-600">Distance (mm)</span>
+              </div>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 30, right: 30, left: 10, bottom: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -1718,7 +1721,6 @@ const ProcessMode = () => {
                     dataKey="distance"
                     type="number"
                     domain={['auto', 'auto']}
-                    label={{ value: 'Distance (mm)', position: 'insideBottom', offset: -5 }}
                   />
 
                   <YAxis
