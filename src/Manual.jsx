@@ -14,8 +14,8 @@ const Manual = () => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [showConnectionError, setShowConnectionError] = useState(false);
-  const [temperature, setTemperature] = useState(22.0);
-  const [force, setForce] = useState(0);
+  const [temperature, setTemperature] = useState('--');
+  const [force, setForce] = useState('--');
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
   const [controls, setControls] = useState({
@@ -23,7 +23,7 @@ const Manual = () => {
     homing: false
   });
 
-  const [manualDistance, setManualDistance] = useState(0);
+  const [manualDistance, setManualDistance] = useState('--');
   const [graphData, setGraphData] = useState([]);
   const forwardData = graphData.filter(p => p.direction === "forward");
   const backwardData = graphData.filter(p => p.direction === "backward");
@@ -55,6 +55,10 @@ const Manual = () => {
 
           if (!status.connected) {
             setShowConnectionError(true);
+            setTemperature('--');
+            setForce('--');
+            setManualDistance('--');
+            setCoilLLSStatus(false);
           }
         })
         .catch(error => {
@@ -66,6 +70,10 @@ const Manual = () => {
             dataSource: 'real'
           });
           setShowConnectionError(true);
+          setTemperature('--');
+          setForce('--');
+          setManualDistance('--');
+          setCoilLLSStatus(false);
         });
     };
 
@@ -87,6 +95,10 @@ const Manual = () => {
 
       if (status === 'disconnected') {
         setShowConnectionError(true);
+        setTemperature('--');
+        setForce('--');
+        setManualDistance('--');
+        setCoilLLSStatus(false);
       } else {
         setShowConnectionError(false);
       }
@@ -363,11 +375,20 @@ const Manual = () => {
                 ? updated.slice(updated.length - 200)
                 : updated;
             });
+          } else {
+            // Handle success: false (e.g. disconnected)
+            setForce('--');
+            setTemperature('--');
+            setManualDistance('--');
+            setCoilLLSStatus(false);
           }
         })
         .catch(error => {
           console.error('Error reading PLC data:', error);
-          // NO SIMULATED DATA - Just show last known values
+          setForce('--');
+          setTemperature('--');
+          setManualDistance('--');
+          setCoilLLSStatus(false);
         });
     };
 
@@ -427,19 +448,15 @@ const Manual = () => {
             </button>
 
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
+          </div>
 
+          <div className="flex items-center space-x-3">
             {/* USB Connection Status Badge */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
               <span className="text-sm font-medium">
                 {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
               </span>
-              {/* <span className="text-xs opacity-75">
-                {connectionStatus.port}
-              </span>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${connectionStatus.dataSource === 'real' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                LIVE
-              </span> */}
             </div>
 
             {!connectionStatus.connected && (
@@ -451,22 +468,22 @@ const Manual = () => {
                 Reconnect
               </button>
             )}
-          </div>
 
-          <button
-            onClick={() => {
-              const confirmed = window.confirm("Are you sure you want to exit?");
-              if (confirmed) {
-                disableManualMode();
-                window.close();
-              }
-            }}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
+            <button
+              onClick={() => {
+                const confirmed = window.confirm("Are you sure you want to exit?");
+                if (confirmed) {
+                  disableManualMode();
+                  window.close();
+                }
+              }}
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
             rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all 
             duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
-          >
-            <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-          </button>
+            >
+              <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -656,7 +673,7 @@ const Manual = () => {
                           ></div>
                         </div>
                         <span className="text-slate-800 font-bold text-lg">
-                          {temperature > 100 ? 'ERROR 01' : `${temperature.toFixed(1)}°C`}
+                          {temperature === '--' ? '-- °C' : (parseFloat(temperature) > 100 ? 'ERROR 01' : `${parseFloat(temperature).toFixed(1)}°C`)}
                         </span>
                       </div>
                     </div>
@@ -677,7 +694,9 @@ const Manual = () => {
                           ></div>
                         </div>
 
-                        <span className="text-slate-800 font-bold text-lg">{force.toFixed(2)} mN</span>
+                        <span className="text-slate-800 font-bold text-lg">
+                          {force === '--' ? '-- mN' : `${parseFloat(force).toFixed(2)} mN`}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         ≈ {(force / 1000).toFixed(4)} N
@@ -695,7 +714,7 @@ const Manual = () => {
                       <p className="text-slate-600 text-sm font-medium">Distance</p>
 
                       <span className="text-slate-800 font-bold text-lg">
-                        {manualDistance} mm
+                        {manualDistance === '--' ? '-- mm' : `${manualDistance} mm`}
                       </span>
                     </div>
                   </div>
@@ -830,7 +849,7 @@ const Manual = () => {
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 

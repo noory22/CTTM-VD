@@ -8,14 +8,15 @@ contextBridge.exposeInMainWorld("api", {
   writeConfigFile: (configs) => ipcRenderer.invoke("write-config-file", configs),
   deleteConfigFile: (configName) => ipcRenderer.invoke("delete-config-file", configName),
   sendProcessMode: (config) => ipcRenderer.invoke("send-process-mode", config),
-  
+
   // ============= COMMAND FUNCTIONS =============
-  home:  () => ipcRenderer.invoke("home"),
+  home: () => ipcRenderer.invoke("home"),
   start: () => ipcRenderer.invoke("start"),
-  stop:  () => ipcRenderer.invoke("stop"),
+  stop: () => ipcRenderer.invoke("stop"),
   reset: () => ipcRenderer.invoke("reset"),
   heating: () => ipcRenderer.invoke("heating"),
   heater: () => ipcRenderer.invoke("heater"),
+  heaterOff: () => ipcRenderer.invoke("heater-off"),
   retraction: () => ipcRenderer.invoke("retraction"),
   manual: () => ipcRenderer.invoke("manual"),
   clamp: () => ipcRenderer.invoke("clamp"),
@@ -31,7 +32,7 @@ contextBridge.exposeInMainWorld("api", {
   getLogFiles: () => ipcRenderer.invoke("get-log-files"),
   readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
   deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
-  
+
   // ============= DATA FUNCTIONS =============
   readData: () => ipcRenderer.invoke("read-data"),
   // Add this to the exposed API in preload.js
@@ -43,15 +44,15 @@ contextBridge.exposeInMainWorld("api", {
 // Listen for connection status updates from main process
 ipcRenderer.on('modbus-status', (event, status) => {
   // Dispatch a custom event that the UI can listen for
-  window.dispatchEvent(new CustomEvent('modbus-status-change', { 
-    detail: status 
+  window.dispatchEvent(new CustomEvent('modbus-status-change', {
+    detail: status
   }));
 });
 
 // Add this listener to preload.js (add it with the other listeners)
 ipcRenderer.on('lls-status', (event, status) => {
-  window.dispatchEvent(new CustomEvent('lls-status-change', { 
-    detail: status 
+  window.dispatchEvent(new CustomEvent('lls-status-change', {
+    detail: status
   }));
 });
 
