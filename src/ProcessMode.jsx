@@ -141,6 +141,12 @@ const ProcessMode = () => {
         if (data && data.success) {
           // Fix: Handle 0 properly (0 is falsy in JS)
           const formatVal = (val, unit) => (val !== undefined && val !== null && val !== '--') ? `${val} ${unit}` : `-- ${unit}`;
+          const formatTemp = (val) => {
+            if (val === undefined || val === null || val === '--') return '-- °C';
+            const num = parseFloat(val);
+            if (!isNaN(num) && num > 100) return 'ERROR O1';
+            return `${val} °C`;
+          };
           const rawVal = (val) => (val !== undefined && val !== null) ? val : '--';
 
           // Helper for number formatting
@@ -151,7 +157,7 @@ const ProcessMode = () => {
 
           setReadData({
             temperature: rawVal(data.temperature),
-            temperatureDisplay: formatVal(data.temperature, '°C'),
+            temperatureDisplay: formatTemp(data.temperature),
             force: rawVal(data.force_mN),
             forceDisplay: formatVal(toFixed2(data.force_mN), 'mN'),
             force_mN: rawVal(data.force_mN),
@@ -162,7 +168,7 @@ const ProcessMode = () => {
 
           setSensorData(prev => ({
             ...prev,
-            temperature: formatVal(data.temperature, '°C'),
+            temperature: formatTemp(data.temperature),
             force: formatVal(toFixed2(data.force_mN), 'mN'),
             distance: formatVal(data.distance, 'mm')
           }));
@@ -1177,7 +1183,7 @@ const ProcessMode = () => {
                 </div>
               </div>
 
-              <div className={`border-l-4 p-4 rounded-r-lg mb-4 ${parseFloat(readData.temperature) >= 39 ? 'bg-red-50 border-red-500' : 'bg-orange-50 border-orange-500'}`}>
+              {/* <div className={`border-l-4 p-4 rounded-r-lg mb-4 ${parseFloat(readData.temperature) >= 39 ? 'bg-red-50 border-red-500' : 'bg-orange-50 border-orange-500'}`}>
                 <p className={`font-medium text-center ${parseFloat(readData.temperature) >= 39 ? 'text-red-800' : 'text-orange-800'}`}>
                   {parseFloat(readData.temperature) >= 39
                     ? `Temperature is too HIGH (${readData.temperatureDisplay}). Please wait for it to cool down below 39°C.`
@@ -1187,7 +1193,7 @@ const ProcessMode = () => {
                     )
                   }
                 </p>
-              </div>
+              </div> */}
 
               <div className="flex space-x-3">
                 {parseFloat(readData.temperature) < 39 && (
@@ -1214,7 +1220,7 @@ const ProcessMode = () => {
                         <p className="text-green-700 font-bold">Heater is ON</p>
                       </div>
                       <p className="text-green-600 text-center text-sm mt-1">
-                        Waiting for temperature to rise...
+                        Waiting for temperature to rise above 35°C...
                       </p>
                     </div>
                   )

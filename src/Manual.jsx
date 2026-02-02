@@ -655,7 +655,9 @@ const Manual = () => {
                             style={{ width: `${Math.min(100, (temperature / 40) * 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-slate-800 font-bold text-lg">{temperature.toFixed(1)}°C</span>
+                        <span className="text-slate-800 font-bold text-lg">
+                          {temperature > 100 ? 'ERROR 01' : `${temperature.toFixed(1)}°C`}
+                        </span>
                       </div>
                     </div>
                   </div>
