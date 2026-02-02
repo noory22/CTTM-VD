@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move } from 'lucide-react';
+import { ArrowLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move, TrendingUp } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -264,21 +264,20 @@ const Manual = () => {
       });
   };
 
-  const handleReconnect = () => {
-    window.api.reconnect()
-      .then(result => {
-        if (result.success && result.connected) {
-          setShowConnectionError(false);
-          setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
-          alert('Successfully reconnected to PLC!');
-        } else {
-          alert('Failed to reconnect. Please check PLC connection.');
-        }
-      })
-      .catch(error => {
-        console.error('Reconnect error:', error);
-        alert('Reconnection failed. Please check PLC connection.');
-      });
+  const handleReconnect = async () => {
+    try {
+      console.log('Attempting to reconnect...');
+      const result = await window.api.reconnect();
+      if (result.success && result.connected) {
+        setShowConnectionError(false);
+        setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
+        console.log('Reconnect successful');
+      } else {
+        console.log('Reconnect failed');
+      }
+    } catch (error) {
+      console.error('Reconnect error:', error);
+    }
   };
 
   // const retryCamera = () => {
@@ -430,18 +429,28 @@ const Manual = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
 
             {/* USB Connection Status Badge */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
               <span className="text-sm font-medium">
-                {connectionStatus.connected ? 'PLC Connected' : 'PLC Disconnected'}
+                {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
               </span>
-              <span className="text-xs opacity-75">
+              {/* <span className="text-xs opacity-75">
                 {connectionStatus.port}
               </span>
               <span className={`text-xs px-1.5 py-0.5 rounded ${connectionStatus.dataSource === 'real' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
                 LIVE
-              </span>
+              </span> */}
             </div>
+
+            {!connectionStatus.connected && (
+              <button
+                onClick={handleReconnect}
+                className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                title="Attempt to reconnect USB"
+              >
+                Reconnect
+              </button>
+            )}
           </div>
 
           <button
@@ -465,7 +474,7 @@ const Manual = () => {
           {/* Live Video Feed */}
           <div className="xl:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-             {/* <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-4">
+              {/* <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-white font-semibold flex items-center space-x-2">
                     <div className={`w-3 h-3 ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`}></div>
@@ -475,7 +484,7 @@ const Manual = () => {
               </div>*/}
 
               {/* Video Container */}
-             {/*} <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
+              {/*} <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
                 {cameraLoading ? (
                   <div className="flex flex-col items-center space-y-4">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
@@ -546,23 +555,42 @@ const Manual = () => {
               */}
 
               {/* Manual Distance Graph */}
-              <div className="bg-white border-t border-slate-200 p-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-2">
-                  Manual Distance vs Force
-                </h3>
+              <div className="bg-white border-t border-slate-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-800">
+                        Distance vs Force
+                      </h3>
+                      <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-1 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50" />
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Insertion</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-1 bg-red-500 rounded-full shadow-sm shadow-red-500/50" />
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Retraction</span>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="w-full h-56">
+                <div className="w-full h-56 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={graphData}
-                      margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+                      margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
 
                       <XAxis
                         dataKey="manualDistance"
                         type="number"
-                        label={{ value: "Manual Distance (mm)", position: "insideBottom", offset: -10 }}
                         tick={{ fontSize: 11 }}
                       />
 
@@ -574,7 +602,7 @@ const Manual = () => {
                       <Tooltip
                         formatter={(value) => [`${value} mN`, "Force"]}
                         labelFormatter={(label) =>
-                          `Manual Distance: ${label} mm`
+                          `Distance: ${label} mm`
                         }
                       />
 
@@ -600,6 +628,13 @@ const Manual = () => {
                       />
                     </LineChart>
                   </ResponsiveContainer>
+
+                  {/* Static X-Axis Label to prevent blinking */}
+                  <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
+                    <span className="text-[11px] font-medium text-slate-600">
+                      Distance (mm)
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -655,7 +690,7 @@ const Manual = () => {
                     </div>
 
                     <div>
-                      <p className="text-slate-600 text-sm font-medium">Movement Distance</p>
+                      <p className="text-slate-600 text-sm font-medium">Distance</p>
 
                       <span className="text-slate-800 font-bold text-lg">
                         {manualDistance} mm
@@ -678,10 +713,10 @@ const Manual = () => {
                   onClick={handleHeaterToggle}
                   disabled={!connectionStatus.connected || controls.homing}
                   className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.heater
-                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : controls.heater
+                      ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -708,10 +743,10 @@ const Manual = () => {
                   onClick={resetCatheter}
                   disabled={isHomingButtonDisabled}
                   className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.homing
-                        ? 'bg-blue-500 border-blue-600 text-white'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : controls.homing
+                      ? 'bg-blue-500 border-blue-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -793,7 +828,7 @@ const Manual = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

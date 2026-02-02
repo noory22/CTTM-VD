@@ -1264,12 +1264,24 @@ ipcMain.handle("manual", async () => {
 });
 
 ipcMain.handle("heater", async () => {
-  return await safeExecute("HEATER", async () => {
+  return await safeExecute("HEATER-ON", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
     // Always turn ON, regardless of state
     coilState.heater = true;
     await client.writeCoil(COIL_HEATER, true);
+
+    return { heater: coilState.heater };
+  });
+});
+
+ipcMain.handle("heater-off", async () => {
+  return await safeExecute("HEATER-OFF", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    // Always turn OFF
+    coilState.heater = false;
+    await client.writeCoil(COIL_HEATER, false);
 
     return { heater: coilState.heater };
   });

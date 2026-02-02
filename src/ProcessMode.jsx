@@ -481,26 +481,29 @@ const ProcessMode = () => {
   };
 
   const turnOffHeater = async () => {
-    // try {
-    //   console.log('🔥 Turning heater OFF...');
+    try {
+      console.log('🔥 Turning heater OFF...');
 
-    // const result = await window.api.heating();
+      const result = await window.api.heaterOff();
 
-    if (result && result.success) {
-      console.log('✅ Heater turned OFF successfully');
-      // Don't reset state here - let the temperature check handle it
+      if (result && result.success) {
+        console.log('✅ Heater turned OFF successfully');
+        setTemperatureStatus(prev => ({
+          ...prev,
+          isHeatingActive: false,
+          heaterButtonDisabled: false
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error turning heater OFF:', error);
     }
-    // } catch (error) {
-    //   console.error('❌ Error turning heater OFF:', error);
-    // }
   };
 
-  const closeHeatingDialog = () => {
-    // Allow closing dialog
-    setTemperatureStatus(prev => ({
-      ...prev,
-      showHeatingDialog: false
-    }));
+  const closeHeatingDialog = async () => {
+    // Turn off heater and navigate back
+    console.log('🔙 Closing heating dialog: Turning heater OFF and navigating back...');
+    await turnOffHeater();
+    navigate('/handle-config/load');
   };
 
   //-------------------------------------------------------------------------//
@@ -643,6 +646,8 @@ const ProcessMode = () => {
 
     checkConnection();
 
+
+
     const handleModbusStatusChange = (event) => {
       setIsConnected(event.detail === 'connected');
     };
@@ -653,6 +658,21 @@ const ProcessMode = () => {
       window.removeEventListener('modbus-status-change', handleModbusStatusChange);
     };
   }, []);
+
+  const handleReconnect = async () => {
+    try {
+      console.log('Attempting to reconnect...');
+      const result = await window.api.reconnect();
+      if (result.success && result.connected) {
+        setIsConnected(true);
+        console.log('Reconnect successful');
+      } else {
+        console.log('Reconnect failed');
+      }
+    } catch (error) {
+      console.error('Reconnect error:', error);
+    }
+  };
 
   // useEffect(() => {
   //   const initCamera = async () => {
@@ -1086,14 +1106,12 @@ const ProcessMode = () => {
                       : (temperatureStatus.isHeatingActive ? 'Heating In Progress' : 'Heating Required')}
                   </h2>
                 </div>
-                {!temperatureStatus.isHeatingRequired && (
-                  <button
-                    onClick={closeHeatingDialog}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-all"
-                  >
-                    <X className="w-6 h-6 text-white" />
-                  </button>
-                )}
+                <button
+                  onClick={closeHeatingDialog}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 text-white" />
+                </button>
               </div>
             </div>
 
@@ -1480,9 +1498,19 @@ const ProcessMode = () => {
                 }`}>
                 <Usb className={`${isXlScreen ? 'w-5 h-5' : 'w-4 h-4'}`} />
                 <span className="text-xs sm:text-sm font-semibold hidden sm:inline">
-                  {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                  {isConnected ? 'USB CONNECTED' : 'USB DISCONNECTED'}
                 </span>
               </div>
+
+              {!isConnected && (
+                <button
+                  onClick={handleReconnect}
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors hidden sm:block"
+                  title="Attempt to reconnect USB"
+                >
+                  Reconnect
+                </button>
+              )}
 
               <button
                 onClick={() => setShowInfoModal(true)}
@@ -1979,7 +2007,7 @@ const ProcessMode = () => {
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">RESET</span>
                 {coilLLSStatus && (
-                  <span className="text-xs ml-1 text-gray-500">(Disabled)</span>
+                  <span className="text-xs ml-1 text-gray-500"></span>
                 )}
               </button>
             </div>

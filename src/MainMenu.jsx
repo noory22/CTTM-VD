@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {Power, LogOut, X, User, Wifi, WifiOff, Usb, Cable} from 'lucide-react';
-// import manualIcon from '../assets/Manual.png'; // adjust path if needed
+import { Power, LogOut, X, User, Wifi, WifiOff, Usb, Cable } from 'lucide-react';
+import manualIcon from './assets/Manual.png';
 
 const MainMenu = () => {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -9,14 +9,14 @@ const MainMenu = () => {
   const navigate = useNavigate();
   const [showPowerDropdown, setShowPowerDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  
+
   // Get user info from localStorage
   const [user, setUser] = useState(null);
-  
+
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [connectionChecked, setConnectionChecked] = useState(false);
-  
+
   useEffect(() => {
     // Check if user is logged in
     const userData = JSON.parse(localStorage.getItem('user'));
@@ -56,7 +56,7 @@ const MainMenu = () => {
       title: 'Manual Mode',
       icon: (
         <img
-          src="./assets/Manual.png"
+          src={manualIcon}
           alt="Manual Mode"
           className="w-8 h-8 object-contain"
         />
@@ -180,10 +180,10 @@ const MainMenu = () => {
   //     alert(`Access Denied: ${user?.role === 'operator' ? 'Operator' : 'Unknown user'} cannot access ${option.title}`);
   //     return;
   //   }
-    
+
   //   setSelectedOption(option.id);
   //   console.log(`Selected: ${option.title}`);
-    
+
   //   if (option.id === 'create-config') {
   //     navigate('/create-config');
   //   }
@@ -210,7 +210,7 @@ const MainMenu = () => {
   //   // }
   //   else if (option.id === 'manual-mode') {
   //     console.log('Activating manual mode...');
-      
+
   //     window.api.manual()
   //       .then(res => {
   //         if (!res?.success) {
@@ -234,10 +234,10 @@ const MainMenu = () => {
       alert(`Access Denied: ${user?.role === 'operator' ? 'Operator' : 'Unknown user'} cannot access ${option.title}`);
       return;
     }
-    
+
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
-    
+
     if (option.id === 'create-config') {
       navigate('/create-config');
     }
@@ -251,16 +251,16 @@ const MainMenu = () => {
       // DIRECT NAVIGATION - Send command and navigate immediately
       try {
         console.log('Activating manual mode (non-blocking)...');
-        
+
         // Send manual mode command without waiting
         window.api.manual().catch(error => {
           console.error('Manual mode command error (non-blocking):', error);
           // Don't block navigation even if command fails
         });
-        
+
         // Navigate immediately
         navigate('/manual-mode');
-        
+
       } catch (error) {
         console.error('Navigation error for manual mode:', error);
         // Still navigate even if there's an error
@@ -292,7 +292,7 @@ const MainMenu = () => {
   };
 
   // Filter menu options based on user role
-  const filteredMenuOptions = menuOptions.filter(option => 
+  const filteredMenuOptions = menuOptions.filter(option =>
     user && option.roles.includes(user.role)
   );
 
@@ -345,101 +345,101 @@ const MainMenu = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
       {/* Header */}
       <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
-      
-      <div className="flex-1">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-          Main Menu
-        </h1>
-        {/* <p className="text-sm text-gray-500 mt-1">Select an option to continue</p> */}
-        
-        {/* User info badge */}
-        <div className="flex items-center gap-2 mt-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-            <User className="w-3 h-3" />
-            <span className="text-xs font-medium">
-              {user.username} ({user.role === 'admin' ? 'Administrator' : 'Operator'})
-            </span>
-          </div>
-          {/* <span className="text-xs text-gray-500">
+
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+            Main Menu
+          </h1>
+          {/* <p className="text-sm text-gray-500 mt-1">Select an option to continue</p> */}
+
+          {/* User info badge */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+              <User className="w-3 h-3" />
+              <span className="text-xs font-medium">
+                {user.username} ({user.role === 'admin' ? 'Administrator' : 'Operator'})
+              </span>
+            </div>
+            {/* <span className="text-xs text-gray-500">
             {user.role === 'admin' ? 'Full Access' : 'Limited Access'}
           </span> */}
-        </div>
-      </div>
-      
-      {/* Connection Status Indicator */}
-      <div className="flex items-center gap-3 mr-4">
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
-          {connectionInfo.icon}
-          <span className={`text-xs font-medium ${connectionInfo.color}`}>
-            {connectionInfo.text}
-          </span>
-        </div>
-        
-        {connectionStatus === 'disconnected' && connectionChecked && (
-          <button
-            onClick={handleReconnect}
-            className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Reconnect
-          </button>
-        )}
-      </div>
-      
-      <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={togglePowerDropdown}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0 z-40"
-            >
-              <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-            </button>
-
-            {/* Dropdown Menu - Enhanced with higher z-index */}
-            {showPowerDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transform origin-top-right animate-in fade-in-0 zoom-in-95 duration-200">
-                {/* Dropdown Header */}
-                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-200/50">
-                  <p className="text-sm font-semibold text-gray-700">Power Options</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Logged in as: <span className="font-medium">{user.username}</span>
-                  </p>
-                </div>
-                
-                {/* Exit Button */}
-                <button
-                  onClick={handleExit}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left text-red-600 hover:bg-red-50/80 transition-all duration-200 border-b border-gray-100/50 group"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
-                    <X className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div className="flex-1">
-                    <span className="font-semibold block">Exit</span>
-                    <span className="text-xs text-red-500">Close the application</span>
-                  </div>
-                </button>
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left text-blue-600 hover:bg-blue-50/80 transition-all duration-200 border-b border-gray-100/50 group"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                    <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div className="flex-1">
-                    <span className="font-semibold block">Logout</span>
-                    <span className="text-xs text-blue-500">Return to login screen</span>
-                  </div>
-                </button>
-                {/* Dropdown decoration */}
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 via-blue-500 to-gray-500 opacity-30 rounded-l-lg"></div>
-                
-                {/* Dropdown arrow */}
-                <div className="absolute -top-2 right-4 w-4 h-4 bg-white/95 backdrop-blur-xl transform rotate-45 border-t border-l border-gray-200/50"></div>
-              </div>
-            )}
           </div>
-    </header>
+        </div>
+
+        {/* Connection Status Indicator */}
+        <div className="flex items-center gap-3 mr-4">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
+            {connectionInfo.icon}
+            <span className={`text-xs font-medium ${connectionInfo.color}`}>
+              {connectionInfo.text}
+            </span>
+          </div>
+
+          {connectionStatus === 'disconnected' && connectionChecked && (
+            <button
+              onClick={handleReconnect}
+              className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reconnect
+            </button>
+          )}
+        </div>
+
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={togglePowerDropdown}
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0 z-40"
+          >
+            <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+          </button>
+
+          {/* Dropdown Menu - Enhanced with higher z-index */}
+          {showPowerDropdown && (
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transform origin-top-right animate-in fade-in-0 zoom-in-95 duration-200">
+              {/* Dropdown Header */}
+              <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-200/50">
+                <p className="text-sm font-semibold text-gray-700">Power Options</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Logged in as: <span className="font-medium">{user.username}</span>
+                </p>
+              </div>
+
+              {/* Exit Button */}
+              <button
+                onClick={handleExit}
+                className="w-full flex items-center gap-3 px-4 py-4 text-left text-red-600 hover:bg-red-50/80 transition-all duration-200 border-b border-gray-100/50 group"
+              >
+                <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
+                  <X className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex-1">
+                  <span className="font-semibold block">Exit</span>
+                  <span className="text-xs text-red-500">Close the application</span>
+                </div>
+              </button>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-4 text-left text-blue-600 hover:bg-blue-50/80 transition-all duration-200 border-b border-gray-100/50 group"
+              >
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                  <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex-1">
+                  <span className="font-semibold block">Logout</span>
+                  <span className="text-xs text-blue-500">Return to login screen</span>
+                </div>
+              </button>
+              {/* Dropdown decoration */}
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 via-blue-500 to-gray-500 opacity-30 rounded-l-lg"></div>
+
+              {/* Dropdown arrow */}
+              <div className="absolute -top-2 right-4 w-4 h-4 bg-white/95 backdrop-blur-xl transform rotate-45 border-t border-l border-gray-200/50"></div>
+            </div>
+          )}
+        </div>
+      </header>
 
       {/* Main Content */}
       <main className="flex-1 px-8 py-8 xl:py-16 flex-shrink-0 min-h-0">
@@ -455,7 +455,7 @@ const MainMenu = () => {
                     ? 'You have full access to all system operations' 
                     : 'You have access to operational features'}
                 </p> */}
-                
+
                 {/* Connection Status Banner */}
                 {/* <div className={`mt-4 p-4 rounded-xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
                   <div className="flex items-center justify-between">
@@ -485,7 +485,7 @@ const MainMenu = () => {
                     )}
                   </div>
                 </div> */}
-                
+
                 {/* Role info banner */}
                 {/* <div className={`mt-4 p-3 rounded-lg ${user.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-200'}`}>
                   <div className="flex items-center gap-2">
@@ -498,18 +498,18 @@ const MainMenu = () => {
                   </div>
                 </div> */}
               </div>
-              
+
               <div className="grid gap-5">
                 {filteredMenuOptions.map((option, index) => (
                   <button
                     key={option.id}
                     className={`group relative bg-white/70 backdrop-blur-sm border-2 rounded-2xl p-8 cursor-pointer transition-all duration-500 flex items-center gap-6 text-left shadow-xl hover:shadow-2xl transform hover:-translate-y-2 overflow-hidden
-                      ${option.variant === 'danger' 
-                        ? 'border-gray-200/50 bg-gradient-to-r from-gray-50/80 to-gray-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90' 
+                      ${option.variant === 'danger'
+                        ? 'border-gray-200/50 bg-gradient-to-r from-gray-50/80 to-gray-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90'
                         : 'border-gray-200/50 hover:border-blue-400/80 hover:bg-white/90'
                       }
-                      ${selectedOption === option.id 
-                        ? 'border-blue-400 bg-blue-50/80 shadow-blue-200/50' 
+                      ${selectedOption === option.id
+                        ? 'border-blue-400 bg-blue-50/80 shadow-blue-200/50'
                         : ''
                       }
                       ${!option.roles.includes(user?.role) ? 'opacity-50 cursor-not-allowed' : ''}
@@ -524,24 +524,24 @@ const MainMenu = () => {
                   >
                     {/* Animated background gradient */}
                     <div className={`absolute inset-0 bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                    
+
                     {/* Left accent line */}
                     <div className={`absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b ${option.gradient} transition-all duration-500 transform scale-y-0 group-hover:scale-y-100 origin-top
                       ${selectedOption === option.id ? 'scale-y-100' : ''}`}></div>
-                    
+
                     {/* Icon container */}
                     <div className={`relative w-16 h-16 flex items-center justify-center rounded-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3
-                      ${option.variant === 'danger' 
-                        ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300' 
+                      ${option.variant === 'danger'
+                        ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300'
                         : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
                       }
                       ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}
                       ${!option.roles.includes(user?.role) ? 'opacity-70' : ''}`}>
                       {option.icon}
-                      
+
                       {/* Glow effect */}
                       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm`}></div>
-                      
+
                       {/* Restricted icon for operators */}
                       {user.role === 'operator' && !option.roles.includes('operator') && (
                         <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -551,19 +551,19 @@ const MainMenu = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className={`text-2xl font-bold transition-colors duration-300
-                          ${option.variant === 'danger' 
-                            ? 'text-gray-800 group-hover:text-red-800' 
+                          ${option.variant === 'danger'
+                            ? 'text-gray-800 group-hover:text-red-800'
                             : 'text-gray-800 group-hover:text-blue-800'
                           }
                           ${selectedOption === option.id ? 'text-blue-800' : ''}`}>
                           {option.title}
                         </h3>
-                        
+
                         {/* Admin-only badge */}
                         {/* {option.roles.length === 1 && option.roles[0] === 'admin' && (
                           <span className="px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
@@ -575,17 +575,17 @@ const MainMenu = () => {
                         {option.description}
                       </p>
                     </div>
-                    
+
                     {/* Arrow with enhanced animation */}
                     <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-500 transform
-                      ${option.variant === 'danger' 
-                        ? 'bg-blue-100 text-blue-600 group-hover:bg-red-200 group-hover:text-red-600 group-hover:translate-x-2 group-hover:scale-110' 
+                      ${option.variant === 'danger'
+                        ? 'bg-blue-100 text-blue-600 group-hover:bg-red-200 group-hover:text-red-600 group-hover:translate-x-2 group-hover:scale-110'
                         : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200 group-hover:translate-x-2 group-hover:scale-110'
                       }
                       ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}
                       ${!option.roles.includes(user?.role) ? 'opacity-50' : ''}`}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-125">
-                        <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
 
@@ -608,12 +608,12 @@ const MainMenu = () => {
                     Specialized Catheter Trackability Testing Machine
                   </h2>
                 </div>
-                
+
                 <p className="text-xl leading-relaxed text-gray-700 mb-10 font-medium">
-                  A reliable solution for precise catheter navigation and accurate performance 
+                  A reliable solution for precise catheter navigation and accurate performance
                   evaluation, designed for accuracy in every test.
                 </p>
-                
+
                 {/* Connection Status Card */}
                 {/* <div className={`mb-6 p-5 rounded-2xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
                   <div className="flex items-center gap-3 mb-3">
@@ -652,7 +652,7 @@ const MainMenu = () => {
                     )}
                   </div>
                 </div> */}
-                
+
                 {/* User Access Info */}
                 {/* <div className={`p-5 rounded-2xl ${user.role === 'admin' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200'}`}>
                   <h3 className="text-lg font-bold mb-2">Current User Access Level</h3>
@@ -679,7 +679,7 @@ const MainMenu = () => {
       </main>
 
       {/* Enhanced Footer */}
-     <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
+      <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
         <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
           <div className="flex items-center gap-4 lg:gap-6">
             <p className="text-gray-400 text-sm">Copyright 2026 © Revive Medical Technologies Inc.</p>

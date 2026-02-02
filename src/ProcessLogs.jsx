@@ -596,20 +596,28 @@ const ProcessLogs = () => {
                     <h2 className="text-xl font-semibold text-slate-800">
                       Force vs Distance Analysis
                     </h2>
+                    <p className="text-slate-500 text-xs font-medium">Logged data analysis</p>
                     {/* <p className="text-slate-600 text-sm">
                       Insertion (0 → Max) and Retraction (Max → 0)
                     </p> */}
                   </div>
                 </div>
                 {selectedLog && (
-                  <div className="text-sm text-slate-500">
-                    {/* Forward: {forwardData.length} pts | Backward: {backwardData.length} pts */}
+                  <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-1 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50" />
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Insertion</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-1 bg-red-500 rounded-full shadow-sm shadow-red-500/50" />
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Retraction</span>
+                    </div>
                   </div>
                 )}
               </div>
 
               {selectedLog ? (
-                <div className="h-96">
+                <div className="h-96 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
@@ -647,15 +655,7 @@ const ProcessLogs = () => {
                         formatter={(value) => [`${value.toFixed(3)} mN`, "Force"]}
                         labelFormatter={(label) => `Distance: ${label} mm`}
                       />
-                      {/* <Legend
-                        align="right"
-                        verticalAlign="top"
-                        layout="horizontal"
-                        wrapperStyle={{
-                          paddingTop: "10px",
-                          paddingRight: "10px"
-                        }}
-                      /> */}
+
 
                       {renderCurveReferenceLines()}
 
