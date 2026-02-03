@@ -23,7 +23,7 @@ const HandleConfig = ({ mode = 'load' }) => {
     try {
       setLoadingConfigs(true);
       const configs = await window.api.readConfigFile();
-      setAvailableConfigs(configs);
+      setAvailableConfigs([...configs].reverse());
     } catch (error) {
       console.error('Error loading configurations:', error);
     } finally {
@@ -64,7 +64,7 @@ const HandleConfig = ({ mode = 'load' }) => {
     } catch (error) {
       console.error("PLC transfer failed:", error);
       // alert("PLC communication error.");
-      
+
     }
   };
 
@@ -73,33 +73,33 @@ const HandleConfig = ({ mode = 'load' }) => {
       alert('Please select a configuration to delete.');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const success = await window.api.deleteConfigFile(selectedConfig.configName);
-      
+
       if (success) {
         // Close the delete confirmation modal
         setShowDeleteConfirm(false);
-        
+
         // Show success message
         setShowDeleteSuccess(true);
-        
+
         // Refresh the config list after a short delay
         setTimeout(async () => {
           await loadAvailableConfigs();
-          
+
           // Reset selection and hide success message
           setSelectedConfig(null);
           setIsLoading(false);
-          
+
           // Hide success message after 2 seconds
           setTimeout(() => {
             setShowDeleteSuccess(false);
           }, 2000);
         }, 500);
-        
+
       } else {
         alert('Error deleting configuration. Please try again.');
         setIsLoading(false);
@@ -124,8 +124,8 @@ const HandleConfig = ({ mode = 'load' }) => {
   };
 
   const getButtonColor = () => {
-    return mode === 'load' 
-      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800' 
+    return mode === 'load'
+      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
       : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800';
   };
 
@@ -140,7 +140,7 @@ const HandleConfig = ({ mode = 'load' }) => {
         'All configuration values will be populated automatically.',
         'Click "Process Mode" to continue with the selected configuration.',
         'Configuration is sent directly to PLC and navigation happens immediately.',
-        
+
       ];
     } else {
       return [
@@ -157,7 +157,7 @@ const HandleConfig = ({ mode = 'load' }) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               onClick={handleBack}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
@@ -165,10 +165,10 @@ const HandleConfig = ({ mode = 'load' }) => {
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{getPageTitle()}</h1>
           </div>
-          
-           <div className="flex items-center space-x-2 lg:space-x-3">
+
+          <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Help Button */}
-            <button 
+            <button
               onClick={() => setShowHelpModal(true)}
               className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
@@ -176,7 +176,7 @@ const HandleConfig = ({ mode = 'load' }) => {
             </button>
 
             {/* Power Button */}
-            <button 
+            <button
               onClick={() => {
                 const confirmed = window.confirm("Are you sure you want to exit?");
                 if (confirmed) {
@@ -362,10 +362,10 @@ const HandleConfig = ({ mode = 'load' }) => {
               </div>
               <h3 className="text-xl font-bold text-slate-800">Confirm Deletion</h3>
             </div>
-            
+
             <p className="text-slate-600 mb-2">Are you sure you want to delete this configuration?</p>
             <p className="text-slate-800 font-medium mb-6">"{selectedConfig?.configName}"</p>
-            
+
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
@@ -405,9 +405,9 @@ const HandleConfig = ({ mode = 'load' }) => {
               </div>
               <h3 className="text-xl font-bold text-slate-800">Success</h3>
             </div>
-            
+
             <p className="text-slate-600 mb-2">Configuration deleted successfully!</p>
-            
+
             <div className="flex justify-center mt-6">
               <button
                 onClick={() => setShowDeleteSuccess(false)}
@@ -442,7 +442,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-96">
               <div className="space-y-4">
                 <div className="space-y-3">
