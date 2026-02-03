@@ -408,12 +408,13 @@ async function getLogFiles() {
         filePath: filePath,
         date: stats.mtime.toISOString().split('T')[0],
         time: timestamp,
-        configName: configName
+        configName: configName,
+        mtime: stats.mtime
       });
     }
 
-    // Sort by date (newest first)
-    return logFiles.sort((a, b) => new Date(b.time) - new Date(a.time));
+    // Sort by modification time (newest first)
+    return logFiles.sort((a, b) => b.mtime - a.mtime);
 
     // return logFiles.sort((a, b) => {
     //   const toISO = (t) =>

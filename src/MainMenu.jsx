@@ -250,25 +250,25 @@ const MainMenu = () => {
         color: 'text-gray-500',
         bgColor: 'bg-gray-100',
         borderColor: 'border-gray-200',
-        icon: <Cable className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" />
+        icon: <Usb className="w-4 h-4 animate-pulse" />
       };
     }
 
     if (connectionStatus === 'connected') {
       return {
         text: 'USB Connected',
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
+        color: 'text-green-700',
+        bgColor: 'bg-green-100',
         borderColor: 'border-green-200',
-        icon: <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
+        icon: <Usb className="w-4 h-4" />
       };
     } else {
       return {
         text: 'USB Disconnected',
-        color: 'text-red-600',
-        bgColor: 'bg-red-50',
+        color: 'text-red-700',
+        bgColor: 'bg-red-100',
         borderColor: 'border-red-200',
-        icon: <Cable className="w-3 h-3 sm:w-4 sm:h-4" />
+        icon: <Usb className="w-4 h-4" />
       };
     }
   };
@@ -313,7 +313,7 @@ const MainMenu = () => {
         <div className="flex items-center gap-3 mr-4">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
             {connectionInfo.icon}
-            <span className={`text-xs font-medium ${connectionInfo.color}`}>
+            <span className={`text-sm font-medium ${connectionInfo.color}`}>
               {connectionInfo.text}
             </span>
           </div>

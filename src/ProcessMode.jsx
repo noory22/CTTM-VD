@@ -140,7 +140,7 @@ const ProcessMode = () => {
           const formatTemp = (val) => {
             if (val === undefined || val === null || val === '--') return '-- °C';
             const num = parseFloat(val);
-            if (!isNaN(num) && num > 100) return 'ERROR O1';
+            if (!isNaN(num) && num > 100) return 'ERROR 01';
             return `${val} °C`;
           };
           const rawVal = (val) => (val !== undefined && val !== null) ? val : '--';
@@ -1546,7 +1546,7 @@ const ProcessMode = () => {
                 <span className="text-sm text-gray-600">Distance (mm)</span>
               </div>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 30, right: 30, left: 10, bottom: 30 }}>
+                <LineChart data={chartData} margin={{ top: 30, right: 30, left: 10, bottom: 30 } } animationDuration = {0}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
 
                   <XAxis

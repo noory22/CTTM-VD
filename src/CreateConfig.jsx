@@ -104,8 +104,8 @@ const CreateConfig = () => {
     // Validate Configuration Name (alphabets only)
     if (!formData.configName.trim()) {
       newErrors.configName = 'Configuration name is required';
-    } else if (!/^[A-Za-z0-9]+$/.test(formData.configName)) {
-      newErrors.configName = 'Configuration name must contain only alphabets and numbers';
+    } else if (!/^[A-Za-z0-9 ]+$/.test(formData.configName)) {
+      newErrors.configName = 'Configuration name must contain only alphabets, numbers, and spaces';
     } else if (formData.configName.length > 30) {
       newErrors.configName = 'Configuration name cannot exceed 20 characters';
     }
@@ -194,12 +194,9 @@ const CreateConfig = () => {
 
     // Validation based on field type
     if (name === 'configName') {
-      // Only allow alphabets for config name
-      if (name === 'configName') {
-        // Only allow alphabets for config name
-        if (!/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
-          return;
-        }
+      // Allow alphabets, numbers, and spaces for config name
+      if (!/^[a-zA-Z0-9 ]*$/.test(value) || value.length > 30) {
+        return;
       }
     }
 
@@ -390,8 +387,8 @@ const CreateConfig = () => {
                   onChange={handleInputChange}
                   placeholder="Enter configuration name"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.configName
-                      ? 'border-red-300 focus:border-red-500'
-                      : 'border-slate-200 focus:border-blue-500'
+                    ? 'border-red-300 focus:border-red-500'
+                    : 'border-slate-200 focus:border-blue-500'
                     }`}
                 />
                 {errors.configName && (
@@ -417,8 +414,8 @@ const CreateConfig = () => {
                     onChange={handleInputChange}
                     placeholder="Enter path length in range 30mm - 2000mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.pathlength
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-slate-200 focus:border-blue-500'
                       }`}
                   />
                   {errors.pathlength && (
@@ -443,8 +440,8 @@ const CreateConfig = () => {
                     onChange={handleInputChange}
                     placeholder="Enter Threshold Force in range 100mN - 10000mN"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.thresholdForce
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-slate-200 focus:border-blue-500'
                       }`}
                   />
                   {errors.thresholdForce && (
@@ -492,8 +489,8 @@ const CreateConfig = () => {
                     onChange={handleInputChange}
                     placeholder="Enter Insertion length in range 10mm - 60mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.insertionLength
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-slate-200 focus:border-blue-500'
                       }`}
                   />
                   {errors.insertionLength && (
@@ -517,8 +514,8 @@ const CreateConfig = () => {
                     onChange={handleInputChange}
                     placeholder="Enter retraction length in range 10mm - 60mm"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.retractionLength
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-slate-200 focus:border-blue-500'
                       }`}
                   />
                   {errors.retractionLength && (
@@ -542,8 +539,8 @@ const CreateConfig = () => {
                     onChange={handleInputChange}
                     placeholder="Enter number of curves (1-20)"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${errors.numberOfCurves
-                        ? 'border-red-300 focus:border-red-500'
-                        : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-slate-200 focus:border-blue-500'
                       }`}
                   />
                   {errors.numberOfCurves && (
@@ -580,8 +577,8 @@ const CreateConfig = () => {
                           onChange={(e) => handleCurveDistanceChange(curveName, e.target.value)}
                           placeholder={`Enter distance (1-${formData.pathlength || 'path length'})`}
                           className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400  ${errors[`curveDistance_${curveName}`]
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-slate-200 focus:border-blue-500'
+                            ? 'border-red-300 focus:border-red-500'
+                            : 'border-slate-200 focus:border-blue-500'
                             }`}
                         />
                         {errors[`curveDistance_${curveName}`] && (
@@ -654,7 +651,7 @@ const CreateConfig = () => {
                     <div className="flex items-start space-x-3">
                       <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
-                        <span className="font-semibold">Configuration Name</span> must contain only alphabets and numbers(no special characters)
+                        <span className="font-semibold">Configuration Name</span> must contain only alphabets, numbers, and spaces (no special characters)
                       </p>
                     </div>
 
