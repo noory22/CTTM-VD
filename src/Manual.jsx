@@ -458,7 +458,8 @@ const Manual = () => {
                   </div>
                 </div>
 
-                <div className="w-full h-56 relative">
+                {/* <div className="w-full h-56 relative"> */}
+                <div className="w-full h-100 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={graphData}
@@ -527,7 +528,7 @@ const Manual = () => {
                     <div>
                       <p className="text-slate-600 text-sm font-medium">Temperature</p>
                       <div className="flex items-center space-x-2">
-                        <div className="w-8 h-2 bg-orange-200 rounded-full">
+                        <div>
                           <div
                             className="h-full bg-orange-500 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(100, (temperature / 40) * 100)}%` }}
@@ -548,7 +549,7 @@ const Manual = () => {
                     <div>
                       <p className="text-slate-600 text-sm font-medium">Force</p>
                       <div className="flex items-center space-x-2">
-                        <div className="w-8 h-2 bg-blue-200 rounded-full">
+                        <div>
                           <div
                             className="h-full bg-blue-500 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(100, (force / 2000) * 100)}%` }}
@@ -559,9 +560,9 @@ const Manual = () => {
                           {force === '--' ? '-- mN' : `${parseFloat(force).toFixed(2)} mN`}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      {/* <p className="text-xs text-gray-500 mt-1">
                         ≈ {(force / 1000).toFixed(4)} N
-                      </p>
+                      </p> */}
                     </div>
                   </div>
 
@@ -587,7 +588,7 @@ const Manual = () => {
           {/* Control Panel */}
           <div className="space-y-6">
             {/* Heater Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-16">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
               <div className="flex justify-center">
@@ -617,7 +618,7 @@ const Manual = () => {
             </div>
 
             {/* Homing Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-16">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
               <div className="flex justify-center">

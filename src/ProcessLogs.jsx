@@ -617,7 +617,8 @@ const ProcessLogs = () => {
               </div>
 
               {selectedLog ? (
-                <div className="h-96 relative">
+                // <div className="h-96 relative">
+                <div className="h-[700px] relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
@@ -688,7 +689,8 @@ const ProcessLogs = () => {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                // <div className="h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                <div className="h-[700px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
                   <div className="text-center text-slate-500">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium text-slate-600">
