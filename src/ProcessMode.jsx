@@ -34,12 +34,8 @@ const ProcessMode = () => {
   const [isHoming, setIsHoming] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  // const [showCameraPanel, setShowCameraPanel] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
-  // const videoRef = useRef(null);
-  // const [cameraButtonPos, setCameraButtonPos] = useState({ x: window.innerWidth - 70, y: 112 });
   const [configButtonPos, setConfigButtonPos] = useState({ x: window.innerWidth - 70, y: 168 });
-  // const [isDraggingCamera, setIsDraggingCamera] = useState(false);
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
@@ -207,10 +203,6 @@ const ProcessMode = () => {
               setShowForceLimitAlert(true);
             }
           }
-          // ---------------------------------------------------------------------------
-          // if (isProcessRunning) {
-          //   console.log(`📈 Polling: Running=true, Dist=${data.distance}, Force=${data.force_mN}, Time=${((Date.now() - startTimeRef.current)/1000).toFixed(1)}`);
-          // }
 
           if (selectedConfig && data.distance !== '--' && data.distance !== undefined &&
             !isRetractionEnabled && isProcessRunning && !isPaused) {
@@ -680,31 +672,8 @@ const ProcessMode = () => {
     }
   };
 
-  // useEffect(() => {
-  //   const initCamera = async () => {
-  //     try {
-  //       const stream = await navigator.mediaDevices.getUserMedia({
-  //         video: { width: 1280, height: 720 }
-  //       });
-  //       if (videoRef.current) {
-  //         videoRef.current.srcObject = stream;
-  //       }
-  //     } catch (err) {
-  //       console.error('Camera access denied:', err);
-  //     }
-  //   };
-
-  //   initCamera();
-  // }, []);
-
   useEffect(() => {
     const handleMouseMove = (e) => {
-      // if (isDraggingCamera) {
-      //   setCameraButtonPos({
-      //     x: Math.max(0, Math.min(window.innerWidth - 56, e.clientX - dragOffset.x)),
-      //     y: Math.max(0, Math.min(window.innerHeight - 56, e.clientY - dragOffset.y))
-      //   });
-      // }
       if (isDraggingConfig) {
         setConfigButtonPos({
           x: Math.max(0, Math.min(window.innerWidth - 56, e.clientX - dragOffset.x)),
@@ -714,17 +683,10 @@ const ProcessMode = () => {
     };
 
     const handleMouseUp = () => {
-      // setIsDraggingCamera(false);
       setIsDraggingConfig(false);
     };
 
     const handleTouchMove = (e) => {
-      // if (isDraggingCamera && e.touches.length > 0) {
-      //   setCameraButtonPos({
-      //     x: Math.max(0, Math.min(window.innerWidth - 56, e.touches[0].clientX - dragOffset.x)),
-      //     y: Math.max(0, Math.min(window.innerHeight - 56, e.touches[0].clientY - dragOffset.y))
-      //   });
-      // }
       if (isDraggingConfig && e.touches.length > 0) {
         setConfigButtonPos({
           x: Math.max(0, Math.min(window.innerWidth - 56, e.touches[0].clientX - dragOffset.x)),
@@ -734,7 +696,6 @@ const ProcessMode = () => {
     };
 
     const handleTouchEnd = () => {
-      // setIsDraggingCamera(false);
       setIsDraggingConfig(false);
     };
 
@@ -957,13 +918,6 @@ const ProcessMode = () => {
     return false;
   };
 
-  // const shouldDisablePauseButton = () => {
-  //   if (shouldDisableButtons()) return true;
-  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
-  //   if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
-  //   if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
-  //   return false;
-  // };
   const shouldDisablePauseButton = () => {
     if (shouldDisableButtons()) return true;
     if (isRetractionCompleted) return true;
@@ -974,14 +928,6 @@ const ProcessMode = () => {
 
     return false;
   };
-
-  // const shouldDisableRetractionButton = () => {
-  //   if (shouldDisableButtons()) return true;
-  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
-  //   if (!isRetractionEnabled) return true;
-  //   if (isRetractionActive && !isRetractionPaused) return true;
-  //   return false;
-  // };
 
   // UPDATED: Reset button logic based on COIL_LLS status
   const shouldDisableRetractionButton = () => {
@@ -1183,18 +1129,6 @@ const ProcessMode = () => {
                 </div>
               </div>
 
-              {/* <div className={`border-l-4 p-4 rounded-r-lg mb-4 ${parseFloat(readData.temperature) >= 39 ? 'bg-red-50 border-red-500' : 'bg-orange-50 border-orange-500'}`}>
-                <p className={`font-medium text-center ${parseFloat(readData.temperature) >= 39 ? 'text-red-800' : 'text-orange-800'}`}>
-                  {parseFloat(readData.temperature) >= 39
-                    ? `Temperature is too HIGH (${readData.temperatureDisplay}). Please wait for it to cool down below 39°C.`
-                    : (temperatureStatus.isHeatingActive
-                      ? `Heating in progress. Waiting for temperature to rise above 35°C.`
-                      : `Temperature is too LOW (${readData.temperatureDisplay}). Please turn on heating to reach minimum 35°C.`
-                    )
-                  }
-                </p>
-              </div> */}
-
               <div className="flex space-x-3">
                 {parseFloat(readData.temperature) < 39 && (
                   !temperatureStatus.isHeatingActive ? (
@@ -1373,33 +1307,6 @@ const ProcessMode = () => {
         </div>
       )}
 
-      {/* <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showCameraPanel ? 'translate-x-0' : '-translate-x-full'
-        }`}>
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <Camera className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-gray-900">Camera Feed</h3>
-            </div>
-            <button
-              onClick={() => setShowCameraPanel(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-all"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-      </div> */}
-
       <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showConfigPanel ? 'translate-x-0' : 'translate-x-full'
         }`}>
         <div className="p-4">
@@ -1431,10 +1338,6 @@ const ProcessMode = () => {
                   <p className="text-sm font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p>
                 </div>
 
-                {/*<div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
-                  <p className="text-gray-600 text-xs mb-1">Temperature</p>
-                  <p className="text-sm font-bold text-orange-700">{selectedConfig.temperature}°C</p>
-                </div>*/}
                 <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">Insertion Stroke Length</p>
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.insertionLength} mm</p>
@@ -1444,21 +1347,6 @@ const ProcessMode = () => {
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                 </div>
               </div>
-
-              {/* NEW: COIL_LLS Status Display */}
-              {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
-                 <div className="flex items-center justify-between">
-                  <p className="text-gray-600 text-xs mb-1">COIL_LLS Status</p>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {getCoilLLSDisplay()}
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  {coilLLSStatus
-                    ? '✅ Machine is at home position. Reset disabled.'
-                    : '🔄 Machine is away from home. Reset enabled.'}
-                </p> 
-              </div>*/}
             </div>
           ) : (
             <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
@@ -1548,40 +1436,6 @@ const ProcessMode = () => {
 
       {!isXlScreen && (
         <div className="fixed z-30">
-          {/* <button
-            onMouseDown={(e) => {
-              setIsDraggingCamera(true);
-              setDragOffset({
-                x: e.clientX - cameraButtonPos.x,
-                y: e.clientY - cameraButtonPos.y
-              });
-            }}
-            onTouchStart={(e) => {
-              if (e.touches.length > 0) {
-                setIsDraggingCamera(true);
-                setDragOffset({
-                  x: e.touches[0].clientX - cameraButtonPos.x,
-                  y: e.touches[0].clientY - cameraButtonPos.y
-                });
-              }
-            }}
-            onClick={(e) => {
-              if (!isDraggingCamera) {
-                setShowCameraPanel(!showCameraPanel);
-              }
-              e.stopPropagation();
-            }}
-            style={{
-              position: 'fixed',
-              left: `${cameraButtonPos.x}px`,
-              top: `${cameraButtonPos.y}px`,
-              cursor: isDraggingCamera ? 'grabbing' : 'grab',
-              touchAction: 'none'
-            }}
-            className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
-          >
-            <Camera className="w-5 h-5" />
-          </button> */}
           <button
             onMouseDown={(e) => {
               setIsDraggingConfig(true);
@@ -1621,45 +1475,6 @@ const ProcessMode = () => {
 
       <main className={`relative flex ${isXlScreen ? 'flex-row' : 'flex-col'} flex-1 ${isXlScreen ? 'gap-6 p-6' : isLgScreen ? 'gap-4 p-4' : 'gap-3 p-3'} min-h-0 overflow-hidden`}>
         <section className={`flex-1 flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} min-w-0 min-h-0`}>
-          {/* {isXlScreen && (
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 flex-[0_0_40%] min-h-0">
-              <div className="p-3 border-b border-gray-200/80">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
-                      <Camera className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">Live Camera Feed</h2>
-                      <p className="text-gray-600 text-xs">Real-time Machine Vision</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-                    <span className="text-red-600 text-xs font-medium">LIVE</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 h-[calc(100%-60px)]">
-                <div className="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 shadow-inner">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent pointer-events-none"></div>
-                  <div className="absolute top-3 left-3 flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow-sm">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-gray-900 text-xs font-medium">LIVE</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )} */}
-
           <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-xl shadow-gray-200/50 min-h-0 flex flex-col">
             <div className="mb-2 sm:mb-3 flex-shrink-0">
               <h3 className={`${isXlScreen ? 'text-lg' : 'text-base'} font-bold text-gray-900`}>Real-time Analytics</h3>
@@ -1723,23 +1538,6 @@ const ProcessMode = () => {
                         sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
                     }`}>{sensorData.status}</p>
                 </div>
-
-                {/* NEW: COIL_LLS Status Display for small screens */}
-                {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-200/50 p-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${coilLLSStatus ? 'bg-green-500' : 'bg-red-500'}`}>
-                        <Activity className="w-3 h-3 text-white" />
-                      </div>
-                      <p className="text-gray-600 text-xs font-medium">COIL_LLS</p>
-                    </div>
-                    <div className={`w-2 h-2 rounded-full ${coilLLSStatus ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  </div>
-                  <p className={`text-sm font-bold ${getCoilLLSColor()}`}>{getCoilLLSDisplay()}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">
-                    {coilLLSStatus ? 'At home' : 'Away'}
-                  </p>
-                </div> */}
               </div>
             )}
 
@@ -1824,10 +1622,6 @@ const ProcessMode = () => {
                       <p className="text-base font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p>
                     </div>
 
-                    {/* <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
-                      <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
-                      <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
-                    </div>*/}
                     <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Insertion Stroke Length</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.insertionLength} mm</p>
@@ -1836,21 +1630,6 @@ const ProcessMode = () => {
                       <p className="text-gray-600 text-xs mb-0.5">Retraction Stroke Length</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                     </div>
-                  </div>
-
-                  {/* NEW: COIL_LLS Status Display for large screens */}
-                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
-                    {/* <div className="flex items-center justify-between">
-                      <p className="text-gray-600 text-xs mb-0.5">COIL_LLS Status</p>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {getCoilLLSDisplay()}
-                      </div>
-                    </div>
-                    <p className="text-gray-500 text-xs mt-1">
-                      {coilLLSStatus
-                        ? '✅ Machine is at home position. Reset disabled.'
-                        : '🔄 Machine is away from home. Reset enabled.'}
-                    </p> */}
                   </div>
                 </div>
               ) : (
@@ -1925,32 +1704,6 @@ const ProcessMode = () => {
                         sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
                     }`}>{sensorData.status}</p>
                 </div>
-
-                {/* NEW: COIL_LLS Status Display in sensors panel */}
-                {/* <div className="col-span-2 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200/50 p-3">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${coilLLSStatus ? 'bg-gradient-to-br from-green-500 to-emerald-500' : 'bg-gradient-to-br from-red-500 to-orange-500'}`}>
-                        <Activity className="w-4 h-4 text-white" />
-                      </div>
-                      <p className="text-gray-600 text-xs font-medium">COIL_LLS Status</p>
-                    </div>
-                    <div className={`w-2.5 h-2.5 rounded-full ${coilLLSStatus ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-xl font-bold ${getCoilLLSColor()}`}>
-                      {getCoilLLSDisplay()}
-                    </p>
-                    <p className="text-gray-500 text-xs">
-                      {coilLLSStatus ? 'At home position' : 'Away from home'}
-                    </p>
-                  </div>
-                  <p className="text-gray-500 text-xs mt-1">
-                    {coilLLSStatus
-                      ? 'Reset button is disabled when COIL_LLS is TRUE'
-                      : 'Reset button is enabled when COIL_LLS is FALSE'}
-                  </p>
-                </div> */}
               </div>
             </div>
           )}
@@ -2017,15 +1770,6 @@ const ProcessMode = () => {
                 )}
               </button>
             </div>
-
-            {/* NEW: Reset button status indicator */}
-            {/* <div className="mt-2 text-center">
-              <p className={`text-xs ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
-                {coilLLSStatus
-                  ? '✅ Reset disabled - Machine is at home position (COIL_LLS = TRUE)'
-                  : '🔄 Reset enabled - Machine is away from home (COIL_LLS = FALSE)'}
-              </p>
-            </div> */}
           </div>
         </section>
       </main>

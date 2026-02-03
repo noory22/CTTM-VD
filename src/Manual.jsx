@@ -106,37 +106,6 @@ const Manual = () => {
 
     window.addEventListener('modbus-status-change', handleModbusStatusChange);
 
-    // Initialize camera feed
-    // const initCamera = () => {
-    //   setCameraLoading(true);
-    //   setCameraError(false);
-
-    //   navigator.mediaDevices.getUserMedia({
-    //     video: {
-    //       width: { ideal: 1280 },
-    //       height: { ideal: 720 },
-    //       facingMode: 'environment'
-    //     },
-    //     audio: false
-    //   })
-    //     .then(stream => {
-    //       streamRef.current = stream;
-
-    //       if (videoRef.current) {
-    //         videoRef.current.srcObject = stream;
-    //       }
-
-    //       setCameraLoading(false);
-    //     })
-    //     .catch(error => {
-    //       console.error('Camera access error:', error);
-    //       setCameraError(true);
-    //       setCameraLoading(false);
-    //     });
-    // };
-
-    // initCamera();
-
     // Cleanup function
     return () => {
       clearInterval(intervalId);
@@ -291,34 +260,6 @@ const Manual = () => {
       console.error('Reconnect error:', error);
     }
   };
-
-  // const retryCamera = () => {
-  //   setCameraLoading(true);
-  //   setCameraError(false);
-
-  //   navigator.mediaDevices.getUserMedia({
-  //     video: {
-  //       width: { ideal: 1280 },
-  //       height: { ideal: 720 },
-  //       facingMode: 'environment'
-  //     },
-  //     audio: false
-  //   })
-  //     .then(stream => {
-  //       streamRef.current = stream;
-
-  //       if (videoRef.current) {
-  //         videoRef.current.srcObject = stream;
-  //       }
-
-  //       setCameraLoading(false);
-  //     })
-  //     .catch(error => {
-  //       console.error('Camera retry error:', error);
-  //       setCameraError(true);
-  //       setCameraLoading(false);
-  //     });
-  // };
 
   // Read PLC data periodically - REAL-TIME DATA ONLY
   useEffect(() => {
@@ -491,86 +432,6 @@ const Manual = () => {
           {/* Live Video Feed */}
           <div className="xl:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              {/* <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-white font-semibold flex items-center space-x-2">
-                    <div className={`w-3 h-3 ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`}></div>
-                    <span>Live Feed</span>
-                  </h2>
-                </div>
-              </div>*/}
-
-              {/* Video Container */}
-              {/*} <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
-                {cameraLoading ? (
-                  <div className="flex flex-col items-center space-y-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
-                    <p className="text-slate-600 font-medium">Initializing camera...</p>
-                  </div>
-                ) : cameraError ? (
-                  <div className="flex flex-col items-center space-y-4 p-8">
-                    <Camera className="w-16 h-16 text-slate-400" />
-                    <div className="text-center">
-                      <p className="text-slate-600 font-medium mb-2">Camera not available</p>
-                      <p className="text-slate-500 text-sm mb-4">Please check camera permissions and connection</p>
-                      <button
-                        onClick={retryCamera}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-                      >
-                        Retry Camera
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover"
-                    />
-
-                    <div className="absolute inset-0">
-                      <div className="absolute inset-0 opacity-20">
-                        <svg className="w-full h-full">
-                          <defs>
-                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1" />
-                            </pattern>
-                          </defs>
-                          <rect width="100%" height="100%" fill="url(#grid)" />
-                        </svg>
-                      </div>
-
-                      <div className="absolute top-4 left-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>Position: {catheterPosition.toFixed(1)}%</span>
-                          <span className="text-xs opacity-75">
-                            (LIVE)
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                        <div className="bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-24 h-2 bg-slate-600 rounded-full">
-                              <div
-                                className="h-full bg-blue-400 rounded-full transition-all duration-300"
-                                style={{ width: `${catheterPosition}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs font-medium">{catheterPosition.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              // </div>
-              */}
-
               {/* Manual Distance Graph */}
               <div className="bg-white border-t border-slate-200 p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -783,69 +644,7 @@ const Manual = () => {
                   {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
                 </span>
               </div>
-
-              {/* Status Messages */}
-              {/* {coilLLSStatus && !controls.homing && (
-                <p className="text-xs text-green-500 text-center mt-2">
-                  ✅ Gripper is at home position. Homing disabled.
-                </p>
-              )}
-
-              {!coilLLSStatus && !controls.homing && (
-                <p className="text-xs text-amber-500 text-center mt-2">
-                  🔄 Gripper is away from home. Homing available.
-                </p>
-              )}
-
-              {controls.homing && (
-                <p className="text-xs text-blue-500 text-center mt-2">
-                  ⚙️ Homing in progress... Waiting for COIL_LLS = TRUE
-                </p>
-              )} */}
             </div>
-
-            {/* Status Panel */}
-            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">System Status</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Heater:</span>
-                  <span className={`font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
-                    {controls.heater ? 'HEATING' : 'OFF'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Homing Status:</span>
-                  <span className={`font-semibold ${controls.homing ? 'text-blue-600' : coilLLSStatus ? 'text-green-600' : 'text-amber-600'}`}>
-                    {controls.homing ? 'ACTIVE' : coilLLSStatus ? 'AT HOME' : 'AWAY FROM HOME'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">COIL_LLS:</span>
-                  <span className={`font-semibold ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
-                    {coilLLSStatus ? 'TRUE' : 'FALSE'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Manual Distance:</span>
-                  <span className="font-semibold text-emerald-600">
-                    {manualDistance} mm
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Homing Button:</span>
-                  <span className={`font-semibold ${isHomingButtonDisabled ? 'text-gray-600' : 'text-green-600'}`}>
-                    {isHomingButtonDisabled ? 'DISABLED' : 'ENABLED'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Data Source:</span>
-                  <span className="font-semibold text-blue-600">
-                    REAL-TIME PLC DATA
-                  </span>
-                </div>
-              </div>
-            </div> */}
           </div>
         </div>
       </div>

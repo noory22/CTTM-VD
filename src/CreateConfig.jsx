@@ -678,13 +678,6 @@ const CreateConfig = () => {
                         <span className="font-semibold">Threshold Force </span> should be in range  <span className="font-semibold"> 100mN - 10000mN </span>
                       </p>
                     </div>
-
-                    {/* <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Bath Temperature</span> should be in range  <span className="font-semibold">37°C - 45°C </span> 
-                    </p>
-                  </div> */}
                     <div className="flex items-start space-x-3">
                       <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
