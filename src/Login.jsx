@@ -193,7 +193,7 @@ const Login = () => {
             <p className="text-gray-400 text-sm">Copyright 2026 © Revive Medical Technologies Inc.</p>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
-            <span>Version 2.0.0</span>
+            <span>Version 1.0.0</span>
           </div>
         </div>
       </footer>
