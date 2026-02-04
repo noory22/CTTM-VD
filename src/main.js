@@ -1,4 +1,10 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (require('electron-squirrel-startup')) {
+  app.quit();
+}
+
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
 const path = require("path");

@@ -24,26 +24,26 @@ module.exports = {
       ProductName: 'SCTTM',
       InternalName: 'Specialized Catheter Trackability Testing Machine',
     },
-  },asar: {
-      // Unpack preload & renderer so Electron can access them in production
-      unpack: [
-        "**/.vite/build/preload/**",
-        "**/.vite/build/renderer/**",
-        "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
-      ],
-    },
-    ignore: [
-      /^\/\.git/,
-      /^\/forge\.config\.js$/,
-      /^\/vite\.(.+)\.config\.mjs$/,
+  }, asar: {
+    // Unpack preload & renderer so Electron can access them in production
+    unpack: [
+      "**/.vite/build/preload/**",
+      "**/.vite/build/renderer/**",
+      "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
     ],
-    win32metadata: {
-      CompanyName: 'Revive Medical Technologies',
-      FileDescription: 'Desktop App',
-      OriginalFileName: 'Catheter Trackability Testing Machine',
-      ProductName: 'SCTTM',
-      InternalName: 'Specialized Catheter Trackability Testing Machine',
-    },
+  },
+  ignore: [
+    /^\/\.git/,
+    /^\/forge\.config\.js$/,
+    /^\/vite\.(.+)\.config\.mjs$/,
+  ],
+  win32metadata: {
+    CompanyName: 'Revive Medical Technologies',
+    FileDescription: 'Desktop App',
+    OriginalFileName: 'Catheter Trackability Testing Machine',
+    ProductName: 'SCTTM',
+    InternalName: 'Specialized Catheter Trackability Testing Machine',
+  },
   rebuildConfig: {},
   makers: [
     {
@@ -52,6 +52,9 @@ module.exports = {
         certificateFile: './cert.pfx',
         certificatePassword: process.env.CERTIFICATE_PASSWORD,
         noMsi: true,
+        setupShortcut: true,
+        createDesktopShortcut: true,
+        createStartMenuShortcut: true,
       },
     },
     {
