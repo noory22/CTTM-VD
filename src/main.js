@@ -10,6 +10,7 @@ const { SerialPort } = require('serialport');
 const path = require("path");
 import { log } from "node:console";
 import "./index.css";
+import iconPath from './assets/icon.ico';
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
 
@@ -558,15 +559,18 @@ function createWindow() {
   // -------------------------
   // Create the main window
   // -------------------------
+
   mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
+    width: 1200,
+    height: 800,
+    icon: iconPath, // window title icon handled by Vite import
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
+
 
   // Remove the menu completely
   mainWindow.setMenu(null);

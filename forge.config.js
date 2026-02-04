@@ -4,19 +4,22 @@ const path = require('path');
 
 module.exports = {
   packagerConfig: {
+    icon: path.resolve(__dirname, 'src/assets/icon.ico'), // Electron Forge resolves extension automatically
+
     asar: {
-      // Unpack preload & renderer so Electron can access them in production
       unpack: [
         "**/.vite/build/preload/**",
         "**/.vite/build/renderer/**",
         "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
       ],
     },
+
     ignore: [
       /^\/\.git/,
       /^\/forge\.config\.js$/,
       /^\/vite\.(.+)\.config\.mjs$/,
     ],
+
     win32metadata: {
       CompanyName: 'Revive Medical Technologies',
       FileDescription: 'Desktop App',
@@ -24,15 +27,7 @@ module.exports = {
       ProductName: 'SCTTM',
       InternalName: 'Specialized Catheter Trackability Testing Machine',
     },
-  }, asar: {
-    // Unpack preload & renderer so Electron can access them in production
-    unpack: [
-      "**/.vite/build/preload/**",
-      "**/.vite/build/renderer/**",
-      "**/{@serialport,serialport,bindings-cpp,modbus-serial}/**/*"
-    ],
-  },
-  ignore: [
+  },ignore: [
     /^\/\.git/,
     /^\/forge\.config\.js$/,
     /^\/vite\.(.+)\.config\.mjs$/,
@@ -44,6 +39,7 @@ module.exports = {
     ProductName: 'SCTTM',
     InternalName: 'Specialized Catheter Trackability Testing Machine',
   },
+
   rebuildConfig: {},
   makers: [
     {
@@ -121,5 +117,6 @@ module.exports = {
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
+
   ],
 };
