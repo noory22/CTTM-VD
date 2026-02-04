@@ -1,14 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move, TrendingUp } from 'lucide-react';
+import { Line } from 'react-chartjs-2';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
   Tooltip,
-  ResponsiveContainer
-} from "recharts";
+  Legend,
+  Filler
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const Manual = () => {
   const videoRef = useRef(null);
@@ -40,6 +55,133 @@ const Manual = () => {
 
   // State to track COIL_LLS status
   const [coilLLSStatus, setCoilLLSStatus] = useState(false);
+
+  // Chart configuration
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 0 // Disable animations to prevent flickering
+    },
+    interaction: {
+      intersect: false,
+      mode: 'index',
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        displayColors: false,
+        callbacks: {
+          label: function(context) {
+            return `Force: ${context.parsed.y.toFixed(2)} mN`;
+          },
+          title: function(context) {
+            return `Distance: ${context[0].parsed.x.toFixed(2)} mm`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: 'Distance (mm)',
+          color: '#6b7280',
+          font: {
+            size: 12,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(229, 231, 235, 0.5)',
+          drawBorder: true,
+          borderColor: 'rgba(229, 231, 235, 1)'
+        },
+        ticks: {
+          color: '#6b7280',
+          font: {
+            size: 11
+          },
+          maxTicksLimit: 10
+        }
+      },
+      y: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: 'Force (mN)',
+          color: '#6b7280',
+          font: {
+            size: 12,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(229, 231, 235, 0.5)',
+          drawBorder: true,
+          borderColor: 'rgba(229, 231, 235, 1)'
+        },
+        ticks: {
+          color: '#6b7280',
+          font: {
+            size: 11
+          },
+          maxTicksLimit: 8
+        }
+      }
+    },
+    elements: {
+      line: {
+        tension: 0, // Disable bezier curves for straight lines
+        borderWidth: 2.5,
+        fill: false
+      },
+      point: {
+        radius: 0, // Hide points for cleaner look
+        hoverRadius: 5
+      }
+    }
+  };
+
+  // Prepare chart data
+  const chartConfig = {
+    datasets: [
+      {
+        label: 'Forward Movement',
+        data: forwardData.map(point => ({ x: point.manualDistance, y: point.force })),
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: false,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#3b82f6'
+      },
+      {
+        label: 'Backward Movement',
+        data: backwardData.map(point => ({ x: point.manualDistance, y: point.force })),
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        fill: false,
+        pointBackgroundColor: '#ef4444',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#ef4444'
+      }
+    ]
+  };
 
   // Check connection status on load and setup listener
   useEffect(() => {
@@ -458,62 +600,12 @@ const Manual = () => {
                   </div>
                 </div>
 
-                {/* <div className="w-full h-56 relative"> */}
                 <div className="w-full h-100 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={graphData}
-                      margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-
-                      <XAxis
-                        dataKey="manualDistance"
-                        type="number"
-                        tick={{ fontSize: 11 }}
-                      />
-
-                      <YAxis
-                        label={{ value: "Force (mN)", angle: -90, position: "insideLeft" }}
-                        tick={{ fontSize: 11 }}
-                      />
-
-                      <Tooltip
-                        formatter={(value) => [`${value} mN`, "Force"]}
-                        labelFormatter={(label) =>
-                          `Distance: ${label} mm`
-                        }
-                      />
-
-                      <Line
-                        type="monotone"
-                        data={forwardData}
-                        dataKey="force"
-                        stroke="#3b82f6"
-                        strokeWidth={2.5}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-
-                      {/* Backward movement (left / retraction) */}
-                      <Line
-                        type="monotone"
-                        data={backwardData}
-                        dataKey="force"
-                        stroke="#ef4444"
-                        strokeWidth={2.5}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-
-                  {/* Static X-Axis Label to prevent blinking */}
-                  <div className="absolute bottom-1 left-0 right-0 text-center pointer-events-none">
-                    <span className="text-[11px] font-medium text-slate-600">
-                      Distance (mm)
-                    </span>
-                  </div>
+                  <Line 
+                    data={chartConfig} 
+                    options={chartOptions}
+                    redraw={false} // Prevent unnecessary redraws
+                  />
                 </div>
               </div>
 
