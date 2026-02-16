@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
-import Login from "./Login.jsx";
+// import Login from "./Login.jsx";
 import MainMenu from "./MainMenu.jsx";
 import CreateConfig from "./CreateConfig.jsx"; // Add this import
 import HandleConfig from "./HandleConfig.jsx";
@@ -20,8 +20,8 @@ root.render(
   <React.StrictMode>
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/main-menu" element={<MainMenu />} />
+        {/* <Route path="/" element={<Login />} /> */}
+        <Route path="/" element={<MainMenu />} />
         <Route path="/create-config" element={<CreateConfig />} /> {/* Add this route */}
         <Route path="/handle-config/load" element={<HandleConfig mode="load" />} />
         <Route path="/handle-config/delete" element={<HandleConfig mode="delete" />} />

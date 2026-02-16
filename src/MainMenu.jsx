@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Power, LogOut, X, User, Wifi, WifiOff, Usb, Cable } from 'lucide-react';
+import { Power, Usb } from 'lucide-react';
 import manualIcon from './assets/Manual.png';
 
 const MainMenu = () => {
@@ -10,22 +10,12 @@ const MainMenu = () => {
   const [showPowerDropdown, setShowPowerDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Get user info from localStorage
-  const [user, setUser] = useState(null);
 
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [connectionChecked, setConnectionChecked] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (!userData) {
-      navigate('/'); // Redirect to login if no user data
-    } else {
-      setUser(userData);
-    }
-
     // Initial connection check
     checkInitialConnection();
 
@@ -36,7 +26,7 @@ const MainMenu = () => {
     return () => {
       window.removeEventListener('modbus-status-change', handleModbusStatus);
     };
-  }, [navigate]);
+  }, []);
 
   const menuOptions = [
     {
@@ -48,8 +38,7 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'Load existing configuration files',
-      gradient: 'from-blue-500 to-cyan-500',
-      roles: ['admin', 'operator'] // Both roles can access
+      gradient: 'from-blue-500 to-cyan-500'
     },
     {
       id: 'manual-mode',
@@ -62,8 +51,7 @@ const MainMenu = () => {
         />
       ),
       description: 'Manually control the testing process',
-      gradient: 'from-purple-500 to-pink-500',
-      roles: ['admin', 'operator'] // Both roles can access
+      gradient: 'from-purple-500 to-pink-500'
     },
     {
       id: 'process-logs',
@@ -74,8 +62,7 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'View detailed process logs and history',
-      gradient: 'from-green-500 to-emerald-500',
-      roles: ['admin', 'operator'] // Both roles can access
+      gradient: 'from-green-500 to-emerald-500'
     },
     {
       id: 'create-config',
@@ -87,8 +74,7 @@ const MainMenu = () => {
         </svg>
       ),
       description: 'Create new configuration settings',
-      gradient: 'from-orange-500 to-amber-500',
-      roles: ['admin'] // Only admin can access
+      gradient: 'from-orange-500 to-amber-500'
     },
     {
       id: 'delete-config',
@@ -100,8 +86,7 @@ const MainMenu = () => {
       ),
       description: 'Remove existing configuration files',
       variant: 'danger',
-      gradient: 'from-red-500 to-rose-500',
-      roles: ['admin'] // Only admin can access
+      gradient: 'from-red-500 to-rose-500'
     }
   ];
 
@@ -175,12 +160,6 @@ const MainMenu = () => {
   }, []);
 
   const handleOptionClick = async (option) => {
-    // Check if user has permission to access this option
-    if (!user || !option.roles.includes(user.role)) {
-      alert(`Access Denied: ${user?.role === 'operator' ? 'Operator' : 'Unknown user'} cannot access ${option.title}`);
-      return;
-    }
-
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
 
@@ -194,22 +173,14 @@ const MainMenu = () => {
       navigate('/handle-config/delete');
     }
     else if (option.id === 'manual-mode') {
-      // DIRECT NAVIGATION - Send command and navigate immediately
       try {
         console.log('Activating manual mode (non-blocking)...');
-
-        // Send manual mode command without waiting
         window.api.manual().catch(error => {
           console.error('Manual mode command error (non-blocking):', error);
-          // Don't block navigation even if command fails
         });
-
-        // Navigate immediately
         navigate('/manual-mode');
-
       } catch (error) {
         console.error('Navigation error for manual mode:', error);
-        // Still navigate even if there's an error
         navigate('/manual-mode');
       }
     }
@@ -227,8 +198,6 @@ const MainMenu = () => {
   };
 
   const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem('user');
     navigate('/');
     setShowPowerDropdown(false);
   };
@@ -236,11 +205,6 @@ const MainMenu = () => {
   const togglePowerDropdown = () => {
     setShowPowerDropdown(!showPowerDropdown);
   };
-
-  // Filter menu options based on user role
-  const filteredMenuOptions = menuOptions.filter(option =>
-    user && option.roles.includes(user.role)
-  );
 
   // Connection status display
   const getConnectionDisplay = () => {
@@ -275,18 +239,6 @@ const MainMenu = () => {
 
   const connectionInfo = getConnectionDisplay();
 
-  // Show loading while checking user
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
       {/* Header */}
@@ -296,17 +248,6 @@ const MainMenu = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
             Main Menu
           </h1>
-          {/* <p className="text-sm text-gray-500 mt-1">Select an option to continue</p> */}
-
-          {/* User info badge */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-              <User className="w-3 h-3" />
-              <span className="text-xs font-medium">
-                {user.username} ({user.role === 'admin' ? 'Administrator' : 'Operator'})
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Connection Status Indicator */}
@@ -327,61 +268,20 @@ const MainMenu = () => {
             </button>
           )}
         </div>
+        {/* Direct Power Button - No Dropdown */}
+        <button
+          onClick={() => {
+            const confirmed = window.confirm("Are you sure you want to exit?");
+            if (confirmed) {
+              window.close();
+            }
+          }}
+          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
+        >
+          <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+        </button>
 
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={togglePowerDropdown}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0 z-40"
-          >
-            <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-          </button>
-
-          {/* Dropdown Menu - Enhanced with higher z-index */}
-          {showPowerDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transform origin-top-right animate-in fade-in-0 zoom-in-95 duration-200">
-              {/* Dropdown Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-200/50">
-                <p className="text-sm font-semibold text-gray-700">Power Options</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Logged in as: <span className="font-medium">{user.username}</span>
-                </p>
-              </div>
-
-              {/* Exit Button */}
-              <button
-                onClick={handleExit}
-                className="w-full flex items-center gap-3 px-4 py-4 text-left text-red-600 hover:bg-red-50/80 transition-all duration-200 border-b border-gray-100/50 group"
-              >
-                <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
-                  <X className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="flex-1">
-                  <span className="font-semibold block">Exit</span>
-                  <span className="text-xs text-red-500">Close the application</span>
-                </div>
-              </button>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-4 text-left text-blue-600 hover:bg-blue-50/80 transition-all duration-200 border-b border-gray-100/50 group"
-              >
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                  <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="flex-1">
-                  <span className="font-semibold block">Logout</span>
-                  <span className="text-xs text-blue-500">Return to login screen</span>
-                </div>
-              </button>
-              {/* Dropdown decoration */}
-              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 via-blue-500 to-gray-500 opacity-30 rounded-l-lg"></div>
-
-              {/* Dropdown arrow */}
-              <div className="absolute -top-2 right-4 w-4 h-4 bg-white/95 backdrop-blur-xl transform rotate-45 border-t border-l border-gray-200/50"></div>
-            </div>
-          )}
-        </div>
+        
       </header>
 
       {/* Main Content */}
@@ -395,7 +295,7 @@ const MainMenu = () => {
               </div>
 
               <div className="grid gap-5">
-                {filteredMenuOptions.map((option, index) => (
+                {menuOptions.map((option, index) => (
                   <button
                     key={option.id}
                     className={`group relative bg-white/70 backdrop-blur-sm border-2 rounded-2xl p-8 cursor-pointer transition-all duration-500 flex items-center gap-6 text-left shadow-xl hover:shadow-2xl transform hover:-translate-y-2 overflow-hidden
@@ -407,7 +307,6 @@ const MainMenu = () => {
                         ? 'border-blue-400 bg-blue-50/80 shadow-blue-200/50'
                         : ''
                       }
-                      ${!option.roles.includes(user?.role) ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                     onClick={() => handleOptionClick(option)}
                     onMouseEnter={() => setIsHovering(option.id)}
@@ -415,7 +314,6 @@ const MainMenu = () => {
                     style={{
                       animationDelay: `${index * 100}ms`
                     }}
-                    disabled={!option.roles.includes(user?.role)}
                   >
                     {/* Animated background gradient */}
                     <div className={`absolute inset-0 bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
@@ -430,21 +328,11 @@ const MainMenu = () => {
                         ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300'
                         : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
                       }
-                      ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}
-                      ${!option.roles.includes(user?.role) ? 'opacity-70' : ''}`}>
+                      ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}`}>
                       {option.icon}
 
                       {/* Glow effect */}
                       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm`}></div>
-
-                      {/* Restricted icon for operators */}
-                      {user.role === 'operator' && !option.roles.includes('operator') && (
-                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
                     </div>
 
                     {/* Content */}
@@ -470,8 +358,7 @@ const MainMenu = () => {
                         ? 'bg-blue-100 text-blue-600 group-hover:bg-red-200 group-hover:text-red-600 group-hover:translate-x-2 group-hover:scale-110'
                         : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200 group-hover:translate-x-2 group-hover:scale-110'
                       }
-                      ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}
-                      ${!option.roles.includes(user?.role) ? 'opacity-50' : ''}`}>
+                      ${selectedOption === option.id ? 'translate-x-2 scale-110' : ''}`}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-125">
                         <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -490,10 +377,10 @@ const MainMenu = () => {
                 {/* Product Header */}
                 <div className="mb-8">
                   <h1 className="text-8xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-4 tracking-tight leading-none">
-                    SCTTM
+                    CTTM
                   </h1>
                   <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 leading-tight">
-                    Specialized Catheter Trackability Testing Machine
+                    Catheter Trackability Testing Machine
                   </h2>
                 </div>
 
