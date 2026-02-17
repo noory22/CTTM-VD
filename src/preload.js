@@ -38,7 +38,8 @@ contextBridge.exposeInMainWorld("api", {
   // Add this to the exposed API in preload.js
   connectModbus: () => ipcRenderer.invoke("connect-modbus"),
   checkConnection: () => ipcRenderer.invoke("check-connection"),
-  reconnect: () => ipcRenderer.invoke("reconnect")
+  reconnect: () => ipcRenderer.invoke("reconnect"),
+  checkEmergencyStatus: () => ipcRenderer.invoke("check-emergency-status")
 });
 
 // Listen for connection status updates from main process
@@ -52,6 +53,13 @@ ipcRenderer.on('modbus-status', (event, status) => {
 // Add this listener to preload.js (add it with the other listeners)
 ipcRenderer.on('lls-status', (event, status) => {
   window.dispatchEvent(new CustomEvent('lls-status-change', {
+    detail: status
+  }));
+});
+
+// Listen for emergency status updates
+ipcRenderer.on('emergency-status', (event, status) => {
+  window.dispatchEvent(new CustomEvent('emergency-status-change', {
     detail: status
   }));
 });

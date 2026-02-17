@@ -14,17 +14,26 @@ const MainMenu = () => {
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [connectionChecked, setConnectionChecked] = useState(false);
+  const [emergencyActive, setEmergencyActive] = useState(false);
 
   useEffect(() => {
-    // Initial connection check
+    // Initial checks
     checkInitialConnection();
+    checkInitialEmergencyStatus();
 
     // Listen for modbus status updates
     window.addEventListener('modbus-status-change', handleModbusStatus);
 
+    // Listen for emergency status updates
+    const handleEmergencyStatus = (event) => {
+      setEmergencyActive(event.detail === true);
+    };
+    window.addEventListener('emergency-status-change', handleEmergencyStatus);
+
     // Cleanup
     return () => {
       window.removeEventListener('modbus-status-change', handleModbusStatus);
+      window.removeEventListener('emergency-status-change', handleEmergencyStatus);
     };
   }, []);
 
@@ -112,6 +121,16 @@ const MainMenu = () => {
       setConnectionChecked(true);
     }
   };
+  // Check initial emergency status
+  const checkInitialEmergencyStatus = async () => {
+    try {
+      const status = await window.api.checkEmergencyStatus();
+      setEmergencyActive(status.active);
+      console.log('Initial emergency status:', status.active);
+    } catch (error) {
+      console.error('Failed to check emergency status:', error);
+    }
+  };
 
   // Handle manual connection attempt
   const handleConnect = async () => {
@@ -160,6 +179,10 @@ const MainMenu = () => {
   }, []);
 
   const handleOptionClick = async (option) => {
+    if (emergencyActive && (option.id === 'load-config' || option.id === 'manual-mode')) {
+      return; // Do nothing if emergency is active for these options
+    }
+
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
 
@@ -244,10 +267,18 @@ const MainMenu = () => {
       {/* Header */}
       <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
 
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-4">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
             Main Menu
           </h1>
+          {emergencyActive && (
+            <div className="bg-red-600 text-white px-4 py-2 rounded-full animate-pulse border-2 border-red-400 shadow-lg flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="font-bold tracking-wider">EMERGENCY BUTTON IS PRESSED</span>
+            </div>
+          )}
         </div>
 
         {/* Connection Status Indicator */}
@@ -281,7 +312,7 @@ const MainMenu = () => {
           <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
         </button>
 
-        
+
       </header>
 
       {/* Main Content */}
@@ -311,8 +342,11 @@ const MainMenu = () => {
                     onClick={() => handleOptionClick(option)}
                     onMouseEnter={() => setIsHovering(option.id)}
                     onMouseLeave={() => setIsHovering(null)}
+                    disabled={emergencyActive && (option.id === 'load-config' || option.id === 'manual-mode')}
                     style={{
-                      animationDelay: `${index * 100}ms`
+                      animationDelay: `${index * 100}ms`,
+                      opacity: (emergencyActive && (option.id === 'load-config' || option.id === 'manual-mode')) ? 0.5 : 1,
+                      cursor: (emergencyActive && (option.id === 'load-config' || option.id === 'manual-mode')) ? 'not-allowed' : 'pointer'
                     }}
                   >
                     {/* Animated background gradient */}

@@ -33,6 +33,8 @@ let PORT = null; // Auto-detected
 const BAUDRATE = 9600;
 const TIMEOUT = 0; // Using buffered read, timeout not as critical in this config
 
+const COIL_POW = 1003
+const COIL_EMER = 1004
 const COIL_HOME = 2001;
 const COIL_LLS = 1000;
 const COIL_START = 2002;
@@ -249,7 +251,44 @@ async function manualConnectModbus() {
 
 // Remove old LLS checking logic
 // We will integrate this into the main loop
+// Monitoring states
 let lastLLSState = false;
+let lastEmerState = false;
+let lastPowState = false;
+
+// -------------------------
+// Helper: Perform Safety Stop
+// -------------------------
+async function performSafetyStop(reason) {
+  console.log(`⚠️ SAFETY STOP TRIGGERED: ${reason}`);
+
+  // 1. Update internal states to STOP all movements/heaters
+  coilState.retraction = false;
+  coilState.heater = false;
+  coilState.manualRet = false;
+  coilState.heating = false;
+  insertionState = false;
+  retState = false;
+
+  // 2. Clear command queue to prevent pending actions
+  commandQueue.length = 0;
+
+  // 3. Directly write STOP coil to PLC (bypassing queue for safety)
+  try {
+    if (client.isOpen) {
+      await client.writeCoil(COIL_STOP, true);
+      await client.writeCoil(COIL_START, false);
+      await client.writeCoil(COIL_HEATER, false);
+      await client.writeCoil(COIL_HEATING, false);
+      await client.writeCoil(COIL_INSERTION, false);
+      await client.writeCoil(COIL_RET, false);
+      console.log("🛑 Global Stop coils written to PLC");
+    }
+  } catch (err) {
+    console.error("❌ Failed to write safety stop coils:", err.message);
+  }
+}
+
 
 
 // ============================
@@ -869,6 +908,13 @@ async function processModbusLoop() {
         // Emit change event
         if (currentLLSState !== lastLLSState) {
           console.log(`🔄 COIL_LLS changed: ${lastLLSState} -> ${currentLLSState}`);
+
+          if (currentLLSState) {
+            // When home is reached, selectively stop retraction
+            retState = false;
+            console.log("🏠 Home reached - Stopping retraction in backend");
+          }
+
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('lls-status', currentLLSState.toString());
           }
@@ -876,6 +922,28 @@ async function processModbusLoop() {
         }
       } catch (e) {
         // console.error("Error reading LLS:", e.message);
+      }
+
+      // Read COIL_EMER (Coil 1004)
+      try {
+        const emerResult = await client.readCoils(COIL_EMER, 1);
+        const currentEmerState = Boolean(emerResult.data[0]);
+
+        if (currentEmerState) {
+          // If emergency is active, continuously ensure we stay stopped
+          performSafetyStop("Emergency Button Pressed");
+        }
+
+        // Emit change event
+        if (currentEmerState !== lastEmerState) {
+          console.log(`🚨 Emergency Status Changed: ${lastEmerState} -> ${currentEmerState}`);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('emergency-status', currentEmerState);
+          }
+          lastEmerState = currentEmerState;
+        }
+      } catch (e) {
+        // console.error("Error reading COIL_EMER:", e.message);
       }
 
       // Read Distance (Reg 70)
@@ -1146,6 +1214,10 @@ ipcMain.handle("connect-modbus", async () => {
   return await manualConnectModbus();
 });
 
+ipcMain.handle("check-emergency-status", async () => {
+  return { active: lastEmerState };
+});
+
 ipcMain.handle("home", async () => {
   return await safeExecute("HOME", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
@@ -1190,6 +1262,8 @@ ipcMain.handle("stop", async () => {
     coilState.retraction = false;
     coilState.heater = false;
     coilState.manualRet = false;
+    insertionState = false; // Added
+    retState = false;       // Added
 
     await client.writeCoil(COIL_RETRACTION, false);
     await client.writeCoil(COIL_START, false);
@@ -1315,6 +1389,7 @@ ipcMain.handle("insertion", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
     insertionState = !insertionState;
+    if (insertionState) retState = false; // Mutual exclusivity: starting insertion stops retraction
 
     await client.writeCoil(COIL_MANUAL, true);
     await client.writeCoil(COIL_RET, false);
@@ -1335,6 +1410,7 @@ ipcMain.handle("ret", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
     retState = !retState;
+    if (retState) insertionState = false; // Mutual exclusivity: starting retraction stops insertion
 
     await client.writeCoil(COIL_MANUAL, true);
     await client.writeCoil(COIL_RET, retState);
@@ -1353,6 +1429,10 @@ ipcMain.handle("disable-manual-mode", async () => {
   return await safeExecute("DISABLE-MANUAL-MODE", async () => {
     if (!isConnected) throw new Error('Modbus not connected');
 
+    // Reset local states
+    insertionState = false;
+    retState = false;
+
     // Turn off COIL_MANUAL
     await client.writeCoil(COIL_MANUAL, false);
 
@@ -1364,21 +1444,6 @@ ipcMain.handle("disable-manual-mode", async () => {
     return { manualModeDisabled: true };
   });
 });
-
-// ipcMain.handle("ret", async () => {
-//   return await safeExecute("RETRACTION-MANUAL", async () => {
-//     if (!isConnected) throw new Error("Modbus not connected");
-
-//     coilState.manualRet = !coilState.manualRet;
-
-//     await client.writeCoil(COIL_MANUAL, true);
-//     await client.writeCoil(COIL_RET, coilState.manualRet);
-//     await client.writeCoil(COIL_INSERTION, false);
-//     await client.writeCoil(COIL_CLAMP, false);
-
-//     return { manualRetraction: coilState.manualRet };
-//   });
-// });
 
 // Read data handler
 ipcMain.handle("read-data", async () => {

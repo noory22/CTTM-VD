@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move, TrendingUp } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move, TrendingUp, Hand, ChevronRight } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -35,7 +35,10 @@ const Manual = () => {
   const [cameraLoading, setCameraLoading] = useState(true);
   const [controls, setControls] = useState({
     heater: false,
-    homing: false
+    homing: false,
+    clamp: false,
+    insertion: false,
+    retraction: false
   });
 
   const [manualDistance, setManualDistance] = useState('--');
@@ -48,7 +51,7 @@ const Manual = () => {
   // Connection status state
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
-    port: '--', // Default to placeholder instead of hardcoded COM4
+    port: '--',
     lastCheck: null,
     dataSource: 'real'
   });
@@ -61,7 +64,7 @@ const Manual = () => {
     responsive: true,
     maintainAspectRatio: false,
     animation: {
-      duration: 0 // Disable animations to prevent flickering
+      duration: 0
     },
     interaction: {
       intersect: false,
@@ -83,10 +86,10 @@ const Manual = () => {
         padding: 12,
         displayColors: false,
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             return `Force: ${context.parsed.y.toFixed(2)} mN`;
           },
-          title: function(context) {
+          title: function (context) {
             return `Distance: ${context[0].parsed.x.toFixed(2)} mm`;
           }
         }
@@ -144,12 +147,12 @@ const Manual = () => {
     },
     elements: {
       line: {
-        tension: 0, // Disable bezier curves for straight lines
+        tension: 0,
         borderWidth: 2.5,
         fill: false
       },
       point: {
-        radius: 0, // Hide points for cleaner look
+        radius: 0,
         hoverRadius: 5
       }
     }
@@ -190,7 +193,7 @@ const Manual = () => {
         .then(status => {
           setConnectionStatus({
             connected: status.connected,
-            port: status.port || '--', // Use port from backend
+            port: status.port || '--',
             lastCheck: status.timestamp,
             dataSource: status.connected ? 'real' : 'real'
           });
@@ -207,7 +210,7 @@ const Manual = () => {
           console.error('Error checking connection:', error);
           setConnectionStatus({
             connected: false,
-            port: '--', // No hardcoded fallback
+            port: '--',
             lastCheck: new Date().toISOString(),
             dataSource: 'real'
           });
@@ -227,7 +230,7 @@ const Manual = () => {
 
     // Listen for connection status updates from main process
     const handleModbusStatusChange = (event) => {
-      const status = event.detail; // 'connected' or 'disconnected'
+      const status = event.detail;
       const newConnected = status === 'connected';
       setConnectionStatus(prev => ({
         ...prev,
@@ -241,6 +244,15 @@ const Manual = () => {
         setForce('--');
         setManualDistance('--');
         setCoilLLSStatus(false);
+
+        // Reset all control states when disconnected
+        setControls({
+          heater: false,
+          homing: false,
+          clamp: false,
+          insertion: false,
+          retraction: false
+        });
       } else {
         setShowConnectionError(false);
       }
@@ -267,39 +279,35 @@ const Manual = () => {
 
     // Event listener for real-time COIL_LLS updates from main process
     const handleLLSStatusChange = (status) => {
-      // The event data comes as string 'true' or 'false' from main.js
       const isLLSTrue = status === 'true' || status === true;
 
       console.log(`🔄 COIL_LLS Event Received: ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
 
-      // Update COIL_LLS status state
       setCoilLLSStatus(isLLSTrue);
 
-      // If COIL_LLS becomes TRUE, homing is complete
       if (isLLSTrue) {
-        setControls(prev => ({ ...prev, homing: false }));
-        // Clear graph data when homing completes
+        setControls(prev => ({
+          ...prev,
+          homing: false,
+          retraction: false
+        }));
         setGraphData([]);
-        console.log("✅ Homing completed (via event)");
+        console.log("✅ Home position reached - Retraction stopped (via event)");
       }
 
-      // If COIL_LLS becomes FALSE, motor has moved away from home position
       if (!isLLSTrue) {
         console.log("🔄 Motor moved away from home - COIL_LLS is FALSE");
       }
     };
 
-    // Listen for custom events from main process
     const handleCustomEvent = (event, status) => {
       console.log("📡 Received LLS status:", status);
       handleLLSStatusChange(status);
     };
 
-    // Setup the event listener
     window.electron?.receive?.('lls-status', handleCustomEvent) ||
       window.api?.onLlsStatus?.(handleCustomEvent);
 
-    // Fallback: Add event listener to window
     const handleWindowEvent = (e) => {
       if (e.detail !== undefined) {
         handleLLSStatusChange(e.detail);
@@ -310,14 +318,13 @@ const Manual = () => {
 
     console.log("✅ COIL_LLS monitoring setup complete");
 
-    // Cleanup
     return () => {
       console.log("🧹 Cleaning up COIL_LLS monitoring");
       window.removeEventListener('lls-status-change', handleWindowEvent);
     };
   }, []);
 
-  // Handle heater toggle using window.api
+  // Handle heater toggle
   const handleHeaterToggle = () => {
     window.api.checkConnection()
       .then(status => {
@@ -339,13 +346,216 @@ const Manual = () => {
           .catch(error => {
             console.error('Heater control error:', error.message);
             setShowConnectionError(true);
-            // alert(`Heater operation failed: ${error.message}`);
           });
       })
       .catch(error => {
         console.error('Connection check error:', error);
-        // alert('PLC connection check failed. Please check connection.');
       });
+  };
+
+  // Handle Clamp toggle
+  const handleClampToggle = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) {
+          alert('PLC is not connected. Please connect to PLC first.');
+          setShowConnectionError(true);
+          return;
+        }
+
+        window.api.clamp()
+          .then(result => {
+            if (result && result.success) {
+              setControls(prev => ({ ...prev, clamp: !prev.clamp }));
+              console.log('Clamp toggled:', result);
+            } else {
+              throw new Error(result?.message || 'Clamp operation failed');
+            }
+          })
+          .catch(error => {
+            console.error('Clamp control error:', error.message);
+            setShowConnectionError(true);
+          });
+      })
+      .catch(error => {
+        console.error('Connection check error:', error);
+      });
+  };
+
+  // Handle Insertion (Forward) - Toggle behavior based on PLC state
+  const handleInsertion = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) {
+          alert('PLC is not connected. Please connect to PLC first.');
+          setShowConnectionError(true);
+          return;
+        }
+
+        // If insertion is currently active in UI, we want to turn it OFF
+        if (controls.insertion) {
+          console.log('Attempting to STOP insertion...');
+
+          // Call insertion API again - according to main.js, this will toggle it OFF
+          window.api.insertion()
+            .then(result => {
+              console.log('Insertion stop result:', result);
+              if (result && result.success) {
+                // Update UI state based on the result from PLC
+                setControls(prev => ({
+                  ...prev,
+                  insertion: false,  // The API toggles to OFF
+                  retraction: false   // Ensure retraction is off
+                }));
+                console.log('Insertion stopped by user');
+              }
+            })
+            .catch(error => {
+              console.error('Insertion stop error:', error);
+              setShowConnectionError(true);
+            });
+        }
+        // If insertion is not active AND retraction is not active, turn it ON
+        else if (!controls.retraction) {
+          console.log('Attempting to START insertion...');
+          window.api.insertion()
+            .then(result => {
+              console.log('Insertion start result:', result);
+              if (result && result.success) {
+                // According to main.js, when insertion turns ON, it sets retraction to false
+                setControls(prev => ({
+                  ...prev,
+                  insertion: true,   // The API toggles to ON
+                  retraction: false   // PLC ensures retraction is off
+                }));
+                console.log('Insertion started by user');
+              }
+            })
+            .catch(error => {
+              console.error('Insertion start error:', error);
+              setShowConnectionError(true);
+            });
+        }
+        // If retraction is active, show a message (button should be disabled, but just in case)
+        else {
+          console.log('Cannot start insertion while retraction is active');
+          alert('Please stop retraction first by pressing the Retraction button again');
+        }
+      })
+      .catch(error => {
+        console.error('Connection check error:', error);
+      });
+  };
+
+  // Handle Retraction (Backward) - Toggle behavior based on PLC state
+  const handleRetraction = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) {
+          alert('PLC is not connected. Please connect to PLC first.');
+          setShowConnectionError(true);
+          return;
+        }
+
+        // If retraction is currently active in UI, we want to turn it OFF
+        if (controls.retraction) {
+          console.log('Attempting to STOP retraction...');
+
+          // Call retraction API again - according to main.js, this will toggle it OFF
+          window.api.ret()
+            .then(result => {
+              console.log('Retraction stop result:', result);
+              if (result && result.success) {
+                // Update UI state based on the result from PLC
+                setControls(prev => ({
+                  ...prev,
+                  retraction: false,  // The API toggles to OFF
+                  insertion: false     // Ensure insertion is off
+                }));
+                console.log('Retraction stopped by user');
+              }
+            })
+            .catch(error => {
+              console.error('Retraction stop error:', error);
+              setShowConnectionError(true);
+            });
+        }
+        // If retraction is not active AND insertion is not active, turn it ON
+        else if (!controls.insertion) {
+          console.log('Attempting to START retraction...');
+          window.api.ret()
+            .then(result => {
+              console.log('Retraction start result:', result);
+              if (result && result.success) {
+                // According to main.js, when retraction turns ON, it sets insertion to false
+                setControls(prev => ({
+                  ...prev,
+                  retraction: true,   // The API toggles to ON
+                  insertion: false     // PLC ensures insertion is off
+                }));
+                console.log('Retraction started by user');
+              }
+            })
+            .catch(error => {
+              console.error('Retraction start error:', error);
+              setShowConnectionError(true);
+            });
+        }
+        // If insertion is active, show a message (button should be disabled, but just in case)
+        else {
+          console.log('Cannot start retraction while insertion is active');
+          alert('Please stop insertion first by pressing the Insertion button again');
+        }
+      })
+      .catch(error => {
+        console.error('Connection check error:', error);
+      });
+  };
+
+  // Emergency stop - reset both states
+  const emergencyStop = () => {
+    console.log('EMERGENCY STOP triggered');
+
+    // First, if insertion is active, turn it off
+    if (controls.insertion) {
+      window.api.insertion()
+        .then(() => {
+          setControls(prev => ({ ...prev, insertion: false }));
+        })
+        .catch(e => console.log('Insertion stop error:', e));
+    }
+
+    // If retraction is active, turn it off
+    if (controls.retraction) {
+      window.api.ret()
+        .then(() => {
+          setControls(prev => ({ ...prev, retraction: false }));
+        })
+        .catch(e => console.log('Retraction stop error:', e));
+    }
+  };
+
+  // Stop all movement
+  const stopAllMovement = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) return;
+
+        // Turn off both insertion and retraction if they're active
+        if (controls.insertion) {
+          window.api.insertion().catch(error => console.error('Error turning off insertion:', error));
+        }
+        if (controls.retraction) {
+          window.api.ret().catch(error => console.error('Error turning off retraction:', error));
+        }
+
+        setControls(prev => ({
+          ...prev,
+          insertion: false,
+          retraction: false
+        }));
+      })
+      .catch(error => console.error('Connection check error:', error));
   };
 
   const resetCatheter = () => {
@@ -357,14 +567,13 @@ const Manual = () => {
           return;
         }
 
-        // Clear graph data immediately
-        setGraphData([]);
+        // Stop all movement before homing
+        stopAllMovement();
 
-        // Activate homing UI state immediately
+        setGraphData([]);
         setControls(prev => ({ ...prev, homing: true }));
         setCatheterPosition(0);
 
-        // Send home command
         window.api.home()
           .then(result => {
             if (result.success) {
@@ -378,12 +587,10 @@ const Manual = () => {
             console.error('Homing error:', error.message);
             setShowConnectionError(true);
             setControls(prev => ({ ...prev, homing: false }));
-            // alert(`Homing failed: ${error.message}`);
           });
       })
       .catch(error => {
         console.error('Connection check error:', error);
-        // alert('PLC connection check failed. Please check connection.');
       });
   };
 
@@ -403,36 +610,33 @@ const Manual = () => {
     }
   };
 
-  // Read PLC data periodically - REAL-TIME DATA ONLY
+  // Read PLC data periodically
   useEffect(() => {
     const readData = () => {
       window.api.readData()
         .then(data => {
           if (data.success) {
-            // Update force (already in mN)
             setForce(data.force_mN);
-
-            // Update temperature
             setTemperature(data.temperature);
 
-            // Convert distance to position percentage (assuming 1000mm max)
             const maxDistance = 1000;
             const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
             setCatheterPosition(positionPercent);
             setManualDistance(data.manualDistance || 0);
 
-            // Update COIL_LLS status from PLC data
             if (data.coilLLS !== undefined) {
               const newCoilLLSStatus = Boolean(data.coilLLS);
               setCoilLLSStatus(newCoilLLSStatus);
 
-              // If COIL_LLS becomes TRUE, homing is complete
               if (newCoilLLSStatus) {
-                setControls(prev => ({ ...prev, homing: false }));
+                setControls(prev => ({
+                  ...prev,
+                  homing: false,
+                  retraction: false
+                }));
               }
             }
 
-            // Update graph data
             setGraphData(prev => {
               const x = Number(data.manualDistance);
               const y = Number(data.force_mN);
@@ -459,7 +663,6 @@ const Manual = () => {
                 : updated;
             });
           } else {
-            // Handle success: false (e.g. disconnected)
             setForce('--');
             setTemperature('--');
             setManualDistance('--');
@@ -475,7 +678,6 @@ const Manual = () => {
         });
     };
 
-    // Read data only when connected
     let intervalId;
     if (connectionStatus.connected) {
       readData();
@@ -491,6 +693,7 @@ const Manual = () => {
     window.api.checkConnection()
       .then(status => {
         if (status.connected) {
+          stopAllMovement();
           window.api.disableManualMode()
             .then(result => {
               if (result.success) {
@@ -503,8 +706,22 @@ const Manual = () => {
       .catch(error => console.error('Connection check error:', error));
   };
 
-  // Determine if Homing button should be disabled
   const isHomingButtonDisabled = !connectionStatus.connected || controls.homing || coilLLSStatus;
+
+  // Movement disabled conditions:
+  // - No connection OR homing in progress
+  const isMovementDisabled = !connectionStatus.connected || controls.homing;
+
+  // Individual button disabled conditions:
+  // Insertion button disabled when: 
+  // 1. Movement is globally disabled
+  // 2. Retraction is currently active
+  const isInsertionDisabled = isMovementDisabled || controls.retraction;
+
+  // Retraction button disabled when:
+  // 1. Movement is globally disabled
+  // 2. Insertion is currently active
+  const isRetractionDisabled = isMovementDisabled || controls.insertion;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
@@ -517,6 +734,7 @@ const Manual = () => {
                 window.api.checkConnection()
                   .then(status => {
                     if (status.connected) {
+                      stopAllMovement();
                       window.api.disableManualMode()
                         .catch(error => console.error('Disable error:', error));
                     }
@@ -601,10 +819,10 @@ const Manual = () => {
                 </div>
 
                 <div className="w-full h-100 relative">
-                  <Line 
-                    data={chartConfig} 
+                  <Line
+                    data={chartConfig}
                     options={chartOptions}
-                    redraw={false} // Prevent unnecessary redraws
+                    redraw={false}
                   />
                 </div>
               </div>
@@ -652,9 +870,6 @@ const Manual = () => {
                           {force === '--' ? '-- mN' : `${parseFloat(force).toFixed(2)} mN`}
                         </span>
                       </div>
-                      {/* <p className="text-xs text-gray-500 mt-1">
-                        ≈ {(force / 1000).toFixed(4)} N
-                      </p> */}
                     </div>
                   </div>
 
@@ -679,8 +894,118 @@ const Manual = () => {
 
           {/* Control Panel */}
           <div className="space-y-6">
+            {/* Clamp Control */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to toggle clamp ON/OFF</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={handleClampToggle}
+                  disabled={!connectionStatus.connected || controls.homing}
+                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : controls.clamp
+                      ? 'bg-purple-500 border-purple-600 text-white hover:bg-purple-600'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Zap className="w-8 h-8" />
+                  </div>
+                  {controls.clamp && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.clamp ? 'text-purple-600' : 'text-slate-600'}`}>
+                  {controls.clamp ? 'CLAMPED' : 'UNCLAMPED'}
+                </span>
+              </div>
+            </div>
+
+            {/* Movement Controls */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Movement Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Control catheter movement</p>
+
+              <div className="flex justify-center space-x-4">
+                {/* Retraction (Backward) Button - Left Arrow */}
+                <button
+                  onClick={handleRetraction}
+                  disabled={isRetractionDisabled}
+                  className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isRetractionDisabled
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : controls.retraction
+                      ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ChevronLeft className="w-8 h-8" />
+                  </div>
+                  {controls.retraction && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+
+                {/* Insertion (Forward) Button - Right Arrow */}
+                <button
+                  onClick={handleInsertion}
+                  disabled={isInsertionDisabled}
+                  className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isInsertionDisabled
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : controls.insertion
+                      ? 'bg-red-500 border-red-600 text-white hover:bg-red-600'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-red-400 hover:bg-red-50'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ChevronRight className="w-8 h-8" />
+                  </div>
+                  {controls.insertion && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+
+              <div className="mt-6 text-center">
+                <div className="text-sm font-semibold">
+                  {controls.insertion && (
+                    <span className="text-red-600">INSERTING FORWARD (Press again to stop)</span>
+                  )}
+                  {controls.retraction && (
+                    <span className="text-blue-600">RETRACTING BACKWARD (Press again to stop)</span>
+                  )}
+                  {!controls.insertion && !controls.retraction && (
+                    <span className="text-slate-600">STATIONARY</span>
+                  )}
+                </div>
+                {controls.insertion && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Retraction disabled while inserting
+                  </p>
+                )}
+                {controls.retraction && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Insertion disabled while retracting
+                  </p>
+                )}
+                {isMovementDisabled && connectionStatus.connected && !controls.homing && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Complete homing first to enable movement
+                  </p>
+                )}
+                {controls.homing && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Homing in progress - movement disabled
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Heater Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-16">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
               <div className="flex justify-center">
@@ -710,7 +1035,7 @@ const Manual = () => {
             </div>
 
             {/* Homing Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-16">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
               <div className="flex justify-center">
