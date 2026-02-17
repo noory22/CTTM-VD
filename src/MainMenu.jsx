@@ -15,11 +15,13 @@ const MainMenu = () => {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [connectionChecked, setConnectionChecked] = useState(false);
   const [emergencyActive, setEmergencyActive] = useState(false);
+  const [powerActive, setPowerActive] = useState(false);
 
   useEffect(() => {
     // Initial checks
     checkInitialConnection();
     checkInitialEmergencyStatus();
+    checkInitialPowerStatus();
 
     // Listen for modbus status updates
     window.addEventListener('modbus-status-change', handleModbusStatus);
@@ -30,10 +32,17 @@ const MainMenu = () => {
     };
     window.addEventListener('emergency-status-change', handleEmergencyStatus);
 
+    // Listen for power status updates
+    const handlePowerStatus = (event) => {
+      setPowerActive(event.detail === true);
+    };
+    window.addEventListener('power-status-change', handlePowerStatus);
+
     // Cleanup
     return () => {
       window.removeEventListener('modbus-status-change', handleModbusStatus);
       window.removeEventListener('emergency-status-change', handleEmergencyStatus);
+      window.removeEventListener('power-status-change', handlePowerStatus);
     };
   }, []);
 
@@ -129,6 +138,17 @@ const MainMenu = () => {
       console.log('Initial emergency status:', status.active);
     } catch (error) {
       console.error('Failed to check emergency status:', error);
+    }
+  };
+
+  // Check initial power status
+  const checkInitialPowerStatus = async () => {
+    try {
+      const status = await window.api.checkPowerStatus();
+      setPowerActive(status.active);
+      console.log('Initial power status:', status.active);
+    } catch (error) {
+      console.error('Failed to check power status:', error);
     }
   };
 
@@ -281,8 +301,16 @@ const MainMenu = () => {
           )}
         </div>
 
-        {/* Connection Status Indicator */}
+        {/* Connection & Power Status Indicators */}
         <div className="flex items-center gap-3 mr-4">
+          {/* Power Status Indicator */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
+            <Power className={`w-4 h-4 ${powerActive ? 'text-green-700' : 'text-red-700'}`} />
+            <span className={`text-sm font-medium ${powerActive ? 'text-green-700' : 'text-red-700'}`}>
+              POWERED {powerActive ? 'ON' : 'OFF'}
+            </span>
+          </div>
+
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
             {connectionInfo.icon}
             <span className={`text-sm font-medium ${connectionInfo.color}`}>

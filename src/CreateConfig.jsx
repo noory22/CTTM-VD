@@ -451,32 +451,6 @@ const CreateConfig = () => {
                     </p>
                   )}
                 </div>
-
-                {/* Insertion Stroke Length */}
-                {/* <div className="space-y-2">
-                  <label htmlFor="Insertionstrokelength" className="block text-sm font-semibold text-slate-700">
-                    Insertion Stroke Length (mm)
-                  </label>
-                  <input
-                    type="text"
-                    id="InsStroke"
-                    name="InsStroke"
-                    value={formData.InsStroke}
-                    onChange={handleInputChange}
-                    placeholder="Enter Insertion stroke length in range 0 mm - 60 mm "
-                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400${
-                      errors.InsStroke 
-                        ? 'border-red-300 focus:border-red-500' 
-                        : 'border-slate-200 focus:border-blue-500'
-                    }`}
-                  />
-                  {errors.InsStroke && (
-                    <p className="text-red-500 text-sm flex items-center space-x-1">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>{errors.InsStroke}</span>
-                    </p>
-                  )}
-                </div> */}
                 <div className="space-y-2">
                   <label htmlFor="InsertionLength" className="block text-sm font-semibold text-slate-700">
                     Insertion Stroke Length (mm)

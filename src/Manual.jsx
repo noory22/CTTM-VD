@@ -58,6 +58,7 @@ const Manual = () => {
 
   // State to track COIL_LLS status
   const [coilLLSStatus, setCoilLLSStatus] = useState(false);
+  const [powerActive, setPowerActive] = useState(false);
 
   // Chart configuration
   const chartOptions = {
@@ -260,10 +261,22 @@ const Manual = () => {
 
     window.addEventListener('modbus-status-change', handleModbusStatusChange);
 
+    // Listen for power status updates
+    const handlePowerStatusChange = (event) => {
+      setPowerActive(event.detail === true);
+    };
+    window.addEventListener('power-status-change', handlePowerStatusChange);
+
+    // Initial power status check
+    window.api.checkPowerStatus().then(status => {
+      setPowerActive(status.active);
+    }).catch(err => console.error('Error checking initial power status:', err));
+
     // Cleanup function
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('modbus-status-change', handleModbusStatusChange);
+      window.removeEventListener('power-status-change', handlePowerStatusChange);
 
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
@@ -752,6 +765,14 @@ const Manual = () => {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Power Status Badge */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+              <Power className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                POWERED {powerActive ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
             {/* USB Connection Status Badge */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />

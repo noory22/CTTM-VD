@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info, Usb } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
 const HandleConfig = ({ mode = 'load' }) => {
@@ -14,9 +14,27 @@ const HandleConfig = ({ mode = 'load' }) => {
   const [loadingConfigs, setLoadingConfigs] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [powerActive, setPowerActive] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(false);
 
   useEffect(() => {
     loadAvailableConfigs();
+
+    // Initial status checks
+    window.api.checkPowerStatus().then(status => setPowerActive(status.active));
+    window.api.checkConnection().then(status => setConnectionStatus(status.connected));
+
+    // Listen for status updates
+    const handlePowerStatusChange = (event) => setPowerActive(event.detail === true);
+    const handleModbusStatusChange = (event) => setConnectionStatus(event.detail === 'connected');
+
+    window.addEventListener('power-status-change', handlePowerStatusChange);
+    window.addEventListener('modbus-status-change', handleModbusStatusChange);
+
+    return () => {
+      window.removeEventListener('power-status-change', handlePowerStatusChange);
+      window.removeEventListener('modbus-status-change', handleModbusStatusChange);
+    };
   }, []);
 
   const loadAvailableConfigs = async () => {
@@ -166,7 +184,23 @@ const HandleConfig = ({ mode = 'load' }) => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{getPageTitle()}</h1>
           </div>
 
-          <div className="flex items-center space-x-2 lg:space-x-3">
+          <div className="flex items-center space-x-2 lg:space-x-4">
+            {/* Power Status Badge */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+              <Power className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                POWERED {powerActive ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
+            {/* USB Connection Status Badge */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+              <Usb className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                {connectionStatus ? 'USB Connected' : 'USB Disconnected'}
+              </span>
+            </div>
+
             {/* Help Button */}
             <button
               onClick={() => setShowHelpModal(true)}
@@ -296,19 +330,6 @@ const HandleConfig = ({ mode = 'load' }) => {
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
                   />
                 </div>
-
-                {/* Temperature */}
-                {/* <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700">
-                    Temperature (°C)
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedConfig ? selectedConfig.temperature : ''}
-                    readOnly
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
-                  />
-                </div> */}
                 {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">

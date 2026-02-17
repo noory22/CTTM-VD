@@ -107,6 +107,7 @@ const ProcessMode = () => {
 
   // NEW: COIL_LLS status state
   const [coilLLSStatus, setCoilLLSStatus] = useState(false);
+  const [powerActive, setPowerActive] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -159,12 +160,24 @@ const ProcessMode = () => {
     // Setup event listener for COIL_LLS changes
     window.addEventListener("lls-status-change", handleLLSStatusChange);
 
-    console.log("✅ Process Mode COIL_LLS monitoring setup complete");
+    // Listen for power status updates
+    const handlePowerStatusChange = (event) => {
+      setPowerActive(event.detail === true);
+    };
+    window.addEventListener("power-status-change", handlePowerStatusChange);
+
+    // Initial power status check
+    window.api.checkPowerStatus().then(status => {
+      setPowerActive(status.active);
+    }).catch(err => console.error("Error checking initial power status:", err));
+
+    console.log("✅ Process Mode status monitoring setup complete");
 
     // Cleanup
     return () => {
-      console.log("🧹 Cleaning up Process Mode COIL_LLS monitoring");
+      console.log("🧹 Cleaning up Process Mode status monitoring");
       window.removeEventListener("lls-status-change", handleLLSStatusChange);
+      window.removeEventListener("power-status-change", handlePowerStatusChange);
     };
   }, [sensorData.status]);
 
@@ -1282,38 +1295,38 @@ const ProcessMode = () => {
       // ADD CURVE LINES AS SEPARATE DATASETS
       ...(selectedConfig?.curveDistances
         ? Object.entries(selectedConfig.curveDistances)
-            .map(([label, value]) => {
-              const distance = Number(value);
-              if (isNaN(distance)) return null;
+          .map(([label, value]) => {
+            const distance = Number(value);
+            if (isNaN(distance)) return null;
 
-              return {
-                label: `Curve ${label}`,
-                data: [
-                  {
-                    x: distance,
-                    y:
-                      chartData.length > 0
-                        ? Math.min(...chartData.map((d) => d.force))
-                        : 0,
-                  },
-                  {
-                    x: distance,
-                    y:
-                      chartData.length > 0
-                        ? Math.max(...chartData.map((d) => d.force))
-                        : 100,
-                  },
-                ],
-                borderColor: reachedCurves[label] ? "#ef4444" : "#fbbf24",
-                borderWidth: 2,
-                borderDash: [4, 4],
-                pointRadius: 0,
-                pointHoverRadius: 0,
-                fill: false,
-                showLine: true,
-              };
-            })
-            .filter(Boolean)
+            return {
+              label: `Curve ${label}`,
+              data: [
+                {
+                  x: distance,
+                  y:
+                    chartData.length > 0
+                      ? Math.min(...chartData.map((d) => d.force))
+                      : 0,
+                },
+                {
+                  x: distance,
+                  y:
+                    chartData.length > 0
+                      ? Math.max(...chartData.map((d) => d.force))
+                      : 100,
+                },
+              ],
+              borderColor: reachedCurves[label] ? "#ef4444" : "#fbbf24",
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              fill: false,
+              showLine: true,
+            };
+          })
+          .filter(Boolean)
         : []),
     ],
   };
@@ -1491,11 +1504,10 @@ const ProcessMode = () => {
                     <button
                       onClick={turnOnHeater}
                       disabled={temperatureStatus.heaterButtonDisabled}
-                      className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
-                        temperatureStatus.heaterButtonDisabled
+                      className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${temperatureStatus.heaterButtonDisabled
                           ? "bg-gray-400 cursor-not-allowed text-gray-200"
                           : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
-                      }`}
+                        }`}
                     >
                       <Flame className="w-5 h-5" />
                       <span>
@@ -1701,9 +1713,8 @@ const ProcessMode = () => {
       )}
 
       <div
-        className={`${isXlScreen ? "hidden" : "fixed"} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
-          showConfigPanel ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`${isXlScreen ? "hidden" : "fixed"} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showConfigPanel ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
@@ -1778,11 +1789,10 @@ const ProcessMode = () => {
                 <button
                   onClick={handleBack}
                   disabled={shouldDisableBackButton()}
-                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group flex-shrink-0 ${
-                    shouldDisableBackButton()
+                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group flex-shrink-0 ${shouldDisableBackButton()
                       ? "bg-gray-100 cursor-not-allowed text-gray-400"
                       : "p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
-                  }`}
+                    }`}
                 >
                   <ArrowLeft
                     className={`${isXlScreen ? "w-6 h-6" : "w-5 h-5"}`}
@@ -1808,11 +1818,10 @@ const ProcessMode = () => {
 
             <div className="flex items-center space-x-1 sm:space-x-3 flex-shrink-0">
               <div
-                className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1 sm:py-2 rounded-xl font-medium transition-all ${
-                  isConnected
+                className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1 sm:py-2 rounded-xl font-medium transition-all ${isConnected
                     ? "bg-green-50 text-green-700 border border-green-200 shadow-sm shadow-green-500/10"
                     : "bg-red-50 text-red-700 border border-red-200 shadow-sm shadow-red-500/10"
-                }`}
+                  }`}
               >
                 <Usb className={`${isXlScreen ? "w-5 h-5" : "w-4 h-4"}`} />
                 <span className="text-xs sm:text-sm font-semibold hidden sm:inline">
@@ -1849,16 +1858,14 @@ const ProcessMode = () => {
                   }
                 }}
                 disabled={shouldDisablePowerButton()}
-                className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-lg border ${
-                  shouldDisablePowerButton()
+                className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-lg border ${shouldDisablePowerButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-400 border-gray-300"
                     : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30"
-                }`}
+                  }`}
               >
                 <Power
-                  className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-transform duration-300 ${
-                    shouldDisablePowerButton() ? "" : "group-hover:scale-110"
-                  }`}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-transform duration-300 ${shouldDisablePowerButton() ? "" : "group-hover:scale-110"
+                    }`}
                 />
               </button>
             </div>
@@ -1919,7 +1926,7 @@ const ProcessMode = () => {
                 >
                   Real-time Analytics
                 </span>
-                <span 
+                <span
                   className={`${isXlScreen ? "text-sm" : "text-xs"} text-gray-500 mr-2`}
                 >
                   (Force & Distance vs Time)
@@ -1977,20 +1984,19 @@ const ProcessMode = () => {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
                       <div
-                        className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                          sensorData.status === "INSERTION" ||
-                          sensorData.status === "RETRACTION"
+                        className={`w-6 h-6 rounded-md flex items-center justify-center ${sensorData.status === "INSERTION" ||
+                            sensorData.status === "RETRACTION"
                             ? "bg-gradient-to-br from-green-500 to-emerald-500"
                             : sensorData.status === "PAUSED" ||
-                                sensorData.status === "RETRACTION PAUSED"
+                              sensorData.status === "RETRACTION PAUSED"
                               ? "bg-gradient-to-br from-yellow-500 to-orange-500"
                               : sensorData.status === "HOMING"
                                 ? "bg-gradient-to-br from-purple-500 to-indigo-500"
                                 : sensorData.status === "READY" ||
-                                    sensorData.status === "INSERTION COMPLETED"
+                                  sensorData.status === "INSERTION COMPLETED"
                                   ? "bg-gradient-to-br from-blue-500 to-indigo-500"
                                   : "bg-gradient-to-br from-gray-400 to-gray-500"
-                        }`}
+                          }`}
                       >
                         <Activity className="w-3 h-3 text-white" />
                       </div>
@@ -1999,37 +2005,35 @@ const ProcessMode = () => {
                       </p>
                     </div>
                     <div
-                      className={`w-2 h-2 rounded-full ${
-                        sensorData.status === "INSERTION" ||
-                        sensorData.status === "RETRACTION"
+                      className={`w-2 h-2 rounded-full ${sensorData.status === "INSERTION" ||
+                          sensorData.status === "RETRACTION"
                           ? "bg-green-500 animate-pulse"
                           : sensorData.status === "PAUSED" ||
-                              sensorData.status === "RETRACTION PAUSED"
+                            sensorData.status === "RETRACTION PAUSED"
                             ? "bg-yellow-500"
                             : sensorData.status === "HOMING"
                               ? "bg-purple-500 animate-pulse"
                               : sensorData.status === "READY" ||
-                                  sensorData.status === "INSERTION COMPLETED"
+                                sensorData.status === "INSERTION COMPLETED"
                                 ? "bg-blue-500"
                                 : "bg-gray-400"
-                      }`}
+                        }`}
                     ></div>
                   </div>
                   <p
-                    className={`text-sm font-bold ${
-                      sensorData.status === "INSERTION" ||
-                      sensorData.status === "RETRACTION"
+                    className={`text-sm font-bold ${sensorData.status === "INSERTION" ||
+                        sensorData.status === "RETRACTION"
                         ? "text-green-600"
                         : sensorData.status === "PAUSED" ||
-                            sensorData.status === "RETRACTION PAUSED"
+                          sensorData.status === "RETRACTION PAUSED"
                           ? "text-yellow-600"
                           : sensorData.status === "HOMING"
                             ? "text-purple-600"
                             : sensorData.status === "READY" ||
-                                sensorData.status === "INSERTION COMPLETED"
+                              sensorData.status === "INSERTION COMPLETED"
                               ? "text-blue-600"
                               : "text-gray-600"
-                    }`}
+                      }`}
                   >
                     {sensorData.status}
                   </p>
@@ -2184,20 +2188,19 @@ const ProcessMode = () => {
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center space-x-2">
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
-                          sensorData.status === "INSERTION" ||
-                          sensorData.status === "RETRACTION"
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${sensorData.status === "INSERTION" ||
+                            sensorData.status === "RETRACTION"
                             ? "bg-gradient-to-br from-green-500 to-emerald-500"
                             : sensorData.status === "PAUSED" ||
-                                sensorData.status === "RETRACTION PAUSED"
+                              sensorData.status === "RETRACTION PAUSED"
                               ? "bg-gradient-to-br from-yellow-500 to-orange-500"
                               : sensorData.status === "HOMING"
                                 ? "bg-gradient-to-br from-purple-500 to-indigo-500"
                                 : sensorData.status === "READY" ||
-                                    sensorData.status === "INSERTION COMPLETED"
+                                  sensorData.status === "INSERTION COMPLETED"
                                   ? "bg-gradient-to-br from-blue-500 to-indigo-500"
                                   : "bg-gradient-to-br from-gray-400 to-gray-500"
-                        }`}
+                          }`}
                       >
                         <Activity className="w-4 h-4 text-white" />
                       </div>
@@ -2206,37 +2209,35 @@ const ProcessMode = () => {
                       </p>
                     </div>
                     <div
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        sensorData.status === "INSERTION" ||
-                        sensorData.status === "RETRACTION"
+                      className={`w-2.5 h-2.5 rounded-full ${sensorData.status === "INSERTION" ||
+                          sensorData.status === "RETRACTION"
                           ? "bg-green-500 animate-pulse"
                           : sensorData.status === "PAUSED" ||
-                              sensorData.status === "RETRACTION PAUSED"
+                            sensorData.status === "RETRACTION PAUSED"
                             ? "bg-yellow-500"
                             : sensorData.status === "HOMING"
                               ? "bg-purple-500 animate-pulse"
                               : sensorData.status === "READY" ||
-                                  sensorData.status === "INSERTION COMPLETED"
+                                sensorData.status === "INSERTION COMPLETED"
                                 ? "bg-blue-500"
                                 : "bg-gray-400"
-                      }`}
+                        }`}
                     ></div>
                   </div>
                   <p
-                    className={`text-xl font-bold ${
-                      sensorData.status === "INSERTION" ||
-                      sensorData.status === "RETRACTION"
+                    className={`text-xl font-bold ${sensorData.status === "INSERTION" ||
+                        sensorData.status === "RETRACTION"
                         ? "text-green-600"
                         : sensorData.status === "PAUSED" ||
-                            sensorData.status === "RETRACTION PAUSED"
+                          sensorData.status === "RETRACTION PAUSED"
                           ? "text-yellow-600"
                           : sensorData.status === "HOMING"
                             ? "text-purple-600"
                             : sensorData.status === "READY" ||
-                                sensorData.status === "INSERTION COMPLETED"
+                              sensorData.status === "INSERTION COMPLETED"
                               ? "text-blue-600"
                               : "text-gray-600"
-                    }`}
+                      }`}
                   >
                     {sensorData.status}
                   </p>
@@ -2263,11 +2264,10 @@ const ProcessMode = () => {
               <button
                 onClick={handleStart}
                 disabled={shouldDisableStartButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableStartButton()
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableStartButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30"
-                }`}
+                  }`}
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">
@@ -2278,11 +2278,10 @@ const ProcessMode = () => {
               <button
                 onClick={handlePause}
                 disabled={shouldDisablePauseButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisablePauseButton()
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisablePauseButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30"
-                }`}
+                  }`}
               >
                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">PAUSE</span>
@@ -2291,11 +2290,10 @@ const ProcessMode = () => {
               <button
                 onClick={handleRetraction}
                 disabled={shouldDisableRetractionButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableRetractionButton()
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableRetractionButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-gradient-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30"
-                }`}
+                  }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">
@@ -2306,11 +2304,10 @@ const ProcessMode = () => {
               <button
                 onClick={handleReset}
                 disabled={shouldDisableResetButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableResetButton()
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableResetButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30"
-                }`}
+                  }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">RESET</span>

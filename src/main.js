@@ -18,9 +18,7 @@ import { pathToFileURL } from 'node:url';
 const MAIN_WINDOW_VITE_DEV_SERVER_URL = !app.isPackaged ? 'http://localhost:5173' : null;
 
 let mainWindow;
-// if (started){
-//   app.quit();
-// }
+
 // ============================
 // CSV LOGGING STATE
 // ============================
@@ -76,9 +74,7 @@ let isLoopRunning = false;
 // ============================
 const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'SCTTM.json');
 
-// -------------------------
-// Connect Modbus - UPDATED
-// -------------------------
+
 // -------------------------
 // Connect Modbus - UPDATED
 // -------------------------
@@ -112,7 +108,6 @@ async function connectModbus(targetPort) {
     return true;
   } catch (err) {
     isConnected = false;
-    // console.log(`Connection failed on ${targetPort}: ${err.message}`);
     return false;
   }
 }
@@ -216,45 +211,11 @@ async function manualConnectModbus() {
   }
 }
 
-// // Add this variable near the top with other state variables
-// let lastLLSState = false;
-
-// // Add this function to monitor COIL_LLS
-// async function checkLLSStatus() {
-//   try {
-//     if (!isConnected) return;
-
-//     // Read COIL_LLS status
-//     const llsResult = await client.readCoils(COIL_LLS, 1);
-//     const currentLLSState = llsResult.data[0];
-
-//     // If LLS changed to TRUE
-//     if (currentLLSState && !lastLLSState) {
-//       console.log("✅ COIL_LLS became TRUE - Homing should be complete");
-
-//       // Send notification to UI that homing is complete
-//       if (mainWindow && !mainWindow.isDestroyed()) {
-//         mainWindow.webContents.send('lls-status', 'true');
-//       }
-//     }
-
-//     // Update last state
-//     lastLLSState = currentLLSState;
-
-//   } catch (err) {
-//     console.error("Error checking COIL_LLS:", err.message);
-//   }
-// }
-
-// // Start checking LLS periodically
-// setInterval(checkLLSStatus, 500);
-
-// Remove old LLS checking logic
-// We will integrate this into the main loop
 // Monitoring states
 let lastLLSState = false;
 let lastEmerState = false;
 let lastPowState = false;
+let isHardwareStopActive = false;
 
 // -------------------------
 // Helper: Perform Safety Stop
@@ -274,18 +235,22 @@ async function performSafetyStop(reason) {
   commandQueue.length = 0;
 
   // 3. Directly write STOP coil to PLC (bypassing queue for safety)
-  try {
-    if (client.isOpen) {
-      await client.writeCoil(COIL_STOP, true);
-      await client.writeCoil(COIL_START, false);
-      await client.writeCoil(COIL_HEATER, false);
-      await client.writeCoil(COIL_HEATING, false);
-      await client.writeCoil(COIL_INSERTION, false);
-      await client.writeCoil(COIL_RET, false);
-      console.log("🛑 Global Stop coils written to PLC");
+  if (!isHardwareStopActive) {
+    isHardwareStopActive = true;
+    try {
+      if (client.isOpen) {
+        await client.writeCoil(COIL_STOP, true);
+        await client.writeCoil(COIL_START, false);
+        await client.writeCoil(COIL_HEATER, false);
+        await client.writeCoil(COIL_HEATING, false);
+        await client.writeCoil(COIL_INSERTION, false);
+        await client.writeCoil(COIL_RET, false);
+        console.log("🛑 Global Stop coils written to PLC (Hardware Stop Active)");
+      }
+    } catch (err) {
+      console.error("❌ Failed to write safety stop coils:", err.message);
+      isHardwareStopActive = false; // Allow retry on next loop
     }
-  } catch (err) {
-    console.error("❌ Failed to write safety stop coils:", err.message);
   }
 }
 
@@ -363,51 +328,6 @@ async function stopCSVLogging() {
   }
 }
 
-// ============================
-// CSV LOGGING - FILE READING FUNCTIONS
-// ============================
-
-// async function getLogFiles() {
-//   try {
-//     const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
-
-//     if (!fs.existsSync(logsDir)) {
-//       return [];
-//     }
-
-//     const files = await fsPromises.readdir(logsDir);
-//     const csvFiles = files.filter(file => file.endsWith('.csv'));
-
-//     const logFiles = [];
-
-//     for (const file of csvFiles) {
-//       const filePath = path.join(logsDir, file);
-//       const stats = await fsPromises.stat(filePath);
-
-//       // Extract configuration name and timestamp from filename
-//       const fileNameWithoutExt = file.replace('.csv', '');
-//       const parts = fileNameWithoutExt.split('_');
-//       const configName = parts.slice(0, -1).join('_');
-//       const timestamp = parts[parts.length - 1];
-
-//       logFiles.push({
-//         filename: file,
-//         displayName: `${configName} - ${new Date(timestamp.replace(/-/g, ':')).toLocaleString()}`,
-//         filePath: filePath,
-//         date: stats.mtime.toISOString().split('T')[0],
-//         time: timestamp,
-//         configName: configName
-//       });
-//     }
-
-//     // Sort by date (newest first)
-//     return logFiles.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-//   } catch (error) {
-//     console.error('Error getting log files:', error);
-//     return [];
-//   }
-// }
 async function getLogFiles() {
   try {
     const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
@@ -689,168 +609,6 @@ async function safeReadRegisters(address, count) {
 }
 
 // -------------------------
-// Read PLC Data Function - UPDATED
-// -------------------------
-// async function readPLCData() {
-//   if (!isConnected) {
-//     // Connection not established
-//     return {
-//       success: false,
-//       message: 'Not connected to PLC'
-//     };
-//   }
-
-//   try {
-//     // Read distance (16-bit integer, already in mm)
-//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
-//     const distanceMM = distanceResult.data[0];
-
-//     // Read force (32-bit float, already in mN)
-//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
-//     const forceRegisters = forceResult.data;
-//     const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
-
-//     // Read temperature (16-bit integer, already in °C)
-//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
-//     const temperatureC = tempResult.data[0];
-
-//     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
-//     const manualDistance = manualDistanceResult.data[0];
-
-//      // 🔍 DEBUG LOG — ADD THIS SECTION
-//     console.log("=========================================");
-//     console.log(" PLC LIVE DATA RECEIVED");
-//     console.log("-----------------------------------------");
-//     console.log("RAW REGISTERS:");
-//     console.log("  Distance (70):", distanceMM);
-//     console.log("  Force (54,55):", forceRegisters);
-//     console.log("  Temperature (501):", temperatureC);
-//     console.log("-----------------------------------------");
-//     console.log("DECODED VALUES:");
-//     console.log(`  Distance:      ${distanceMM} mm`);
-//     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
-//     // console.log(`  Temperature:   ${temperatureC} °C`);
-//     console.log(`  Temperature Display: ${temperatureC.toFixed(1)} °C`);
-//     console.log(" Manual Distance:", manualDistance);
-//     console.log("=========================================");
-
-//     return {
-//       success: true,
-//       // Distance data - already in mm
-//       distance: distanceMM,
-//       distanceDisplay: `${distanceMM} mm`,
-
-//       // Force data - already in mN
-//       force_mN: forceMN,
-//       forceDisplay: `${forceMN.toFixed(2)} mN`,
-
-//       // Temperature data - already in °C
-//       temperature: temperatureC,
-//       temperatureDisplay: `${temperatureC} °C`,
-
-//       manualDistance: manualDistance,   // NEW
-//       manualDistanceDisplay: `${manualDistance} mm`,  // NEW
-
-//       // Raw data for debugging
-//       rawRegisters: {
-//         distance: distanceMM,
-//         force: forceRegisters,
-//         temperature: temperatureC,
-//         manualDistance: manualDistance
-//       }
-//     };
-
-//   } catch (err) {
-//     console.error("❌ Error reading PLC data:", err.message);
-
-//     return {
-//       success: false,
-//       message: `Failed to read PLC data: ${err.message}`
-//     };
-//   }
-// }
-// async function readPLCData() {
-//   if (!isConnected) {
-//     // Connection not established
-//     return {
-//       success: false,
-//       message: 'Not connected to PLC'
-//     };
-//   }
-
-//   try {
-//     // Read distance (16-bit integer, already in mm)
-//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
-//     const distanceMM = distanceResult.data[0];
-
-//     // Read force (32-bit float, already in mN)
-//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
-//     const forceRegisters = forceResult.data;
-//     const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
-
-//     // Read temperature (16-bit integer, multiply by 10 for precision)
-//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
-//     const temperatureRaw = tempResult.data[0];
-//     // Divide by 10 to get actual temperature in °C
-//     const temperatureC = temperatureRaw / 10;
-
-//     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
-//     const manualDistance = manualDistanceResult.data[0];
-
-//      // 🔍 DEBUG LOG — ADD THIS SECTION
-//     console.log("=========================================");
-//     console.log(" PLC LIVE DATA RECEIVED");
-//     console.log("-----------------------------------------");
-//     console.log("RAW REGISTERS:");
-//     console.log("  Distance (70):", distanceMM);
-//     console.log("  Force (54,55):", forceRegisters);
-//     console.log("  Temperature (501):", temperatureRaw);
-//     console.log("-----------------------------------------");
-//     console.log("DECODED VALUES:");
-//     console.log(`  Distance:      ${distanceMM} mm`);
-//     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
-//     console.log(`  Temperature (raw): ${temperatureRaw}`);
-//     console.log(`  Temperature (actual): ${temperatureC.toFixed(1)} °C`);
-//     console.log(" Manual Distance:", manualDistance);
-//     console.log("=========================================");
-
-//     return {
-//       success: true,
-//       // Distance data - already in mm
-//       distance: distanceMM,
-//       distanceDisplay: `${distanceMM} mm`,
-
-//       // Force data - already in mN
-//       force_mN: forceMN,
-//       forceDisplay: `${forceMN.toFixed(2)} mN`,
-
-//       // Temperature data - divide by 10 to get actual °C
-//       temperature: temperatureC,
-//       temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
-
-//       manualDistance: manualDistance,   // NEW
-//       manualDistanceDisplay: `${manualDistance} mm`,  // NEW
-
-//       // Raw data for debugging
-//       rawRegisters: {
-//         distance: distanceMM,
-//         force: forceRegisters,
-//         temperature: temperatureRaw,  // Keep raw value here
-//         manualDistance: manualDistance
-//       }
-//     };
-
-//   } catch (err) {
-//     console.error("❌ Error reading PLC data:", err.message);
-
-//     return {
-//       success: false,
-//       message: `Failed to read PLC data: ${err.message}`
-//     };
-//   }
-// }
-
-// -------------------------
 // Background Modbus Processing Loop
 // -------------------------
 let consecutiveErrors = 0;
@@ -883,127 +641,106 @@ async function processModbusLoop() {
       if (commandQueue.length > 0) {
         const cmd = commandQueue.shift();
         try {
-          // console.log(`⚡ Executing command: ${cmd.commandName}`); // Optional debug
           const result = await cmd.task();
           cmd.resolve(result);
         } catch (e) {
           console.error(`❌ Command ${cmd.commandName} failed:`, e.message);
           cmd.reject(e);
         }
-        // Iterate again immediately to process next command if any
         continue;
       }
 
-      // 3. Read Data Cycle (Only if no commands pending)
+      // 3. Read Data Cycle
       let cycleSuccess = false;
+      let currentEmerState = lastEmerState;
+      let currentPowState = lastPowState;
 
-      // Read COIL_LLS (Coil 1000)
+      // Read COIL_LLS
       try {
         const llsResult = await client.readCoils(COIL_LLS, 1);
         const currentLLSState = Boolean(llsResult.data[0]);
         plcState.coilLLS = currentLLSState;
-
         cycleSuccess = true;
-
-        // Emit change event
         if (currentLLSState !== lastLLSState) {
-          console.log(`🔄 COIL_LLS changed: ${lastLLSState} -> ${currentLLSState}`);
-
-          if (currentLLSState) {
-            // When home is reached, selectively stop retraction
-            retState = false;
-            console.log("🏠 Home reached - Stopping retraction in backend");
-          }
-
+          if (currentLLSState) retState = false;
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('lls-status', currentLLSState.toString());
           }
           lastLLSState = currentLLSState;
         }
-      } catch (e) {
-        // console.error("Error reading LLS:", e.message);
-      }
+      } catch (e) { }
 
-      // Read COIL_EMER (Coil 1004)
+      // Read Safety Coils
       try {
         const emerResult = await client.readCoils(COIL_EMER, 1);
-        const currentEmerState = Boolean(emerResult.data[0]);
-
-        if (currentEmerState) {
-          // If emergency is active, continuously ensure we stay stopped
-          performSafetyStop("Emergency Button Pressed");
-        }
-
-        // Emit change event
-        if (currentEmerState !== lastEmerState) {
-          console.log(`🚨 Emergency Status Changed: ${lastEmerState} -> ${currentEmerState}`);
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('emergency-status', currentEmerState);
-          }
-          lastEmerState = currentEmerState;
-        }
-      } catch (e) {
-        // console.error("Error reading COIL_EMER:", e.message);
-      }
-
-      // Read Distance (Reg 70)
-      try {
-        const dRes = await client.readHoldingRegisters(REG_DISTANCE, 1);
-        plcState.distance = dRes.data[0]; // Already in mm
+        currentEmerState = Boolean(emerResult.data[0]);
         cycleSuccess = true;
       } catch (e) { }
 
-      // Read Force (Reg 54-55)
+      try {
+        const powResult = await client.readCoils(COIL_POW, 1);
+        currentPowState = Boolean(powResult.data[0]);
+        cycleSuccess = true;
+      } catch (e) { }
+
+      // Global Safety Check
+      if (currentEmerState || !currentPowState) {
+        await performSafetyStop(currentEmerState ? "Emergency Pressed" : "Power OFF");
+      } else {
+        isHardwareStopActive = false;
+      }
+
+      // Emit Safety Updates
+      if (currentEmerState !== lastEmerState) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('emergency-status', currentEmerState);
+        }
+        lastEmerState = currentEmerState;
+      }
+      if (currentPowState !== lastPowState) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('power-status', currentPowState);
+        }
+        lastPowState = currentPowState;
+      }
+
+      // Read Registers
+      try {
+        const dRes = await client.readHoldingRegisters(REG_DISTANCE, 1);
+        plcState.distance = dRes.data[0];
+        cycleSuccess = true;
+      } catch (e) { }
+
       try {
         const fRes = await client.readHoldingRegisters(REG_FORCE, 2);
         plcState.force_mN = registersToFloat32LE(fRes.data[0], fRes.data[1]);
         cycleSuccess = true;
       } catch (e) { }
 
-      // Read Temperature (Reg 501)
       try {
         const tRes = await client.readHoldingRegisters(REG_TEMP, 1);
-        plcState.temperature = tRes.data[0] / 10.0; // Scale to degrees C
+        plcState.temperature = tRes.data[0] / 10.0;
         cycleSuccess = true;
       } catch (e) { }
 
-      // Read Manual Distance (Reg 6550)
       try {
         const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 1);
-        // plcState.manualDistance = mdRes.data[0];
         plcState.manualDistance = new Int16Array(new Uint16Array([mdRes.data[0]]).buffer)[0];
-        // console.log(typeof (plcState, manualDistance));
         cycleSuccess = true;
       } catch (e) { }
 
-      // 4. Check Cycle Success & Disconnection
+      // 4. Connection Success/Failure Tracking
       if (cycleSuccess) {
-        if (consecutiveErrors > 0) {
-          console.log(`✅ Connection recovered after ${consecutiveErrors} errors`);
-        }
         consecutiveErrors = 0;
       } else {
         consecutiveErrors++;
-        console.warn(`⚠️ Read cycle failed (TIMEOUT/ERR). Consecutive errors: ${consecutiveErrors}`);
-
-        // Threshold: 
-        // 5 reads * 200ms = 1000ms per cycle in worst case (timeout).
-        // 5 cycles = ~5 seconds worst case. 
         if (consecutiveErrors >= 5) {
-          console.error("❌ Disconnection detected: Too many consecutive read failures.");
           isConnected = false;
-          consecutiveErrors = 0;
-
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('modbus-status', 'disconnected');
           }
-
-          // Force close internal client to ensure clean state
-          try {
-            if (client.isOpen) {
-              client.close();
-            }
-          } catch (e) { console.error("Error closing client:", e); }
+          try { if (client.isOpen) client.close(); } catch (e) { }
+          consecutiveErrors = 0;
         }
       }
 
@@ -1059,9 +796,6 @@ async function readPLCData() {
     rawRegisters: {}
   };
 }
-// ============================
-// CONFIGURATION FILE FUNCTIONS
-// ============================
 
 // ============================
 // CONFIGURATION FILE SETTINGS
@@ -1158,12 +892,6 @@ async function pulseCoil(coil) {
 }
 
 // -------------------------
-// Safe command execution
-// -------------------------
-// -------------------------
-// Safe command execution - UPDATED FIXED VERSION
-// -------------------------
-// -------------------------
 // Safe command execution - QUEUED VERSION
 // -------------------------
 function safeExecute(commandName, action) {
@@ -1218,6 +946,10 @@ ipcMain.handle("check-emergency-status", async () => {
   return { active: lastEmerState };
 });
 
+ipcMain.handle("check-power-status", async () => {
+  return { active: lastPowState };
+});
+
 ipcMain.handle("home", async () => {
   return await safeExecute("HOME", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
@@ -1243,18 +975,7 @@ ipcMain.handle("start", async () => {
   });
 });
 
-// ipcMain.handle("stop", async () => {
-//   return await safeExecute("STOP", async () => {
-//     if (!isConnected) throw new Error('Modbus not connected');
 
-//     await client.writeCoil(COIL_START, false);
-//     await client.writeCoil(COIL_STOP, true);
-//     await client.writeCoil(COIL_RETRACTION, false);
-
-
-//     return { stopPressed: true };
-//   });
-// });
 ipcMain.handle("stop", async () => {
   return await safeExecute("STOP", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
@@ -1295,18 +1016,7 @@ ipcMain.handle("heating", async () => {
   });
 });
 
-// ipcMain.handle("retraction", async () => {
-//   return await safeExecute("RETRACTION", async () => {
-//     if (!isConnected) throw new Error("Modbus not connected");
 
-//     coilState.retraction = !coilState.retraction;
-//     await client.writeCoil(COIL_RETRACTION, coilState.retraction);
-//     await client.writeCoil(COIL_STOP, false);
-//     await client.writeCoil(COIL_START, false);
-
-//     return { retraction: coilState.retraction };
-//   });
-// });
 ipcMain.handle("retraction", async () => {
   return await safeExecute("RETRACTION", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
@@ -1370,8 +1080,7 @@ ipcMain.handle("clamp", async () => {
     clampState = !clampState;
 
     await client.writeCoil(COIL_MANUAL, true);
-    // await client.writeCoil(COIL_RET, false);
-    // await client.writeCoil(COIL_INSERTION, false);
+
 
     await client.writeCoil(COIL_CLAMP, clampState);
 
@@ -1394,7 +1103,7 @@ ipcMain.handle("insertion", async () => {
     await client.writeCoil(COIL_MANUAL, true);
     await client.writeCoil(COIL_RET, false);
     await client.writeCoil(COIL_INSERTION, insertionState);
-    // await client.writeCoil(COIL_CLAMP, false); // optional safety
+
 
     return {
       insertionState: insertionState ? "ON" : "OFF",
@@ -1415,7 +1124,7 @@ ipcMain.handle("ret", async () => {
     await client.writeCoil(COIL_MANUAL, true);
     await client.writeCoil(COIL_RET, retState);
     await client.writeCoil(COIL_INSERTION, false);
-    // await client.writeCoil(COIL_CLAMP, false); // optional safety
+
 
     return {
       retState: retState ? "ON" : "OFF",
@@ -1591,114 +1300,6 @@ ipcMain.handle("send-process-mode", async (event, config) => {
     }
   });
 });
-
-
-// const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-// ipcMain.handle("send-process-mode", async (event, config) => {
-//   try {
-//     console.log('🔧 Process mode config received:', config);
-
-//     if (!isConnected || !client.isOpen) {
-//       console.error('❌ Cannot send process mode: Modbus not connected');
-//       return false;
-//     }
-
-//     // Parse configuration values
-//     const pathLength = parseInt(config.pathlength);
-//     const thresholdForce = parseFloat(config.thresholdForce); // mN
-//     const temperature = parseFloat(config.temperature); // °C
-//     const retractionLength = parseFloat(config.retractionLength); // mm
-
-//     console.log('📊 Parsed config values:', {
-//       pathLength: `${pathLength} mm`,
-//       thresholdForce: `${thresholdForce} mN`,
-//       temperature: `${temperature} °C`,
-//       retractionLength: `${retractionLength} mm`
-//     });
-
-//     // Validate values
-//     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
-//       console.error('❌ Invalid configuration values');
-//       return false;
-//     }
-
-//     const results = [];
-
-//     try {
-//       // 1. Write Path Length
-//       console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
-//       await client.writeRegister(6000, pathLength);
-//       await delay(150);
-//       console.log('✅ Path Length written to address 6000');
-//       results.push({ register: '6000 (D0)', value: pathLength, success: true });
-
-//       // 2. Write Threshold Force
-//       const thresholdForceValue = Math.round(thresholdForce);
-//       console.log(`📝 Writing Threshold Force: ${thresholdForceValue} mN to R150`);
-//       await client.writeRegister(150, thresholdForceValue);
-//       await delay(150);
-//       console.log('✅ Threshold Force written to R150');
-//       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
-
-//       // 3. Write Temperature
-//       const temperatureValue = Math.round(temperature * 10); // 0.1°C
-//       console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
-//       await client.writeRegister(510, temperatureValue);
-//       await delay(150);
-//       console.log('✅ Temperature written to R510');
-//       results.push({ register: '510 (R510)', value: temperatureValue, success: true });
-
-//       // 4. Write Retraction Length
-//       const retractionValue = Math.round(retractionLength);
-//       console.log(`📝 Writing Retraction Stroke Length: ${retractionValue} mm to R122`);
-//       await client.writeRegister(122, retractionValue);
-//       await delay(150);
-//       console.log('✅ Retraction Stroke Length written to R122');
-//       results.push({ register: '122 (R122)', value: retractionValue, success: true });
-
-//       console.log('✅ All configuration values written');
-//       console.log('📋 Write results:', results);
-
-//       // ---- Verification ----
-//       console.log('🔄 Verifying written values...');
-//       // await delay(200);
-
-//       const verify6000 = await client.readHoldingRegisters(6000, 1);
-//       const verify150 = await client.readHoldingRegisters(150, 1);
-//       const verify510 = await client.readHoldingRegisters(510, 1);
-//       const verify122 = await client.readHoldingRegisters(122, 1);
-
-//       console.log('🔍 Verification reads:', {
-//         '6000 (Path Length)': verify6000.data[0],
-//         '150 (Threshold Force)': verify150.data[0],
-//         '510 (Temperature)': verify510.data[0],
-//         '122 (Retraction)': verify122.data[0]
-//       });
-
-//       const verificationPassed = 
-//         verify6000.data[0] === pathLength &&
-//         verify150.data[0] === thresholdForceValue &&
-//         verify510.data[0] === temperatureValue &&
-//         verify122.data[0] === retractionValue;
-
-//       if (!verificationPassed) {
-//         console.warn('⚠️ Verification failed');
-//         return false;
-//       }
-
-//       console.log('✅ All values verified successfully!');
-//       return true;
-
-//     } catch (error) {
-//       console.error('❌ Error writing to PLC:', error.message);
-//       return false;
-//     }
-
-//   } catch (error) {
-//     console.error('❌ Error sending process mode:', error);
-//     return false;
-//   }
-// });
 
 
 // ============================

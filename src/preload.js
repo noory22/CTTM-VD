@@ -39,7 +39,8 @@ contextBridge.exposeInMainWorld("api", {
   connectModbus: () => ipcRenderer.invoke("connect-modbus"),
   checkConnection: () => ipcRenderer.invoke("check-connection"),
   reconnect: () => ipcRenderer.invoke("reconnect"),
-  checkEmergencyStatus: () => ipcRenderer.invoke("check-emergency-status")
+  checkEmergencyStatus: () => ipcRenderer.invoke("check-emergency-status"),
+  checkPowerStatus: () => ipcRenderer.invoke("check-power-status")
 });
 
 // Listen for connection status updates from main process
@@ -60,6 +61,13 @@ ipcRenderer.on('lls-status', (event, status) => {
 // Listen for emergency status updates
 ipcRenderer.on('emergency-status', (event, status) => {
   window.dispatchEvent(new CustomEvent('emergency-status-change', {
+    detail: status
+  }));
+});
+
+// Listen for power status updates
+ipcRenderer.on('power-status', (event, status) => {
+  window.dispatchEvent(new CustomEvent('power-status-change', {
     detail: status
   }));
 });

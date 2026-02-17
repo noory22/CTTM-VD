@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const SafetyAlert = ({ children }) => {
     const [emergencyActive, setEmergencyActive] = useState(false);
+    const [powerActive, setPowerActive] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -10,29 +11,37 @@ const SafetyAlert = ({ children }) => {
         // Initial check
         const checkStatus = async () => {
             try {
-                const status = await window.api.checkEmergencyStatus();
-                setEmergencyActive(status.active);
+                const emerStatus = await window.api.checkEmergencyStatus();
+                setEmergencyActive(emerStatus.active);
+                const powStatus = await window.api.checkPowerStatus();
+                setPowerActive(powStatus.active);
             } catch (error) {
-                console.error('Failed to check initial emergency status:', error);
+                console.error('Failed to check initial status:', error);
             }
         };
         checkStatus();
 
         const handleEmergencyStatus = (event) => {
-            const active = event.detail === true;
-            setEmergencyActive(active);
+            setEmergencyActive(event.detail === true);
+        };
+
+        const handlePowerStatus = (event) => {
+            setPowerActive(event.detail === true);
         };
 
         window.addEventListener('emergency-status-change', handleEmergencyStatus);
+        window.addEventListener('power-status-change', handlePowerStatus);
         return () => {
             window.removeEventListener('emergency-status-change', handleEmergencyStatus);
+            window.removeEventListener('power-status-change', handlePowerStatus);
         };
     }, []);
 
     const isHome = location.pathname === '/';
 
     // Only show the blocking prompt if NOT on MainMenu
-    const showPrompt = emergencyActive && !isHome;
+    const showPrompt = (emergencyActive || !powerActive) && !isHome;
+    const isPowerStop = !powerActive;
 
     const handleBackToMenu = () => {
         navigate('/');
@@ -55,9 +64,13 @@ const SafetyAlert = ({ children }) => {
                                 </svg>
                             </div>
 
-                            <h2 className="text-3xl font-bold text-slate-900 mb-2">Emergency Stop</h2>
+                            <h2 className="text-3xl font-bold text-slate-900 mb-2">
+                                {isPowerStop ? "Power Stop" : "Emergency Stop"}
+                            </h2>
                             <p className="text-slate-600 text-lg mb-8">
-                                The emergency button is pressed. All processes have been stopped for your safety.
+                                {isPowerStop
+                                    ? "The button power is pressed. All processes have been stopped."
+                                    : "The emergency button is pressed. All processes have been stopped for your safety."}
                             </p>
 
                             <div className="grid grid-cols-2 gap-4 w-full">
