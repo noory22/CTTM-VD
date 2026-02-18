@@ -43,6 +43,9 @@ const ProcessLogs = () => {
   const [forwardData, setForwardData] = useState([]);
   const [backwardData, setBackwardData] = useState([]);
 
+
+  const [showCurvesDropdown, setShowCurvesDropdown] = useState(false);
+
   useEffect(() => {
     loadLogFiles();
   }, []);
@@ -281,7 +284,8 @@ const ProcessLogs = () => {
   return (
     <div
       // className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
-      className={`h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-3 md:p-4 overflow-hidden ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
+      // className={`h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-3 md:p-4 overflow-hidden ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
+            className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-3 md:p-4 overflow-y-auto ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
 
     >
       <div className="w-full mx-auto">
@@ -324,10 +328,13 @@ const ProcessLogs = () => {
 
         {/* Main Content */}
         {/* <div className="grid grid-cols-1 xl:grid-cols-4 gap-6"> */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 h-[calc(100vh-100px)]">
+        {/* <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 h-[calc(100vh-100px)]"> */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 min-h-[calc(100vh-120px)]">
           {/* Left Panel - Log Selection & Config Info */}
           {/* <div className="xl:col-span-1 space-y-6"> */}
-          <div className="xl:col-span-1 space-y-2 sm:space-y-3 md:space-y-4 overflow-y-auto h-full pr-1">
+          {/* <div className="xl:col-span-1 space-y-2 sm:space-y-3 md:space-y-4 overflow-y-auto h-full pr-1"> */}
+          {/* <div className="xl:col-span-1 space-y-2 sm:space-y-3 md:space-y-4 overflow-y-auto h-full pr-1 pb-4"> */}
+          <div className="xl:col-span-1 space-y-2 sm:space-y-3 md:space-y-4 pr-1 pb-4">
             {/* Log File Selector */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <div className="relative">
@@ -503,7 +510,7 @@ const ProcessLogs = () => {
                   </div>
 
                   {/* Number of Curves */}
-                  {selectedLog.configData.numberOfCurves &&
+                  {/* {selectedLog.configData.numberOfCurves &&
                     selectedLog.configData.numberOfCurves !== "--" && (
                       <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200">
                         <div className="flex items-center space-x-2 mb-1">
@@ -516,10 +523,58 @@ const ProcessLogs = () => {
                           {selectedLog.configData.numberOfCurves}
                         </p>
                       </div>
+                    )} */}
+                                    {/* Number of Curves with Dropdown */}
+                  {selectedLog.configData.numberOfCurves &&
+                    selectedLog.configData.numberOfCurves !== "--" && (
+                      <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200">
+                        <button
+                          onClick={() => setShowCurvesDropdown(!showCurvesDropdown)}
+                          className="w-full p-4 flex items-center justify-between hover:bg-yellow-100/50 transition-colors rounded-xl"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <AlertCircle className="w-4 h-4 text-yellow-600" />
+                            <p className="text-slate-700 text-sm font-medium">
+                              Number of Curves
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <span className="text-yellow-700 font-bold text-lg">
+                              {selectedLog.configData.numberOfCurves}
+                            </span>
+                            <ChevronDown
+                              className={`w-5 h-5 text-yellow-600 transition-transform duration-200 ${
+                                showCurvesDropdown ? "rotate-180" : ""
+                              }`}
+                            />
+                          </div>
+                        </button>
+
+                        {/* Curves Dropdown Content */}
+                        {showCurvesDropdown && selectedLog.configData.curveDistances && (
+                          <div className="max-h-48 overflow-y-auto border-t border-yellow-200 p-3 space-y-2">
+                            {Object.entries(selectedLog.configData.curveDistances).map(
+                              ([curveName, distance]) => (
+                                <div
+                                  key={curveName}
+                                  className="flex justify-between items-center bg-white rounded-lg p-2 hover:bg-yellow-50 transition-colors"
+                                >
+                                  <span className="text-slate-700 text-sm font-medium">
+                                    Curve {curveName}
+                                  </span>
+                                  <span className="text-red-600 font-bold">
+                                    {distance} mm
+                                  </span>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
 
                   {/* Curve Distances */}
-                  {selectedLog.configData.curveDistances &&
+                  {/* {selectedLog.configData.curveDistances &&
                     Object.keys(selectedLog.configData.curveDistances).length >
                     0 && (
                       <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-4 border border-red-200">
@@ -547,7 +602,7 @@ const ProcessLogs = () => {
                           ))}
                         </div>
                       </div>
-                    )}
+                    )} */}
                 </div>
               </div>
             )}
@@ -589,10 +644,12 @@ const ProcessLogs = () => {
 
           {/* Right Panel - Graph and Data */}
           {/* <div className="xl:col-span-3 space-y-6"> */}
-          <div className="xl:col-span-3 h-full flex flex-col">
+          {/* <div className="xl:col-span-3 h-full flex flex-col"> */}
+          <div className="xl:col-span-3 h-full flex flex-col min-h-[400px] md:min-h-0">
             {/* Force vs Distance Graph */}
             {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3 sm:p-4 md:p-5 flex-1 flex flex-col">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3 sm:p-4 md:p-5 flex-1 flex flex-col"> */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3 sm:p-4 md:p-5 flex-1 flex flex-col min-h-[350px] md:min-h-0">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
@@ -625,7 +682,8 @@ const ProcessLogs = () => {
               {selectedLog ? (
                 // <div className="h-96 relative">
                 // <div className="h-[600px] relative">
-                <div className="h-full relative">
+                // <div className="h-full relative">
+                <div className="relative w-full" style={{ minHeight: '300px', height: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
@@ -698,7 +756,8 @@ const ProcessLogs = () => {
               ) : (
                 // <div className="h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
                 // <div className="h-[600px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
-                <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                // <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                <div className="w-full min-h-[300px] h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
                   <div className="text-center text-slate-500">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium text-slate-600">
