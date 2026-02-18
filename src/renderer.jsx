@@ -18,21 +18,73 @@ console.log('Renderer loaded, serialAPI available:', !!window.serialAPI);
 const rootElement = document.getElementById("root");
 const root = ReactDOM.createRoot(rootElement);
 
+// Define routes where SafetyAlert should be displayed
+const routesWithSafetyAlert = [
+  "/", // MainMenu
+  "/handle-config/load", // LoadConfig
+  "/manual-mode", // ManualMode
+  "/process-mode", // ProcessMode
+];
+
+const App = () => {
+  return (
+    <HashRouter>
+      <Routes>
+        {/* Route for MainMenu with SafetyAlert */}
+        <Route
+          path="/"
+          element={
+            <>
+              <SafetyAlert />
+              <MainMenu />
+            </>
+          }
+        />
+        
+        {/* Route for LoadConfig (HandleConfig with mode="load") with SafetyAlert */}
+        <Route
+          path="/handle-config/load"
+          element={
+            <>
+              <SafetyAlert />
+              <HandleConfig mode="load" />
+            </>
+          }
+        />
+        
+        {/* Route for ManualMode with SafetyAlert */}
+        <Route
+          path="/manual-mode"
+          element={
+            <>
+              <SafetyAlert />
+              <Manual />
+            </>
+          }
+        />
+        
+        {/* Route for ProcessMode with SafetyAlert */}
+        <Route
+          path="/process-mode"
+          element={
+            <>
+              <SafetyAlert />
+              <ProcessMode />
+            </>
+          }
+        />
+        
+        {/* Routes without SafetyAlert */}
+        <Route path="/create-config" element={<CreateConfig />} />
+        <Route path="/handle-config/delete" element={<HandleConfig mode="delete" />} />
+        <Route path="/process-logs" element={<ProcessLogs />} />
+      </Routes>
+    </HashRouter>
+  );
+};
+
 root.render(
   <React.StrictMode>
-    <HashRouter>
-      <SafetyAlert>
-        <Routes>
-          {/* <Route path="/" element={<Login />} /> */}
-          <Route path="/" element={<MainMenu />} />
-          <Route path="/create-config" element={<CreateConfig />} /> {/* Add this route */}
-          <Route path="/handle-config/load" element={<HandleConfig mode="load" />} />
-          <Route path="/handle-config/delete" element={<HandleConfig mode="delete" />} />
-          <Route path="/manual-mode" element={<Manual />} />
-          <Route path="/process-logs" element={<ProcessLogs />} />
-          <Route path="/process-mode" element={<ProcessMode />} />
-        </Routes>
-      </SafetyAlert>
-    </HashRouter>
+    <App />
   </React.StrictMode>
 );

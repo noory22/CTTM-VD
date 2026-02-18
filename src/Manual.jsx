@@ -740,8 +740,10 @@ const Manual = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <div className="w-full mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
+        {/* <div className="flex items-center justify-between mb-8"> */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+          {/* <div className="flex items-center space-x-4"> */}
+          <div className="flex items-center space-x-2 md:space-x-4">
             <button
               onClick={() => {
                 window.api.checkConnection()
@@ -764,9 +766,11 @@ const Manual = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
           </div>
 
-          <div className="flex items-center space-x-3">
+          {/* <div className="flex items-center space-x-3"> */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Power Status Badge */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+            {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}> */}
+            <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${powerActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Power className="w-4 h-4" />
               <span className="text-sm font-medium">
                 POWERED {powerActive ? 'ON' : 'OFF'}
@@ -774,9 +778,12 @@ const Manual = () => {
             </div>
 
             {/* USB Connection Status Badge */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+            {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium"> */}
+              <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+              <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="text-xs sm:text-sm font-medium">
                 {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
               </span>
             </div>
@@ -809,14 +816,20 @@ const Manual = () => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6"> */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Live Video Feed */}
           <div className="xl:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"> */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full flex flex-col">
               {/* Manual Distance Graph */}
-              <div className="bg-white border-t border-slate-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-3">
+              {/* <div className="bg-white border-t border-slate-200 p-6"> */}
+              {/* <div className="bg-white border-t border-slate-200 p-4 md:p-6"> */}
+              <div className="bg-white border-t border-slate-200 p-4 md:p-6 flex-1">
+                {/* <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3"> */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6">
+                    <div className="flex items-center space-x-2 md:space-x-3">
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
                       <TrendingUp className="w-5 h-5 text-white" />
                     </div>
@@ -827,7 +840,8 @@ const Manual = () => {
                       <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
+                  {/* <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm"> */}
+                  <div className="flex items-center space-x-3 sm:space-x-6 bg-slate-50/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-100 shadow-sm">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-1 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50" />
                       <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Insertion</span>
@@ -839,7 +853,8 @@ const Manual = () => {
                   </div>
                 </div>
 
-                <div className="w-full h-100 relative">
+                {/* <div className="w-full h-100 relative"> */}
+                <div className="w-full h-[calc(100%-120px)] min-h-[300px] relative">
                   <Line
                     data={chartConfig}
                     options={chartOptions}
@@ -850,9 +865,11 @@ const Manual = () => {
 
               {/* Sensor Readings */}
               <div className="p-6 bg-slate-50 border-t border-slate-200">
-                <div className="grid grid-cols-2 gap-6">
+                {/* <div className="grid grid-cols-2 gap-6"> */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                   {/* Temperature */}
-                  <div className="flex items-center space-x-4">
+                  {/* <div className="flex items-center space-x-4"> */}
+                  <div className="flex items-center space-x-3 md:space-x-4">
                     <div className="p-3 bg-orange-100 rounded-xl">
                       <Thermometer className="w-6 h-6 text-orange-600" />
                     </div>
@@ -865,7 +882,8 @@ const Manual = () => {
                             style={{ width: `${Math.min(100, (temperature / 40) * 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-slate-800 font-bold text-lg">
+                        {/* <span className="text-slate-800 font-bold text-lg"> */}
+                        <span className="text-slate-800 font-bold text-base md:text-lg">
                           {temperature === '--' ? '-- °C' : (parseFloat(temperature) > 100 ? 'ERROR 01' : `${parseFloat(temperature).toFixed(1)}°C`)}
                         </span>
                       </div>
@@ -873,7 +891,8 @@ const Manual = () => {
                   </div>
 
                   {/* Force in mN */}
-                  <div className="flex items-center space-x-4">
+                  {/* <div className="flex items-center space-x-4"> */}
+                  <div className="flex items-center space-x-3 md:space-x-4">
                     <div className="p-3 bg-blue-100 rounded-xl">
                       <Zap className="w-6 h-6 text-blue-600" />
                     </div>
@@ -887,7 +906,8 @@ const Manual = () => {
                           ></div>
                         </div>
 
-                        <span className="text-slate-800 font-bold text-lg">
+                        {/* <span className="text-slate-800 font-bold text-lg"> */}
+                        <span className="text-slate-800 font-bold text-base md:text-lg">
                           {force === '--' ? '-- mN' : `${parseFloat(force).toFixed(2)} mN`}
                         </span>
                       </div>
@@ -895,7 +915,8 @@ const Manual = () => {
                   </div>
 
                   {/* Manual Movement Distance */}
-                  <div className="flex items-center space-x-4 mt-3">
+                  {/* <div className="flex items-center space-x-4 mt-3"> */}
+                  <div className="flex items-center space-x-3 md:space-x-4 mt-2 md:mt-3">
                     <div className="p-3 bg-emerald-100 rounded-xl">
                       <Move className="w-6 h-6 text-emerald-600" />
                     </div>
@@ -903,7 +924,8 @@ const Manual = () => {
                     <div>
                       <p className="text-slate-600 text-sm font-medium">Distance</p>
 
-                      <span className="text-slate-800 font-bold text-lg">
+                      {/* <span className="text-slate-800 font-bold text-lg"> */}
+                      <span className="text-slate-800 font-bold text-base md:text-lg">
                         {manualDistance === '--' ? '-- mm' : `${manualDistance} mm`}
                       </span>
                     </div>
@@ -914,16 +936,19 @@ const Manual = () => {
           </div>
 
           {/* Control Panel */}
-          <div className="space-y-6">
+          {/* <div className="space-y-6"> */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-6">
             {/* Clamp Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to toggle clamp ON/OFF</p>
               <div className="flex justify-center">
                 <button
                   onClick={handleClampToggle}
                   disabled={!connectionStatus.connected || controls.homing}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                  // className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
                     ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                     : controls.clamp
                       ? 'bg-purple-500 border-purple-600 text-white hover:bg-purple-600'
@@ -931,7 +956,8 @@ const Manual = () => {
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Zap className="w-8 h-8" />
+                    {/* <Zap className="w-8 h-8" /> */}
+                    <Zap className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   {controls.clamp && connectionStatus.connected && (
                     <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30"></div>
@@ -946,7 +972,8 @@ const Manual = () => {
             </div>
 
             {/* Movement Controls */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Movement Control</h3>
               <p className="text-sm text-slate-500 mb-4">Control catheter movement</p>
 
@@ -955,7 +982,8 @@ const Manual = () => {
                 <button
                   onClick={handleRetraction}
                   disabled={isRetractionDisabled}
-                  className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isRetractionDisabled
+                  // className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isRetractionDisabled
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isRetractionDisabled
                     ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                     : controls.retraction
                       ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
@@ -963,7 +991,8 @@ const Manual = () => {
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <ChevronLeft className="w-8 h-8" />
+                    {/* <ChevronLeft className="w-8 h-8" /> */}
+                    <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   {controls.retraction && connectionStatus.connected && (
                     <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
@@ -974,7 +1003,8 @@ const Manual = () => {
                 <button
                   onClick={handleInsertion}
                   disabled={isInsertionDisabled}
-                  className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isInsertionDisabled
+                  // className={`relative w-20 h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isInsertionDisabled
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isInsertionDisabled
                     ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                     : controls.insertion
                       ? 'bg-red-500 border-red-600 text-white hover:bg-red-600'
@@ -982,7 +1012,8 @@ const Manual = () => {
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <ChevronRight className="w-8 h-8" />
+                    {/* <ChevronRight className="w-8 h-8" /> */}
+                    <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   {controls.insertion && connectionStatus.connected && (
                     <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30"></div>
@@ -1026,14 +1057,16 @@ const Manual = () => {
             </div>
 
             {/* Heater Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
               <div className="flex justify-center">
                 <button
                   onClick={handleHeaterToggle}
                   disabled={!connectionStatus.connected || controls.homing}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                  // className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
                     ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                     : controls.heater
                       ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
@@ -1041,7 +1074,8 @@ const Manual = () => {
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Flame className="w-8 h-8" />
+                    {/* <Flame className="w-8 h-8" /> */}
+                    <Flame className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   {controls.heater && connectionStatus.connected && (
                     <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
@@ -1056,14 +1090,16 @@ const Manual = () => {
             </div>
 
             {/* Homing Control */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
               <div className="flex justify-center">
                 <button
                   onClick={resetCatheter}
                   disabled={isHomingButtonDisabled}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
+                  // className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
                     ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                     : controls.homing
                       ? 'bg-blue-500 border-blue-600 text-white'
@@ -1071,7 +1107,8 @@ const Manual = () => {
                     }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <RotateCw className={`w-8 h-8 ${controls.homing ? 'animate-spin' : ''}`} />
+                    {/* <RotateCw className={`w-8 h-8 ${controls.homing ? 'animate-spin' : ''}`} /> */}
+                    <RotateCw className={`w-6 h-6 sm:w-8 sm:h-8 ${controls.homing ? 'animate-spin' : ''}`} />
                   </div>
                   {controls.homing && connectionStatus.connected && (
                     <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>

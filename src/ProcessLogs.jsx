@@ -280,7 +280,9 @@ const ProcessLogs = () => {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
+      // className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
+      className={`h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-2 sm:p-3 md:p-4 overflow-hidden ${showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage ? "backdrop-blur-sm" : ""}`}
+
     >
       <div className="w-full mx-auto">
         {/* Header */}
@@ -321,9 +323,11 @@ const ProcessLogs = () => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* <div className="grid grid-cols-1 xl:grid-cols-4 gap-6"> */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 h-[calc(100vh-100px)]">
           {/* Left Panel - Log Selection & Config Info */}
-          <div className="xl:col-span-1 space-y-6">
+          {/* <div className="xl:col-span-1 space-y-6"> */}
+          <div className="xl:col-span-1 space-y-2 sm:space-y-3 md:space-y-4 overflow-y-auto h-full pr-1">
             {/* Log File Selector */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <div className="relative">
@@ -584,9 +588,11 @@ const ProcessLogs = () => {
           </div>
 
           {/* Right Panel - Graph and Data */}
-          <div className="xl:col-span-3 space-y-6">
+          {/* <div className="xl:col-span-3 space-y-6"> */}
+          <div className="xl:col-span-3 h-full flex flex-col">
             {/* Force vs Distance Graph */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6"> */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3 sm:p-4 md:p-5 flex-1 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
@@ -618,7 +624,8 @@ const ProcessLogs = () => {
 
               {selectedLog ? (
                 // <div className="h-96 relative">
-                <div className="h-[600px] relative">
+                // <div className="h-[600px] relative">
+                <div className="h-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
@@ -690,7 +697,8 @@ const ProcessLogs = () => {
                 </div>
               ) : (
                 // <div className="h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
-                <div className="h-[600px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                // <div className="h-[600px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
+                <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-dashed border-slate-200">
                   <div className="text-center text-slate-500">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium text-slate-600">
