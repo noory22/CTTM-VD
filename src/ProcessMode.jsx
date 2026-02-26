@@ -1185,9 +1185,37 @@ const ProcessMode = () => {
       mode: "index",
     },
     plugins: {
+      // legend: {
+      //   display: false,
+      // },
       legend: {
-        display: false,
+        display: true,
+        position: 'top',
+        labels: {
+          filter: function(item) {
+            // Show all legends including curves
+            return true;
+          },
+          usePointStyle: true,
+          pointStyle: 'line',
+          padding: 20,
+          font: {
+            size: 11
+          }
+        },
+        onClick: (e, legendItem, legend) => {
+          // Prevent hiding of curve lines when clicked
+          const index = legendItem.datasetIndex;
+          const meta = legend.chart.getDatasetMeta(index);
+          
+          // Allow toggling for force line (index 0), but not for curves
+          if (index === 0) {
+            meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : null;
+            legend.chart.update();
+          }
+        }
       },
+      
       tooltip: {
         mode: "index",
         intersect: false,
@@ -1198,20 +1226,34 @@ const ProcessMode = () => {
         borderWidth: 1,
         cornerRadius: 8,
         padding: 12,
-        displayColors: false,
+        // displayColors: false,
         callbacks: {
           label: function (context) {
-            // Skip label for vertical lines (they're dataset index > 0)
-            if (context.datasetIndex > 0) return null;
+            const label = context.dataset.label || '';
+
+            // For curve lines, show custom label
+            if (label.includes('Curve')) {
+              const curveLabel = label.split(' ')[1]; // Get curve number
+              return `${label} - Reached: ${reachedCurves[curveLabel] ? 'Yes' : 'No'}`;
+            }
+            
+            // For force line
             return `Force: ${context.parsed.y.toFixed(2)} mN`;
           },
-          title: function (context) {
+          title: function(context) {
             return `Distance: ${context[0].parsed.x.toFixed(2)} mm`;
-          },
+
+            // Skip label for vertical lines (they're dataset index > 0)
+          //   if (context.datasetIndex > 0) return null;
+          //   return `Force: ${context.parsed.y.toFixed(2)} mN`;
+          // },
+          // title: function (context) {
+          //   return `Distance: ${context[0].parsed.x.toFixed(2)} mm`;
+          // },
           // Add this to filter out curve line tooltips
-          filter: function (tooltipItem) {
-            // Only show tooltip for the main force line (dataset 0)
-            return tooltipItem.datasetIndex === 0;
+          // filter: function (tooltipItem) {
+          //   // Only show tooltip for the main force line (dataset 0)
+          //   return tooltipItem.datasetIndex === 0;
           },
         },
       },
@@ -1239,6 +1281,22 @@ const ProcessMode = () => {
             size: 11,
           },
           maxTicksLimit: 10,
+          // Add these lines
+          callback: function(value, index, values) {
+            // Add markers for curve distances on x-axis
+            const curveAtThisValue = selectedConfig?.curveDistances 
+              ? Object.values(selectedConfig.curveDistances).includes(value.toString())
+              : false;
+            
+            if (curveAtThisValue) {
+              // return {
+              //   value: value,
+              //   label: `${value}mm ⚑`
+              // };
+              return `${value}mm `;
+            }
+            return `${value}mm`;
+          }
         },
       },
       y: {
@@ -1291,16 +1349,21 @@ const ProcessMode = () => {
         pointBorderColor: "#fff",
         pointHoverBackgroundColor: "#fff",
         pointHoverBorderColor: "#3b82f6",
+
+        yAxisID: 'y',
+        xAxisID: 'x',
       },
       // ADD CURVE LINES AS SEPARATE DATASETS
       ...(selectedConfig?.curveDistances
         ? Object.entries(selectedConfig.curveDistances)
-          .map(([label, value]) => {
+          // .map(([label, value]) => {
+            .map(([label, value], index) => {
             const distance = Number(value);
             if (isNaN(distance)) return null;
 
             return {
-              label: `Curve ${label}`,
+              // label: `Curve ${label}`,
+              label: `Curve ${label} at ${distance}mm`,
               data: [
                 {
                   x: distance,
@@ -1319,11 +1382,18 @@ const ProcessMode = () => {
               ],
               borderColor: reachedCurves[label] ? "#ef4444" : "#fbbf24",
               borderWidth: 2,
-              borderDash: [4, 4],
+              // borderDash: [4, 4],
+              borderDash: [5, 5],
               pointRadius: 0,
               pointHoverRadius: 0,
               fill: false,
               showLine: true,
+
+              tension: 0,
+              yAxisID: 'y',
+              xAxisID: 'x',
+              // Add custom properties for tooltip
+              pointStyle: false,
             };
           })
           .filter(Boolean)
@@ -1332,12 +1402,12 @@ const ProcessMode = () => {
   };
 
   return (
-    <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
+    <div className="min-h-screen h-screen bg-linear-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
       {/* Force Limit Alert Modal */}
       {showForceLimitAlert && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-100 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-red-200 overflow-hidden transform animate-in fade-in zoom-in duration-300">
-            <div className="bg-gradient-to-r from-red-600 to-rose-700 p-6 flex items-center justify-between text-white">
+            <div className="bg-linear-to-r from-red-600 to-rose-700 p-6 flex items-center justify-between text-white">
               <div className="flex items-center space-x-3">
                 <div className="bg-white/20 p-2 rounded-xl">
                   <Activity className="w-6 h-6" />
@@ -1391,7 +1461,7 @@ const ProcessMode = () => {
             <div className="bg-gray-50 p-6 border-t border-gray-100">
               <button
                 onClick={() => setShowForceLimitAlert(false)}
-                className="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg shadow-red-200 hover:-translate-y-0.5 active:translate-y-0"
+                className="w-full bg-linear-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg shadow-red-200 hover:-translate-y-0.5 active:translate-y-0"
               >
                 Close and Acknowledge
               </button>
@@ -1404,7 +1474,7 @@ const ProcessMode = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200/80">
             <div
-              className={`p-6 rounded-t-2xl bg-gradient-to-r ${parseFloat(readData.temperature) >= 39 ? "from-red-600 to-rose-700" : "from-orange-500 to-red-500"}`}
+              className={`p-6 rounded-t-2xl bg-linear-to-r ${parseFloat(readData.temperature) >= 39 ? "from-red-600 to-rose-700" : "from-orange-500 to-red-500"}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -1506,7 +1576,7 @@ const ProcessMode = () => {
                       disabled={temperatureStatus.heaterButtonDisabled}
                       className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${temperatureStatus.heaterButtonDisabled
                           ? "bg-gray-400 cursor-not-allowed text-gray-200"
-                          : "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
+                          : "bg-linear-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
                         }`}
                     >
                       <Flame className="w-5 h-5" />
@@ -1556,7 +1626,7 @@ const ProcessMode = () => {
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-cyan-500 p-6 rounded-t-2xl flex items-center justify-between">
+            <div className="sticky top-0 bg-linear-to-r from-blue-500 to-cyan-500 p-6 rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Info className="w-6 h-6 text-white" />
                 <h2 className="text-2xl font-bold text-white">
@@ -1703,7 +1773,7 @@ const ProcessMode = () => {
             <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl border-t border-gray-200">
               <button
                 onClick={() => setShowInfoModal(false)}
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
+                className="w-full bg-linear-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
               >
                 I Understand - Close
               </button>
@@ -1729,7 +1799,7 @@ const ProcessMode = () => {
 
           {selectedConfig ? (
             <div className="space-y-3">
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
+              <div className="bg-linear-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
                 <p className="text-gray-600 text-xs mb-1">Configuration Name</p>
                 <p className="text-sm font-bold text-blue-700">
                   {selectedConfig.configName}
@@ -1737,21 +1807,21 @@ const ProcessMode = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
+                <div className="bg-linear-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                   <p className="text-gray-600 text-xs mb-1">Distance</p>
                   <p className="text-sm font-bold text-green-700">
                     {selectedConfig.pathlength} mm
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
+                <div className="bg-linear-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
                   <p className="text-gray-600 text-xs mb-1">Threshold Force</p>
                   <p className="text-sm font-bold text-blue-700">
                     {selectedConfig.thresholdForce} mN
                   </p>
                 </div>
 
-                <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                <div className="col-span-2 bg-linear-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">
                     Insertion Stroke Length
                   </p>
@@ -1759,7 +1829,7 @@ const ProcessMode = () => {
                     {selectedConfig.insertionLength} mm
                   </p>
                 </div>
-                <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                <div className="col-span-2 bg-linear-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">
                     Retraction Stroke Length
                   </p>
@@ -1779,7 +1849,7 @@ const ProcessMode = () => {
         </div>
       </div>
 
-      <header className="flex-shrink-0 relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
+      <header className="shrink-0 relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
         <div
           className={`${isXlScreen ? "px-6 py-4" : isLgScreen ? "px-4 py-3" : "px-3 py-2"}`}
         >
@@ -1789,7 +1859,7 @@ const ProcessMode = () => {
                 <button
                   onClick={handleBack}
                   disabled={shouldDisableBackButton()}
-                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group flex-shrink-0 ${shouldDisableBackButton()
+                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group shrink-0 ${shouldDisableBackButton()
                       ? "bg-gray-100 cursor-not-allowed text-gray-400"
                       : "p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
                     }`}
@@ -1800,7 +1870,7 @@ const ProcessMode = () => {
                 </button>
                 <div className="min-w-0">
                   <h1
-                    className={`${isXlScreen ? "text-2xl" : isLgScreen ? "text-xl" : "text-lg"} font-bold bg-gradient-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent truncate`}
+                    className={`${isXlScreen ? "text-2xl" : isLgScreen ? "text-xl" : "text-lg"} font-bold bg-linear-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent truncate`}
                   >
                     Process Mode
                   </h1>
@@ -1816,7 +1886,7 @@ const ProcessMode = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-1 sm:space-x-3 flex-shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-3 shrink-0">
               <div
                 className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1 sm:py-2 rounded-xl font-medium transition-all ${isConnected
                     ? "bg-green-50 text-green-700 border border-green-200 shadow-sm shadow-green-500/10"
@@ -1841,7 +1911,7 @@ const ProcessMode = () => {
 
               <button
                 onClick={() => setShowInfoModal(true)}
-                className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
+                className="group bg-linear-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
               >
                 <Info
                   className={`${isXlScreen ? "w-7 h-7" : "w-5 h-5"} group-hover:scale-110 transition-transform duration-300`}
@@ -1860,7 +1930,7 @@ const ProcessMode = () => {
                 disabled={shouldDisablePowerButton()}
                 className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-lg border ${shouldDisablePowerButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-400 border-gray-300"
-                    : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30"
+                    : "bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30"
                   }`}
               >
                 <Power
@@ -1905,7 +1975,7 @@ const ProcessMode = () => {
               cursor: isDraggingConfig ? "grabbing" : "grab",
               touchAction: "none",
             }}
-            className="bg-gradient-to-br from-purple-500 to-indigo-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
+            className="bg-linear-to-br from-purple-500 to-indigo-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
           >
             <Info className="w-5 h-5" />
           </button>
@@ -1919,7 +1989,7 @@ const ProcessMode = () => {
           className={`flex-1 flex flex-col ${isXlScreen ? "gap-6" : "gap-4"} min-w-0 min-h-0`}
         >
           <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-xl shadow-gray-200/50 flex flex-col">
-            <div className="mb-2 sm:mb-2 flex-shrink-0">
+            <div className="mb-2 sm:mb-2 shrink-0">
               <div className="flex items-center">
                 <span
                   className={`${isXlScreen ? "text-md" : "text-base"} font-bold text-gray-900 mr-2`}
@@ -1935,11 +2005,11 @@ const ProcessMode = () => {
             </div>
 
             {!isXlScreen && (
-              <div className="mb-3 grid grid-cols-2 gap-2 flex-shrink-0">
+              <div className="mb-3 grid grid-cols-2 gap-2 shrink-0">
                 {/* Temperature box */}
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
+                <div className="bg-linear-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
+                    <div className="w-6 h-6 bg-linear-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
                       <Thermometer className="w-3 h-3 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">
@@ -1952,9 +2022,9 @@ const ProcessMode = () => {
                 </div>
 
                 {/* Force box */}
-                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
+                <div className="bg-linear-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center">
+                    <div className="w-6 h-6 bg-linear-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center">
                       <Gauge className="w-3 h-3 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Force</p>
@@ -1965,9 +2035,9 @@ const ProcessMode = () => {
                 </div>
 
                 {/* Distance box */}
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200/50 p-2">
+                <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200/50 p-2">
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-md flex items-center justify-center">
+                    <div className="w-6 h-6 bg-linear-to-br from-green-500 to-emerald-500 rounded-md flex items-center justify-center">
                       <Ruler className="w-3 h-3 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">
@@ -1980,22 +2050,22 @@ const ProcessMode = () => {
                 </div>
 
                 {/* Status box */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
+                <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
                       <div
                         className={`w-6 h-6 rounded-md flex items-center justify-center ${sensorData.status === "INSERTION" ||
                             sensorData.status === "RETRACTION"
-                            ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                            ? "bg-linear-to-br from-green-500 to-emerald-500"
                             : sensorData.status === "PAUSED" ||
                               sensorData.status === "RETRACTION PAUSED"
-                              ? "bg-gradient-to-br from-yellow-500 to-orange-500"
+                              ? "bg-linear-to-br from-yellow-500 to-orange-500"
                               : sensorData.status === "HOMING"
-                                ? "bg-gradient-to-br from-purple-500 to-indigo-500"
+                                ? "bg-linear-to-br from-purple-500 to-indigo-500"
                                 : sensorData.status === "READY" ||
                                   sensorData.status === "INSERTION COMPLETED"
-                                  ? "bg-gradient-to-br from-blue-500 to-indigo-500"
-                                  : "bg-gradient-to-br from-gray-400 to-gray-500"
+                                  ? "bg-linear-to-br from-blue-500 to-indigo-500"
+                                  : "bg-linear-to-br from-gray-400 to-gray-500"
                           }`}
                       >
                         <Activity className="w-3 h-3 text-white" />
@@ -2043,17 +2113,31 @@ const ProcessMode = () => {
 
             {/* Responsive chart container - FIXED HEIGHTS FOR ALL SCREENS */}
             <div
-              className="flex-grow"
+              className="grow"
+              // style={{
+              //   minHeight: "250px",
+              //   height: isSmScreen
+              //     ? "250px"
+              //     : isMdScreen
+              //       ? "300px"
+              //       : isLgScreen
+              //         ? "350px"
+              //         : "400px",
+              //   maxHeight: "400px",
+              // }}
               style={{
-                minHeight: "250px",
+                minHeight: isXlScreen ? "650px" : "250px",
                 height: isSmScreen
                   ? "250px"
                   : isMdScreen
                     ? "300px"
                     : isLgScreen
-                      ? "350px"
-                      : "400px",
-                maxHeight: "400px",
+                      ? "400px"
+                      : isXlScreen
+                        ? "700px"
+                        : "400px",
+                maxHeight: isXlScreen ? "750px" : "400px",
+                width: "100%",
               }}
             >
               <Line data={chartConfig} options={chartOptions} redraw={false} />
@@ -2062,10 +2146,10 @@ const ProcessMode = () => {
         </section>
 
         <section
-          className={`${isXlScreen ? "w-1/2" : "w-full"} flex flex-col ${isXlScreen ? "gap-6" : "gap-4"} pb-20 xl:pb-0 min-h-0`}
+          className={`${isXlScreen ? "w-1/3" : "w-full"} flex flex-col ${isXlScreen ? "gap-6" : "gap-4"} pb-20 xl:pb-0 min-h-0`}
         >
           {isXlScreen && (
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-shrink-0">
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 shrink-0">
               <div className="mb-2">
                 <h3 className="text-lg font-bold text-gray-900">
                   Active Configuration
@@ -2077,7 +2161,7 @@ const ProcessMode = () => {
 
               {selectedConfig ? (
                 <div className="space-y-2.5">
-                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
+                  <div className="bg-linear-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
                     <p className="text-gray-600 text-xs mb-0.5">
                       Configuration Name
                     </p>
@@ -2087,14 +2171,14 @@ const ProcessMode = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
+                    <div className="bg-linear-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Distance</p>
                       <p className="text-base font-bold text-green-700">
                         {selectedConfig.pathlength} mm
                       </p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
+                    <div className="bg-linear-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">
                         Threshold Force
                       </p>
@@ -2103,7 +2187,7 @@ const ProcessMode = () => {
                       </p>
                     </div>
 
-                    <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                    <div className="col-span-2 bg-linear-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">
                         Insertion Stroke Length
                       </p>
@@ -2111,7 +2195,7 @@ const ProcessMode = () => {
                         {selectedConfig.insertionLength} mm
                       </p>
                     </div>
-                    <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                    <div className="col-span-2 bg-linear-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">
                         Retraction Stroke Length
                       </p>
@@ -2144,9 +2228,9 @@ const ProcessMode = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
+                <div className="bg-linear-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
-                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 bg-linear-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
                       <Thermometer className="w-4 h-4 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">
@@ -2158,9 +2242,9 @@ const ProcessMode = () => {
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
+                <div className="bg-linear-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
-                    <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 bg-linear-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
                       <Gauge className="w-4 h-4 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">Force</p>
@@ -2170,9 +2254,9 @@ const ProcessMode = () => {
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
+                <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 bg-linear-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
                       <Ruler className="w-4 h-4 text-white" />
                     </div>
                     <p className="text-gray-600 text-xs font-medium">
@@ -2184,22 +2268,22 @@ const ProcessMode = () => {
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
+                <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center space-x-2">
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${sensorData.status === "INSERTION" ||
                             sensorData.status === "RETRACTION"
-                            ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                            ? "bg-linear-to-br from-green-500 to-emerald-500"
                             : sensorData.status === "PAUSED" ||
                               sensorData.status === "RETRACTION PAUSED"
-                              ? "bg-gradient-to-br from-yellow-500 to-orange-500"
+                              ? "bg-linear-to-br from-yellow-500 to-orange-500"
                               : sensorData.status === "HOMING"
-                                ? "bg-gradient-to-br from-purple-500 to-indigo-500"
+                                ? "bg-linear-to-br from-purple-500 to-indigo-500"
                                 : sensorData.status === "READY" ||
                                   sensorData.status === "INSERTION COMPLETED"
-                                  ? "bg-gradient-to-br from-blue-500 to-indigo-500"
-                                  : "bg-gradient-to-br from-gray-400 to-gray-500"
+                                  ? "bg-linear-to-br from-blue-500 to-indigo-500"
+                                  : "bg-linear-to-br from-gray-400 to-gray-500"
                           }`}
                       >
                         <Activity className="w-4 h-4 text-white" />
@@ -2247,7 +2331,7 @@ const ProcessMode = () => {
           )}
 
           <div
-            className={`${isXlScreen ? "relative" : "fixed bottom-0 left-0 right-0"} bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}
+            className={`${isXlScreen ? "relative" : "fixed bottom-0 left-0 right-0"} bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 shrink-0`}
           >
             {isXlScreen && (
               <div className="mb-2">
@@ -2266,7 +2350,7 @@ const ProcessMode = () => {
                 disabled={shouldDisableStartButton()}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableStartButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
-                    : "bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30"
+                    : "bg-linear-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30"
                   }`}
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2280,7 +2364,7 @@ const ProcessMode = () => {
                 disabled={shouldDisablePauseButton()}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisablePauseButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
-                    : "bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30"
+                    : "bg-linear-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30"
                   }`}
               >
                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2292,7 +2376,7 @@ const ProcessMode = () => {
                 disabled={shouldDisableRetractionButton()}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableRetractionButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
-                    : "bg-gradient-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30"
+                    : "bg-linear-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30"
                   }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2306,7 +2390,7 @@ const ProcessMode = () => {
                 disabled={shouldDisableResetButton()}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableResetButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
-                    : "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30"
+                    : "bg-linear-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30"
                   }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />

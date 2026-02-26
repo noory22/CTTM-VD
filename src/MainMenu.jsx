@@ -250,45 +250,45 @@ const MainMenu = () => {
   };
 
   // Connection status display
-  const getConnectionDisplay = () => {
-    if (!connectionChecked) {
-      return {
-        text: 'Checking connection...',
-        color: 'text-gray-500',
-        bgColor: 'bg-gray-100',
-        borderColor: 'border-gray-200',
-        icon: <Usb className="w-4 h-4 animate-pulse" />
-      };
-    }
+  // const getConnectionDisplay = () => {
+  //   if (!connectionChecked) {
+  //     return {
+  //       text: 'Checking connection...',
+  //       color: 'text-gray-500',
+  //       bgColor: 'bg-gray-100',
+  //       borderColor: 'border-gray-200',
+  //       icon: <Usb className="w-4 h-4 animate-pulse" />
+  //     };
+  //   }
 
-    if (connectionStatus === 'connected') {
-      return {
-        text: 'USB Connected',
-        color: 'text-green-700',
-        bgColor: 'bg-green-100',
-        borderColor: 'border-green-200',
-        icon: <Usb className="w-4 h-4" />
-      };
-    } else {
-      return {
-        text: 'USB Disconnected',
-        color: 'text-red-700',
-        bgColor: 'bg-red-100',
-        borderColor: 'border-red-200',
-        icon: <Usb className="w-4 h-4" />
-      };
-    }
-  };
+  //   if (connectionStatus === 'connected') {
+  //     return {
+  //       text: 'USB Connected',
+  //       color: 'text-green-700',
+  //       bgColor: 'bg-green-100',
+  //       borderColor: 'border-green-200',
+  //       icon: <Usb className="w-4 h-4" />
+  //     };
+  //   } else {
+  //     return {
+  //       text: 'USB Disconnected',
+  //       color: 'text-red-700',
+  //       bgColor: 'bg-red-100',
+  //       borderColor: 'border-red-200',
+  //       icon: <Usb className="w-4 h-4" />
+  //     };
+  //   }
+  // };
 
-  const connectionInfo = getConnectionDisplay();
+  // const connectionInfo = getConnectionDisplay();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
+    <div className="min-h-screen flex flex-col bg-linear-to-br from-slate-50 via-blue-50 to-indigo-100 shrink-0 ">
       {/* Header */}
       <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
 
         <div className="flex-1 flex items-center gap-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
             Main Menu
           </h1>
           {emergencyActive && (
@@ -296,7 +296,7 @@ const MainMenu = () => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <span className="font-bold tracking-wider">EMERGENCY BUTTON IS PRESSED</span>
+              <span className="font-bold tracking-wider">EMERGENCY BUTTON ACTIVATED</span>
             </div>
           )}
         </div>
@@ -311,10 +311,17 @@ const MainMenu = () => {
             </span>
           </div>
 
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
+          {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
             {connectionInfo.icon}
             <span className={`text-sm font-medium ${connectionInfo.color}`}>
               {connectionInfo.text}
+            </span>
+          </div> */}
+                    {/* USB Status Indicator - Updated to match power button style */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
+            <Usb className={`w-4 h-4 ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`} />
+            <span className={`text-sm font-medium ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
+              {connectionStatus === 'connected' ? 'USB Connected' : 'USB Disconnected'}
             </span>
           </div>
 
@@ -335,7 +342,7 @@ const MainMenu = () => {
               window.close();
             }
           }}
-          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
+          className="group bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
         >
           <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
         </button>
@@ -344,8 +351,8 @@ const MainMenu = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 px-8 py-8 xl:py-16 flex-shrink-0 min-h-0">
-        <div className="max-w-[1800px] mx-auto">
+      <main className="flex-1 px-8 py-8 xl:py-16 shrink-0 min-h-0">
+        <div className="max-w-450 mx-auto">
           <div className="flex flex-col xl:flex-row gap-8 xl:gap-20 items-start xl:items-center">
             {/* Left Section - Menu Options */}
             <div className="w-full xl:flex-1 xl:max-w-3xl">
@@ -359,7 +366,7 @@ const MainMenu = () => {
                     key={option.id}
                     className={`group relative bg-white/70 backdrop-blur-sm border-2 rounded-2xl p-8 cursor-pointer transition-all duration-500 flex items-center gap-6 text-left shadow-xl hover:shadow-2xl transform hover:-translate-y-2 overflow-hidden
                       ${option.variant === 'danger'
-                        ? 'border-gray-200/50 bg-gradient-to-r from-gray-50/80 to-gray-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90'
+                        ? 'border-gray-200/50 bg-linear-to-r from-gray-50/80 to-gray-50/80 hover:border-red-400 hover:from-red-100/90 hover:to-rose-100/90'
                         : 'border-gray-200/50 hover:border-blue-400/80 hover:bg-white/90'
                       }
                       ${selectedOption === option.id
@@ -378,23 +385,23 @@ const MainMenu = () => {
                     }}
                   >
                     {/* Animated background gradient */}
-                    <div className={`absolute inset-0 bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                    <div className={`absolute inset-0 bg-linear-to-r ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
 
                     {/* Left accent line */}
-                    <div className={`absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b ${option.gradient} transition-all duration-500 transform scale-y-0 group-hover:scale-y-100 origin-top
+                    <div className={`absolute left-0 top-0 h-full w-1.5 bg-linear-to-b ${option.gradient} transition-all duration-500 transform scale-y-0 group-hover:scale-y-100 origin-top
                       ${selectedOption === option.id ? 'scale-y-100' : ''}`}></div>
 
                     {/* Icon container */}
                     <div className={`relative w-16 h-16 flex items-center justify-center rounded-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3
                       ${option.variant === 'danger'
-                        ? 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300'
-                        : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
+                        ? 'bg-linear-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-red-200 group-hover:to-rose-300'
+                        : 'bg-linear-to-br from-gray-100 to-gray-200 text-gray-700 group-hover:from-blue-100 group-hover:to-indigo-200 group-hover:text-blue-600'
                       }
                       ${selectedOption === option.id ? 'scale-110 rotate-3' : ''}`}>
                       {option.icon}
 
                       {/* Glow effect */}
-                      <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm`}></div>
+                      <div className={`absolute inset-0 rounded-xl bg-linear-to-br ${option.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-sm`}></div>
                     </div>
 
                     {/* Content */}
@@ -427,7 +434,7 @@ const MainMenu = () => {
                     </div>
 
                     {/* Hover glow effect */}
-                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r ${option.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none`}></div>
+                    <div className={`absolute inset-0 rounded-2xl bg-linear-to-r ${option.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none`}></div>
                   </button>
                 ))}
               </div>
@@ -438,10 +445,10 @@ const MainMenu = () => {
               <div className="bg-white/60 backdrop-blur-lg rounded-3xl p-10 shadow-2xl border border-white/20 w-full">
                 {/* Product Header */}
                 <div className="mb-8">
-                  <h1 className="text-8xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-4 tracking-tight leading-none">
+                  <h1 className="text-8xl font-bold bg-linear-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-4 tracking-tight leading-none">
                     CTTM
                   </h1>
-                  <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 leading-tight">
+                  <h2 className="text-4xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 leading-tight">
                     Catheter Trackability Testing Machine
                   </h2>
                 </div>
@@ -457,8 +464,8 @@ const MainMenu = () => {
       </main>
 
       {/* Enhanced Footer */}
-      <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 flex-shrink-0 shadow-lg">
-        <div className="flex flex-col lg:flex-row justify-between items-center max-w-[2000px] mx-auto gap-3 lg:gap-0 w-full">
+      <footer className="relative z-10 px-4 lg:px-8 py-4 lg:py-6 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 shrink-0 shadow-lg">
+        <div className="flex flex-col lg:flex-row justify-between items-center max-w-500 mx-auto gap-3 lg:gap-0 w-full">
           <div className="flex items-center gap-4 lg:gap-6">
             <p className="text-gray-400 text-sm">Copyright 2026 © Revive Medical Technologies Inc.</p>
             <div className="flex items-center gap-2">
