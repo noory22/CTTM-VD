@@ -637,6 +637,15 @@ const Manual = () => {
             const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
             setCatheterPosition(positionPercent);
             setManualDistance(data.manualDistance || 0);
+ 
+            // Hardware-backed state synchronization for control labels/colors
+            setControls(prev => ({
+              ...prev,
+              clamp: data.clamp !== undefined ? Boolean(data.clamp) : prev.clamp,
+              heater: data.heater !== undefined ? Boolean(data.heater) : prev.heater,
+              insertion: data.insertion !== undefined ? Boolean(data.insertion) : prev.insertion,
+              retraction: data.retraction !== undefined ? Boolean(data.retraction) : prev.retraction
+            }));
 
             if (data.coilLLS !== undefined) {
               const newCoilLLSStatus = Boolean(data.coilLLS);
@@ -782,7 +791,7 @@ const Manual = () => {
             {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
               <span className="text-sm font-medium"> */}
-              <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+            <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="text-xs sm:text-sm font-medium">
                 {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
@@ -823,60 +832,60 @@ const Manual = () => {
           {/* <div className="lg:col-span-2"> */}
           {/* <div className="lg:col-span-2 flex flex-col w-full"> */}
           <div className="lg:col-span-2 flex flex-col w-full space-y-6">
-          {/* Live Video Feed */}
-          <div className="xl:col-span-2">
-            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"> */}
-            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full flex flex-col"> */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full flex flex-col">
-              {/* Manual Distance Graph */}
-              {/* <div className="bg-white border-t border-slate-200 p-6"> */}
-              {/* <div className="bg-white border-t border-slate-200 p-4 md:p-6"> */}
-              {/* <div className="bg-white border-t border-slate-200 p-4 md:p-6 flex-1"> */}
-              {/* <div className="bg-white p-4 md:p-6 flex-1 flex flex-col"> */}
-              <div className="bg-white p-4 md:p-6 flex-1 flex flex-col w-full max-w-full overflow-x-auto">
-                {/* <div className="flex items-center justify-between mb-6">
+            {/* Live Video Feed */}
+            <div className="xl:col-span-2">
+              {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"> */}
+              {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full flex flex-col"> */}
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full flex flex-col">
+                {/* Manual Distance Graph */}
+                {/* <div className="bg-white border-t border-slate-200 p-6"> */}
+                {/* <div className="bg-white border-t border-slate-200 p-4 md:p-6"> */}
+                {/* <div className="bg-white border-t border-slate-200 p-4 md:p-6 flex-1"> */}
+                {/* <div className="bg-white p-4 md:p-6 flex-1 flex flex-col"> */}
+                <div className="bg-white p-4 md:p-6 flex-1 flex flex-col w-full max-w-full overflow-x-auto">
+                  {/* <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-3"> */}
                   {/* <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6"> */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6 shrink-0">
                     <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-2 bg-linear-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
-                      <TrendingUp className="w-5 h-5 text-white" />
+                      <div className="p-2 bg-linear-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
+                        <TrendingUp className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-slate-800">
+                          Distance vs Force
+                        </h3>
+                        <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-800">
-                        Distance vs Force
-                      </h3>
-                      <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
+                    {/* <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm"> */}
+                    <div className="flex items-center space-x-3 sm:space-x-6 bg-slate-50/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-1 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50" />
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Insertion</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-1 bg-red-500 rounded-full shadow-sm shadow-red-500/50" />
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Retraction</span>
+                      </div>
                     </div>
                   </div>
-                  {/* <div className="flex items-center space-x-6 bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 shadow-sm"> */}
-                  <div className="flex items-center space-x-3 sm:space-x-6 bg-slate-50/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-1 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50" />
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Insertion</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-1 bg-red-500 rounded-full shadow-sm shadow-red-500/50" />
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Retraction</span>
-                    </div>
+
+                  {/* <div className="w-full h-100 relative"> */}
+                  <div className="w-full h-[calc(100%-120px)] min-h-137.5 relative">
+                    <Line
+                      data={chartConfig}
+                      options={chartOptions}
+                      redraw={false}
+                    />
                   </div>
                 </div>
 
-                {/* <div className="w-full h-100 relative"> */}
-                <div className="w-full h-[calc(100%-120px)] min-h-137.5 relative">
-                  <Line
-                    data={chartConfig}
-                    options={chartOptions}
-                    redraw={false}
-                  />
-                </div>
               </div>
+            </div>
 
-              </div>
-          </div>
-
-          {/* Right Column - Control Panel */}
-          <div className="space-y-4 md:space-y-6">
+            {/* Right Column - Control Panel */}
+            <div className="space-y-4 md:space-y-6">
 
               {/* Sensor Readings */}
               {/* <div className="p-6 bg-slate-50 border-t border-slate-200"> */}
@@ -941,211 +950,206 @@ const Manual = () => {
                   <div className="flex items-center space-x-4 md:space-x-6 mt-2 md:mt-3 bg-white p-4 md:p-5 rounded-xl col-span-1">
                     {/* <div className="flex items-center space-x-3 md:space-x-4 bg-white"></div> */}
                     <div className="flex items-center space-x-4 md:space-x-6 bg-white p-4 md:p-5 rounded-xl">
-                    <div className="p-3 bg-emerald-100 rounded-xl">
-                      <Move className="w-6 h-6 text-emerald-600" />
-                    </div>
+                      <div className="p-3 bg-emerald-100 rounded-xl">
+                        <Move className="w-6 h-6 text-emerald-600" />
+                      </div>
 
-                    <div>
-                      <p className="text-slate-600 text-sm font-medium">Distance</p>
+                      <div>
+                        <p className="text-slate-600 text-sm font-medium">Distance</p>
 
-                      {/* <span className="text-slate-800 font-bold text-lg"> */}
-                      <span className="text-slate-800 font-bold text-base md:text-lg">
-                        {manualDistance === '--' ? '-- mm' : `${manualDistance} mm`}
-                      </span>
+                        {/* <span className="text-slate-800 font-bold text-lg"> */}
+                        <span className="text-slate-800 font-bold text-base md:text-lg">
+                          {manualDistance === '--' ? '-- mm' : `${manualDistance} mm`}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
           {/* Control Panel */}
           {/* <div className="space-y-6"> */}
           {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-6"> */}
-         {/* Control Panel */}
-<div className="grid grid-cols-2 gap-4 md:gap-6">
-  {/* Row 1: Clamp Control and Heater Control side by side */}
-  {/* Clamp Control */}
-  <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-    <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp Control</h3>
-    <p className="text-sm text-slate-500 mb-4">Press to toggle clamp ON/OFF</p>
-    <div className="flex justify-center">
-      <button
-        onClick={handleClampToggle}
-        disabled={!connectionStatus.connected || controls.homing}
-        className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-          !connectionStatus.connected || controls.homing
-            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : controls.clamp
-              ? 'bg-purple-500 border-purple-600 text-white hover:bg-purple-600'
-              : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-        }`}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          {/* <Zap className="w-6 h-6 sm:w-8 sm:h-8" /> */}
-          <img
-            src={clampIcon}
-            alt="Clamp"
-            className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
-          />
-        </div>
-        {controls.clamp && connectionStatus.connected && (
-          <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30"></div>
-        )}
-      </button>
-    </div>
-    <div className="mt-4 text-center">
-      <span className={`text-sm font-semibold ${controls.clamp ? 'text-purple-600' : 'text-slate-600'}`}>
-        {controls.clamp ? 'CLAMPED' : 'UNCLAMPED'}
-      </span>
-    </div>
-  </div>
+          {/* Control Panel */}
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
+            {/* Row 1: Clamp Control and Heater Control side by side */}
+            {/* Clamp Control */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to toggle clamp ON/OFF</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={handleClampToggle}
+                  disabled={!connectionStatus.connected || controls.homing}
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.clamp
+                        ? 'bg-purple-500 border-purple-600 text-white hover:bg-purple-600'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {/* <Zap className="w-6 h-6 sm:w-8 sm:h-8" /> */}
+                    <img
+                      src={clampIcon}
+                      alt="Clamp"
+                      className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
+                    />
+                  </div>
+                  {controls.clamp && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.clamp ? 'text-purple-600' : 'text-slate-600'}`}>
+                  {controls.clamp ? 'CLAMPED' : 'UNCLAMPED'}
+                </span>
+              </div>
+            </div>
 
-  {/* Heater Control */}
-  <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-    <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
-    <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
-    <div className="flex justify-center">
-      <button
-        onClick={handleHeaterToggle}
-        disabled={!connectionStatus.connected || controls.homing}
-        className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-          !connectionStatus.connected || controls.homing
-            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : controls.heater
-              ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
-              : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-        }`}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Flame className="w-6 h-6 sm:w-8 sm:h-8" />
-        </div>
-        {controls.heater && connectionStatus.connected && (
-          <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
-        )}
-      </button>
-    </div>
-    <div className="mt-4 text-center">
-      <span className={`text-sm font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
-        {controls.heater ? 'HEATING' : 'OFF'}
-      </span>
-    </div>
-  </div>
+            {/* Heater Control */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={handleHeaterToggle}
+                  disabled={!connectionStatus.connected || controls.homing}
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.heater
+                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Flame className="w-6 h-6 sm:w-8 sm:h-8" />
+                  </div>
+                  {controls.heater && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
+                  {controls.heater ? 'HEATING' : 'OFF'}
+                </span>
+              </div>
+            </div>
 
-  {/* Row 2: Movement Control full width */}
-  <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-    <h3 className="text-lg font-semibold text-slate-800 mb-4">Movement Control</h3>
-    <p className="text-sm text-slate-500 mb-4">Control catheter movement</p>
-    
-    <div className="flex justify-center space-x-6 md:space-x-8">
-      {/* Retraction (Backward) Button - Left Arrow */}
-      <button
-        onClick={handleRetraction}
-        disabled={isRetractionDisabled}
-        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-          isRetractionDisabled
-            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : controls.retraction
-              ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
-              : 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-blue-50'
-        }`}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
-        </div>
-        {controls.retraction && connectionStatus.connected && (
-          <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
-        )}
-      </button>
+            {/* Row 2: Movement Control full width */}
+            <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Movement Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Control catheter movement</p>
 
-      {/* Insertion (Forward) Button - Right Arrow */}
-      <button
-        onClick={handleInsertion}
-        disabled={isInsertionDisabled}
-        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-          isInsertionDisabled
-            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : controls.insertion
-              ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
-              : 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-blue-50'
-        }`}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
-        </div>
-        {controls.insertion && connectionStatus.connected && (
-          <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30"></div>
-        )}
-      </button>
-    </div>
+              <div className="flex justify-center space-x-6 md:space-x-8">
+                {/* Retraction (Backward) Button - Left Arrow */}
+                <button
+                  onClick={handleRetraction}
+                  disabled={isRetractionDisabled}
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isRetractionDisabled
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.retraction
+                        ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+                  </div>
+                  {controls.retraction && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
 
-    <div className="mt-6 text-center">
-      <div className="text-sm font-semibold">
-        {controls.insertion && (
-          <span className="text-blue-600">INSERTING FORWARD (Press again to stop)</span>
-        )}
-        {controls.retraction && (
-          <span className="text-blue-600">RETRACTING BACKWARD (Press again to stop)</span>
-        )}
-        {!controls.insertion && !controls.retraction && (
-          <span className="text-slate-600">STATIONARY</span>
-        )}
-      </div>
-      {controls.insertion && (
-        <p className="text-xs text-gray-500 mt-2">
-          Retraction disabled while inserting
-        </p>
-      )}
-      {controls.retraction && (
-        <p className="text-xs text-gray-500 mt-2">
-          Insertion disabled while retracting
-        </p>
-      )}
-      {isMovementDisabled && connectionStatus.connected && !controls.homing && (
-        <p className="text-xs text-amber-600 mt-2">
-          Complete homing first to enable movement
-        </p>
-      )}
-      {controls.homing && (
-        <p className="text-xs text-blue-600 mt-2">
-          Homing in progress - movement disabled
-        </p>
-      )}
-    </div>
-  </div>
+                {/* Insertion (Forward) Button - Right Arrow */}
+                <button
+                  onClick={handleInsertion}
+                  disabled={isInsertionDisabled}
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isInsertionDisabled
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.insertion
+                        ? 'bg-blue-500 border-blue-600 text-white hover:bg-blue-600'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+                  </div>
+                  {controls.insertion && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
 
-  {/* Row 3: Homing Control full width */}
-  <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-    <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
-    <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
-    <div className="flex justify-center">
-      <button
-        onClick={resetCatheter}
-        disabled={isHomingButtonDisabled}
-        className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-          isHomingButtonDisabled
-            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-            : controls.homing
-              ? 'bg-blue-500 border-blue-600 text-white'
-              : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-        }`}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <RotateCw className={`w-6 h-6 sm:w-8 sm:h-8 ${controls.homing ? 'animate-spin' : ''}`} />
-        </div>
-        {controls.homing && connectionStatus.connected && (
-          <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
-        )}
-      </button>
-    </div>
-    <div className="mt-4 text-center">
-      <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
-        {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
-      </span>
-    </div>
-  </div>
-</div>
+              <div className="mt-6 text-center">
+                <div className="text-sm font-semibold">
+                  {controls.insertion && (
+                    <span className="text-blue-600">INSERTING FORWARD (Press again to stop)</span>
+                  )}
+                  {controls.retraction && (
+                    <span className="text-blue-600">RETRACTING BACKWARD (Press again to stop)</span>
+                  )}
+                  {!controls.insertion && !controls.retraction && (
+                    <span className="text-slate-600">STATIONARY</span>
+                  )}
+                </div>
+                {controls.insertion && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Retraction disabled while inserting
+                  </p>
+                )}
+                {controls.retraction && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Insertion disabled while retracting
+                  </p>
+                )}
+                {isMovementDisabled && connectionStatus.connected && !controls.homing && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Complete homing first to enable movement
+                  </p>
+                )}
+                {controls.homing && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Homing in progress - movement disabled
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Homing Control full width */}
+            <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={resetCatheter}
+                  disabled={isHomingButtonDisabled}
+                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.homing
+                        ? 'bg-blue-500 border-blue-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                    }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <RotateCw className={`w-6 h-6 sm:w-8 sm:h-8 ${controls.homing ? 'animate-spin' : ''}`} />
+                  </div>
+                  {controls.homing && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
+                  {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

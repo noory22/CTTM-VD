@@ -62,6 +62,10 @@ let plcState = {
   temperature: 0,
   manualDistance: 0,
   coilLLS: false,
+  clamp: false,
+  heater: false,
+  insertion: false,
+  retraction: false,
   lastUpdated: 0
 };
 
@@ -669,6 +673,17 @@ async function processModbusLoop() {
           lastLLSState = currentLLSState;
         }
       } catch (e) { }
+ 
+      // Read Control Coils (Feedback Loop)
+      try {
+        const ctrlRes = await client.readCoils(COIL_CLAMP, 3);
+        plcState.clamp = Boolean(ctrlRes.data[0]);     // 2007
+        plcState.insertion = Boolean(ctrlRes.data[1]); // 2008
+        plcState.retraction = Boolean(ctrlRes.data[2]);// 2009
+ 
+        const heatingRes = await client.readCoils(COIL_HEATING, 1);
+        plcState.heater = Boolean(heatingRes.data[0]); // 2012
+      } catch (e) { }
 
       // Read Safety Coils
       try {
@@ -791,6 +806,10 @@ async function readPLCData() {
     manualDistanceDisplay: `${plcState.manualDistance} mm`,
 
     coilLLS: plcState.coilLLS,
+    clamp: plcState.clamp,
+    heater: plcState.heater,
+    insertion: plcState.insertion,
+    retraction: plcState.retraction,
 
     // Raw data stub for compatibility if needed
     rawRegisters: {}
