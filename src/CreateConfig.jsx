@@ -716,7 +716,7 @@ const CreateConfig = () => {
                     <div className="flex items-start space-x-3">
                       <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
-                        Configuration will be saved to SCTTM.json
+                        Configuration will be saved to CTTM.json
                       </p>
                     </div>
                   </div>

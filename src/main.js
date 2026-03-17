@@ -76,7 +76,7 @@ let isLoopRunning = false;
 // ============================
 // CONFIGURATION FILE SETTINGS
 // ============================
-const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'SCTTM.json');
+const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'CTTM.json');
 
 
 // -------------------------
@@ -266,7 +266,7 @@ async function performSafetyStop(reason) {
 
 async function startCSVLogging(config) {
   try {
-    const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
+    const logsDir = path.join(app.getPath("documents"), "CTTM_Logs");
 
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
@@ -334,7 +334,7 @@ async function stopCSVLogging() {
 
 async function getLogFiles() {
   try {
-    const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
+    const logsDir = path.join(app.getPath("documents"), "CTTM_Logs");
 
     if (!fs.existsSync(logsDir)) {
       return [];

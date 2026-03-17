@@ -24,8 +24,8 @@ module.exports = {
       CompanyName: 'Revive Medical Technologies',
       FileDescription: 'Desktop App',
       OriginalFileName: 'Catheter Trackability Testing Machine',
-      ProductName: 'SCTTM',
-      InternalName: 'Specialized Catheter Trackability Testing Machine',
+      ProductName: 'CTTM',
+      InternalName: 'Catheter Trackability Testing Machine',
     },
   },ignore: [
     /^\/\.git/,
@@ -36,8 +36,8 @@ module.exports = {
     CompanyName: 'Revive Medical Technologies',
     FileDescription: 'Desktop App',
     OriginalFileName: 'Catheter Trackability Testing Machine',
-    ProductName: 'SCTTM',
-    InternalName: 'Specialized Catheter Trackability Testing Machine',
+    ProductName: 'CTTM',
+    InternalName: 'Catheter Trackability Testing Machine',
   },
 
   rebuildConfig: {},
