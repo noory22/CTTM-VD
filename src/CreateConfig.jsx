@@ -227,12 +227,42 @@ const CreateConfig = () => {
       [name]: value
     }));
 
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+    let newError = '';
+    if (value.trim() !== '') {
+      const numVal = parseFloat(value);
+      if (name === 'pathlength') {
+        if (numVal < 30 || numVal > 2000) {
+          newError = 'Path Length must be between 30mm and 2000mm';
+        }
+      } else if (name === 'thresholdForce') {
+        if (numVal < 100 || numVal > 10000) {
+          newError = 'Threshold Force must be between 100mN and 10000mN';
+        }
+      } else if (name === 'insertionLength') {
+        if (numVal < 10 || numVal > 60) {
+          newError = 'Insertion Stroke Length must be between 10mm and 60mm';
+        }
+      } else if (name === 'retractionLength') {
+        if (numVal < 10 || numVal > 60) {
+          newError = 'Retraction Stroke Length must be between 10mm and 60mm';
+        }
+      } else if (name === 'numberOfCurves') {
+        const intVal = parseInt(value);
+        if (intVal < 1 || intVal > 20) {
+          newError = 'Number of Curves must be between 1 and 20';
+        }
+      }
     }
+
+    setErrors(prev => {
+      const updatedErrors = { ...prev };
+      if (newError) {
+        updatedErrors[name] = newError;
+      } else {
+        delete updatedErrors[name];
+      }
+      return updatedErrors;
+    });
 
     if (successMessage) {
       setSuccessMessage('');
