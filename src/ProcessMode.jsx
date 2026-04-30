@@ -1369,14 +1369,17 @@ const ProcessMode = () => {
                   x: distance,
                   y:
                     chartData.length > 0
-                      ? Math.min(...chartData.map((d) => d.force))
+                      ? Math.min(0, ...chartData.map((d) => d.force))
                       : 0,
                 },
                 {
                   x: distance,
                   y:
                     chartData.length > 0
-                      ? Math.max(...chartData.map((d) => d.force))
+                      ? (() => {
+                          const maxF = Math.max(...chartData.map((d) => d.force));
+                          return maxF <= 0 ? 100 : maxF;
+                        })()
                       : 100,
                 },
               ],
