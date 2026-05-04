@@ -8,11 +8,21 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  root: '.',
+  base:'.',
   build: {
-    outDir: 'dist/renderer',      // <-- Put production HTML/assets here
+    outDir: path.resolve(__dirname, '.vite/build/renderer/main_window'),      // <-- Put production HTML/assets here
     emptyOutDir: true,            // <-- Clears the folder before each build
     rollupOptions: {
       input: path.resolve(__dirname, 'index.html'), // Entry point
+    },
+  },
+  server:{
+    port:5173,
+  },
+  resolve:{
+    alias:{
+      '@':path.resolve(__dirname,'src')
     },
   },
 })

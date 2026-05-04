@@ -1,9 +1,9 @@
 // vite.renderer.config.mjs
-import { defineConfig } from "file:///C:/SW%20Projects/SCTTM-V_3.0.0/node_modules/vite/dist/node/index.js";
-import react from "file:///C:/SW%20Projects/SCTTM-V_3.0.0/node_modules/@vitejs/plugin-react/dist/index.js";
-import tailwindcss from "file:///C:/SW%20Projects/SCTTM-V_3.0.0/node_modules/@tailwindcss/vite/dist/index.mjs";
+import { defineConfig } from "file:///C:/SW%20Projects/SCTTM-VD/node_modules/vite/dist/node/index.js";
+import react from "file:///C:/SW%20Projects/CTTM-VD/node_modules/@vitejs/plugin-react/dist/index.js";
+import tailwindcss from "file:///C:/SW%20Projects/CTTM-VD/node_modules/@tailwindcss/vite/dist/index.mjs";
 import path from "node:path";
-var __vite_injected_original_dirname = "C:\\SW Projects\\SCTTM-V_3.0.0";
+var __vite_injected_original_dirname = "C:\\SW Projects\\CTTM-VD";
 var vite_renderer_config_default = defineConfig({
   root: "src",
   // where index.html & renderer.jsx live

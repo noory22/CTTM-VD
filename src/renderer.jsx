@@ -9,6 +9,7 @@ import HandleConfig from "./HandleConfig.jsx";
 import Manual from "./Manual.jsx";
 import ProcessLogs from "./ProcessLogs.jsx";
 import ProcessMode from "./ProcessMode.jsx"; // add this import
+import UpdateChecker from "./UpdateChecker.jsx";
 
 import SafetyAlert from "./SafetyAlert.jsx";
 
@@ -79,6 +80,7 @@ const App = () => {
         <Route path="/handle-config/delete" element={<HandleConfig mode="delete" />} />
         <Route path="/process-logs" element={<ProcessLogs />} />
       </Routes>
+      <UpdateChecker />
     </HashRouter>
   );
 };

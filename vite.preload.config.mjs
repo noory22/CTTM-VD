@@ -1,22 +1,18 @@
 import { defineConfig } from 'vite';
-import { builtinModules } from 'node:module';
-import { resolve } from 'path';
+import path from 'path';
 
 export default defineConfig({
   build: {
-    outDir: '.vite/build/preload', // 👈 separate folder from main
-    emptyOutDir: true,
     lib: {
-      entry: resolve(__dirname, 'src/preload.js'), // 👈 only preload, not main
+      entry: path.resolve(__dirname, 'src/preload.js'),
+      name: 'preload',
       formats: ['cjs'],
-      fileName: () => 'preload.js'
+      fileName: () => 'preload.js',
     },
+    outDir: path.resolve(__dirname, '.vite/build/preload'),
+    emptyOutDir: true,
     rollupOptions: {
-      external: ['electron',...builtinModules],
-      // output: {
-      //   entryFileNames: 'preload.js',
-      //   dir: '.vite/build/preload'  // Add this line
-      // }
-    }
+      external: ['electron'],
+    },
   },
-})
+});

@@ -11,7 +11,7 @@ var vite_renderer_config_default = defineConfig({
   // important for Electron relative paths
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: ".vite/build/renderer/main_window",
+    outDir: path.resolve(__vite_injected_original_dirname, ".vite/build/renderer/main_window"),
     // final production folder
     emptyOutDir: true,
     // clear folder before build

@@ -1,41 +1,38 @@
 {
   "name": "cttm",
-  "productName": "cttm",
-  "version": "2.0.0",
-  "description": "My Electron application description",
-  "main": ".vite/build/main/main.js",
-  "scripts": {
-    "dev": "vite",
-    "build:renderer": "vite build --config vite.renderer.config.mjs",
-    "build:preload": "vite build --config vite.preload.config.mjs",
-    "build": "npm run build:preload && npm run build:renderer",
-    "start": "cross-env NODE_ENV=development electron-forge start",
-    "package": "npm run build && cross-env NODE_ENV=production electron-forge package",
-    "make": "npm run build && cross-env NODE_ENV=production electron-forge make",
-    "publish": "cross-env NODE_ENV=production electron-forge publish",
-    "lint": "echo \"No linting configured\"",
-    "postinstall": "electron-rebuild"
-  },
-  "keywords": [],
+  "version": "1.0.0",
+  "description": "Catheter Trackability Testing Machine",
+  "main": "main.js",
   "author": {
     "name": "noory22",
     "email": "mahnoorjavaid58817@gmail.com"
   },
   "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build:renderer": "vite build --config vite.renderer.config.mjs",
+    "build:preload": "vite build --config vite.preload.config.mjs",
+    "build": "npm run build:preload && npm run build:renderer",
+    "start": "cross-env NODE_ENV=development electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "publish": "npm run build && electron-builder --publish always",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild -f",
+    "clean": "rimraf dist .vite"
+  },
+  "keywords": [],
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.3",
-    "@electron-forge/maker-deb": "^7.8.3",
-    "@electron-forge/maker-rpm": "^7.8.3",
-    "@electron-forge/maker-squirrel": "^7.8.3",
-    "@electron-forge/maker-zip": "^7.8.3",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.8.3",
-    "@electron-forge/plugin-fuses": "^7.8.3",
-    "@electron-forge/plugin-vite": "^7.8.3",
-    "@electron/fuses": "^1.8.0",
+    "@tailwindcss/vite": "^4.1.12",
+    "@vitejs/plugin-react": "^5.0.0",
     "cross-env": "^10.1.0",
     "electron": "^28.3.3",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
+    "rimraf": "^5.0.10",
     "vite": "^5.4.19"
   },
   "dependencies": {
@@ -44,7 +41,7 @@
     "@tailwindcss/vite": "^4.1.12",
     "@vitejs/plugin-react": "^5.0.0",
     "chart.js": "^4.5.1",
-    "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.8.3",
     "lucide-react": "^0.540.0",
     "modbus-serial": "^8.0.23",
     "react": "^19.1.1",
@@ -55,7 +52,96 @@
     "serialport": "^13.0.0",
     "tailwindcss": "^4.1.12"
   },
-  "config": {
-    "forge": "./forge.config.js"
+  "build": {
+    "appId": "com.revivemedical.cttm",
+    "productName": "CTTM",
+    "copyright": "Copyright © 2024 Revive Medical Technologies",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      ".vite/**/*",
+      ".vite/build/**/*",
+      "src/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      {
+        "from": "src/assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/assets/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
+    },
+    "asarUnpack": [
+      "**/node_modules/@serialport/**/*",
+      "**/node_modules/modbus-serial/**/*",
+      "**/node_modules/@serialport/bindings-cpp/**/*",
+      "**/node_modules/@serialport/stream/**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CTTM",
+      "installerIcon": "src/assets/icon.ico",
+      "uninstallerIcon": "src/assets/icon.ico",
+      "installerHeaderIcon": "src/assets/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "perMachine": true,
+      "guid": "com.revivemedical.cttm"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "src/assets/icon.icns",
+      "category": "public.app-category.medical"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "src/assets/icon.png",
+      "category": "Medical"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "noory22",
+      "repo": "CTTM-VD",
+      "private": false,
+      "releaseType": "release"
+    }
   }
 }

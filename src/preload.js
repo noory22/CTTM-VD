@@ -23,7 +23,6 @@ contextBridge.exposeInMainWorld("api", {
   insertion: () => ipcRenderer.invoke("insertion"),
   ret: () => ipcRenderer.invoke("ret"),
   disableManualMode: () => ipcRenderer.invoke('disable-manual-mode'),
-  // debugRegisters: () => ipcRenderer.invoke("debug-registers"),
   // ============= CSV LOGGING =============
   startCSV: (config) => ipcRenderer.invoke("csv-start", config),
   appendCSV: (payload) => ipcRenderer.invoke("csv-append", payload),
@@ -40,7 +39,21 @@ contextBridge.exposeInMainWorld("api", {
   checkConnection: () => ipcRenderer.invoke("check-connection"),
   reconnect: () => ipcRenderer.invoke("reconnect"),
   checkEmergencyStatus: () => ipcRenderer.invoke("check-emergency-status"),
-  checkPowerStatus: () => ipcRenderer.invoke("check-power-status")
+  checkPowerStatus: () => ipcRenderer.invoke("check-power-status"),
+
+  // ============= AUTO-UPDATE API =============
+  checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+  downloadUpdate: () => ipcRenderer.invoke("download-update"),
+  quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, info) => callback(info));
+  },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('update-status', (event, status) => callback(status));
+  },
+  onUpdateProgress: (callback) => {
+    ipcRenderer.on('update-progress', (event, progress) => callback(progress));
+  }
 });
 
 // Listen for connection status updates from main process
@@ -69,6 +82,20 @@ ipcRenderer.on('emergency-status', (event, status) => {
 ipcRenderer.on('power-status', (event, status) => {
   window.dispatchEvent(new CustomEvent('power-status-change', {
     detail: status
+  }));
+});
+
+// Listen for update status updates
+ipcRenderer.on('update-status', (event, status) => {
+  window.dispatchEvent(new CustomEvent('update-status-change', {
+    detail: status
+  }));
+});
+
+// Listen for update progress updates
+ipcRenderer.on('update-progress', (event, progress) => {
+  window.dispatchEvent(new CustomEvent('update-progress', {
+    detail: progress
   }));
 });
 

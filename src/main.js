@@ -1,23 +1,103 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit();
-}
 
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
 const path = require("path");
-import { log } from "node:console";
-import "./index.css";
-import iconPath from './assets/icon.ico';
+const iconPath = path.join(__dirname,'src/assets/icon.ico');
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
 
-import { pathToFileURL } from 'node:url';
+// Define isDev IMMEDIATELY after all requires
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const MAIN_WINDOW_VITE_DEV_SERVER_URL = !app.isPackaged ? 'http://localhost:5173' : null;
 
 let mainWindow;
+// ============================
+// AUTO-UPDATER CONFIGURATION
+// ============================
+
+// Configure auto-updater
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+if (!isDev) {
+  // Setup auto-updater event handlers
+  autoUpdater.on('checking-for-update', () => {
+    console.log('Checking for updates...');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', 'Checking for updates...');
+    }
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', `Update available: v${info.version}`);
+      
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Available',
+        message: `A new version ${info.version} is available. Do you want to download it now?`,
+        buttons: ['Yes', 'No'],
+        defaultId: 0,
+        cancelId: 1
+      }).then((result) => {
+        if (result.response === 0) {
+          autoUpdater.downloadUpdate();
+        }
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('No updates available');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', 'No updates available');
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'No Updates',
+        message: 'You are running the latest version.',
+        buttons: ['OK']
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Update error:', err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', `Update error: ${err.message}`);
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let logMessage = `Downloaded ${progressObj.percent.toFixed(2)}%`;
+    console.log(logMessage);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-progress', progressObj);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', 'Update downloaded. Ready to install.');
+      
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready',
+        message: `Version ${info.version} has been downloaded. The application will restart to install the update.`,
+        buttons: ['Restart Now'],
+        defaultId: 0
+      }).then(() => {
+        setImmediate(() => {
+          autoUpdater.quitAndInstall();
+        });
+      });
+    }
+  });
+}
 
 // ============================
 // CSV LOGGING STATE
@@ -498,35 +578,21 @@ async function deleteLogFile(filePath) {
   }
 }
 
-// -------------------------
-// Create Window - UPDATED
-// -------------------------
+// ============================
+// Create Window - Updated for electron-builder
+// ============================
 function createWindow() {
-  // -------------------------
-  // Resolve preload differently in dev vs prod
-  // -------------------------
-  const preloadPath = app.isPackaged
-    ? path.join(
-      process.resourcesPath,
-      'app.asar.unpacked',
-      '.vite',
-      'build',
-      'preload',
-      'preload.js'
-    )
-    : path.join(__dirname, '../../../src/preload.js');
-
+  const preloadPath = isDev 
+    ? path.join(__dirname, 'preload.js') 
+    : path.join(__dirname, '.vite/build/preload/preload.js');
+    
   console.log('Preload path:', preloadPath);
-  console.log('Preload file exists:', require('fs').existsSync(preloadPath));
-
-  // -------------------------
-  // Create the main window
-  // -------------------------
+  console.log('Preload file exists:', fs.existsSync(preloadPath));
 
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: iconPath, // window title icon handled by Vite import
+    icon: iconPath,
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
@@ -534,40 +600,17 @@ function createWindow() {
     },
   });
 
-
-  // Remove the menu completely
   mainWindow.setMenu(null);
 
-  // -------------------------
-  // Load renderer HTML
-  // -------------------------
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    // Development → Vite Dev Server
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  // Load the renderer
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    // Production → packaged HTML in app.asar.unpacked
-    const indexPath = app.isPackaged
-      ? path.join(
-        process.resourcesPath,
-        'app.asar.unpacked',
-        'src',
-        '.vite',
-        'build',
-        'renderer',
-        'main_window',
-        'index.html'
-      )
-      : path.join(__dirname, '../.vite/build/renderer/main_window/index.html');
-
-    // Load from inside app.asar in production
-    if (app.isPackaged) {
-      console.log('Loading renderer from:', indexPath);
-      mainWindow.loadFile(indexPath);
-    } else {
-      mainWindow.loadURL(pathToFileURL(indexPath).href);
-    }
+    // Correctly points to the production build output
+    mainWindow.loadFile(path.join(__dirname, '.vite/build/renderer/main_window/index.html'));
   }
+
   // Auto-connect after window is ready
   mainWindow.on('ready-to-show', () => {
     console.log('🪟 Window is ready');
@@ -1357,9 +1400,25 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
 // -------------------------
 // App lifecycle - FIXED
 // -------------------------
+autoUpdater.on('update-available', () => {
+  mainWindow.webContents.send('update_available');
+});
+autoUpdater.on('update-downloaded', () => {
+  mainWindow.webContents.send('update_ready');
+});
+ipcMain.on('restart_app', () => {
+  autoUpdater.quitAndInstall();
+});
+
 app.whenReady().then(() => {
   createWindow();
-  // DON'T call connectModbus() here - it's called via autoConnectPort()
+  
+  // Check for updates on startup (with a small delay to ensure window is ready)
+  if (!isDev) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 5000);
+  }
 });
 
 // Close port when app quits

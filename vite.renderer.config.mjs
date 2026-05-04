@@ -9,7 +9,7 @@ export default defineConfig({
   base: './',                      // important for Electron relative paths
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: '.vite/build/renderer/main_window', // final production folder
+    outDir: path.resolve(__dirname, '.vite/build/renderer/main_window'), // final production folder
     emptyOutDir: true,             // clear folder before build
     assetsDir: '.',                // put CSS/JS next to index.html
     rollupOptions: {
