@@ -1397,6 +1397,23 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
 });
 
 
+ipcMain.handle("check-for-updates",async()=> {
+  if (isDev){
+    return { success: false,message:"Auto-updates disabled in development"};
+  }
+  try{
+    autoUpdater.checkForUpdates();
+    return { success: true, message: "Checking for Updates..."};
+  } catch (error){
+    console.error("Update check error:", error);
+    return { success: false, error: error.message};
+  }
+});
+// Add handler for update progress
+ipcMain.handle("get-update-progress",() => {
+  return { success: false, error: error.message};
+});
+
 // -------------------------
 // App lifecycle - FIXED
 // -------------------------

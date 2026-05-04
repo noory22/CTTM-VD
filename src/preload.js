@@ -98,6 +98,15 @@ ipcRenderer.on('update-progress', (event, progress) => {
     detail: progress
   }));
 });
+ipcRenderer.on('update_available',()=>{
+  alert("New update available! Downloading...");
+});
+ipcRenderer.on('update_ready',()=>{
+  const confirmUpdate = confirm("Update ready. Restart now:");
+  if (confirmUpdate){
+    ipcRenderer.send('restart_app');
+  }
+});
 
 // Optional: Add error handling for IPC
 window.addEventListener('DOMContentLoaded', () => {
