@@ -244,6 +244,8 @@ const MainMenu = () => {
     else if (option.id === 'check-updates') {
       try {
         console.log('Manually checking for updates...');
+        // Dispatch event so UpdateChecker knows it's a manual check
+        window.dispatchEvent(new CustomEvent('manual-check-triggered'));
         await window.api.checkForUpdates();
       } catch (error) {
         console.error('Update check error:', error);
