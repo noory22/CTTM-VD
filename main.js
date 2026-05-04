@@ -5,7 +5,7 @@ const { autoUpdater } = require("electron-updater");
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
 const path = require("path");
-const iconPath = path.join(__dirname,'src/assets/icon.ico');
+const iconPath = path.join(__dirname, 'src/assets/icon.ico');
 const fs = require('fs');  // Changed from fs.promises to regular fs for sync operations
 const fsPromises = require('fs').promises;  // Keep for async operations
 
@@ -23,7 +23,6 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 if (!isDev) {
-  // Setup auto-updater event handlers
   autoUpdater.on('checking-for-update', () => {
     console.log('Checking for updates...');
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -34,8 +33,11 @@ if (!isDev) {
   autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', `Update available: v${info.version}`);
+      // Send to UI component
+      mainWindow.webContents.send('update-status', 'Update available');
+      mainWindow.webContents.send('update-available', info);
       
+      // Also show a system dialog as backup
       dialog.showMessageBox(mainWindow, {
         type: 'info',
         title: 'Update Available',
@@ -54,26 +56,19 @@ if (!isDev) {
   autoUpdater.on('update-not-available', () => {
     console.log('No updates available');
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', 'No updates available');
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'No Updates',
-        message: 'You are running the latest version.',
-        buttons: ['OK']
-      });
+      mainWindow.webContents.send('update-status', 'latest');
     }
   });
 
   autoUpdater.on('error', (err) => {
     console.error('Update error:', err);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', `Update error: ${err.message}`);
+      mainWindow.webContents.send('update-status', `Error: ${err.message}`);
     }
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
-    let logMessage = `Downloaded ${progressObj.percent.toFixed(2)}%`;
-    console.log(logMessage);
+    console.log(`Download progress: ${progressObj.percent}%`);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-progress', progressObj);
     }
@@ -82,7 +77,7 @@ if (!isDev) {
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', 'Update downloaded. Ready to install.');
+      mainWindow.webContents.send('update-status', 'downloaded');
       
       dialog.showMessageBox(mainWindow, {
         type: 'info',
@@ -582,10 +577,10 @@ async function deleteLogFile(filePath) {
 // Create Window - Updated for electron-builder
 // ============================
 function createWindow() {
-  const preloadPath = isDev 
-    ? path.join(__dirname, 'preload.js') 
+  const preloadPath = isDev
+    ? path.join(__dirname, 'preload.js')
     : path.join(__dirname, '.vite/build/preload/preload.js');
-    
+
   console.log('Preload path:', preloadPath);
   console.log('Preload file exists:', fs.existsSync(preloadPath));
 
@@ -716,14 +711,14 @@ async function processModbusLoop() {
           lastLLSState = currentLLSState;
         }
       } catch (e) { }
- 
+
       // Read Control Coils (Feedback Loop)
       try {
         const ctrlRes = await client.readCoils(COIL_CLAMP, 3);
         plcState.clamp = Boolean(ctrlRes.data[0]);     // 2007
         plcState.insertion = Boolean(ctrlRes.data[1]); // 2008
         plcState.retraction = Boolean(ctrlRes.data[2]);// 2009
- 
+
         const heatingRes = await client.readCoils(COIL_HEATING, 1);
         plcState.heater = Boolean(heatingRes.data[0]); // 2012
       } catch (e) { }
@@ -1397,39 +1392,39 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
 });
 
 
-ipcMain.handle("check-for-updates",async()=> {
-  if (isDev){
-    return { success: false,message:"Auto-updates disabled in development"};
+ipcMain.handle("check-for-updates", async () => {
+  if (isDev) {
+    return { success: false, message: "Auto-updates disabled in development" };
   }
-  try{
+  try {
     autoUpdater.checkForUpdates();
-    return { success: true, message: "Checking for Updates..."};
-  } catch (error){
+    return { success: true, message: "Checking for Updates..." };
+  } catch (error) {
     console.error("Update check error:", error);
-    return { success: false, error: error.message};
+    return { success: false, error: error.message };
   }
 });
 // Add handler for update progress
-ipcMain.handle("get-update-progress",() => {
-  return { success: false, error: error.message};
+ipcMain.handle("get-update-progress", () => {
+  // Placeholder or state return if needed
+  return { success: true };
 });
 
 // -------------------------
-// App lifecycle - FIXED
+// App lifecycle
 // -------------------------
-autoUpdater.on('update-available', () => {
-  mainWindow.webContents.send('update_available');
+ipcMain.handle("download-update", async () => {
+  autoUpdater.downloadUpdate();
+  return { success: true };
 });
-autoUpdater.on('update-downloaded', () => {
-  mainWindow.webContents.send('update_ready');
-});
-ipcMain.on('restart_app', () => {
+
+ipcMain.handle("quit-and-install", () => {
   autoUpdater.quitAndInstall();
 });
 
 app.whenReady().then(() => {
   createWindow();
-  
+
   // Check for updates on startup (with a small delay to ensure window is ready)
   if (!isDev) {
     setTimeout(() => {

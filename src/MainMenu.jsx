@@ -105,6 +105,17 @@ const MainMenu = () => {
       description: 'Remove existing configuration files',
       variant: 'danger',
       gradient: 'from-red-500 to-rose-500'
+    },
+    {
+      id: 'check-updates',
+      title: 'Check for Updates',
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      ),
+      description: 'Check if a newer version is available on GitHub',
+      gradient: 'from-indigo-500 to-purple-500'
     }
   ];
 
@@ -229,6 +240,14 @@ const MainMenu = () => {
     }
     else if (option.id === 'process-logs') {
       navigate('/process-logs');
+    }
+    else if (option.id === 'check-updates') {
+      try {
+        console.log('Manually checking for updates...');
+        await window.api.checkForUpdates();
+      } catch (error) {
+        console.error('Update check error:', error);
+      }
     }
   };
 
