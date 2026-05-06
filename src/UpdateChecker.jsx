@@ -90,7 +90,7 @@ const UpdateChecker = () => {
   // ==========================================
   if (isManual) {
     return (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6">
+      <div className="fixed inset-0 z-10000 flex items-center justify-center p-4 sm:p-6">
         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={!checking && !progress ? closeUpdate : undefined} />
         
         <div className="relative bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-300">
@@ -145,7 +145,7 @@ const UpdateChecker = () => {
     <>
       {/* Top Slide-in Notification for Auto-Detect */}
       {(status === 'Update available' || status === 'downloaded') && !progress && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10000] w-[90%] max-w-xl animate-in slide-in-from-top-12 duration-700 ease-out">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-10000 w-[90%] max-w-xl animate-in slide-in-from-top-12 duration-700 ease-out">
           <div className="bg-white/90 backdrop-blur-xl border border-blue-100 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-4 flex items-center justify-between gap-6">
             <div className="flex items-center gap-4 pl-2">
               <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
@@ -177,7 +177,7 @@ const UpdateChecker = () => {
 
       {/* Bottom Left Progress for Auto-Download */}
       {progress && (
-        <div className="fixed bottom-6 left-6 z-[10000] w-80 animate-in slide-in-from-left-12 duration-500">
+        <div className="fixed bottom-6 right-6 z-10000 w-80 animate-in slide-in-from-right-12 duration-500">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-4">
             <div className="flex justify-between items-center">
                <div className="flex items-center gap-3">

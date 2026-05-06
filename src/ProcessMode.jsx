@@ -1626,7 +1626,7 @@ const ProcessMode = () => {
         </div>
       )}
 
-      {showInfoModal && (
+      {/* {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-linear-to-r from-blue-500 to-cyan-500 p-6 rounded-t-2xl flex items-center justify-between">
@@ -1783,6 +1783,127 @@ const ProcessMode = () => {
             </div>
           </div>
         </div>
+      )} */}
+      {showInfoModal && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
+          <div className="bg-linear-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg lg:text-xl font-bold text-blue-900">Operation Guidlines</h3>
+              </div>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 overflow-y-auto max-h-96">
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Serial Connection:</span> Verify "CONNECTED"
+                  status is shown in green.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Status READY:</span> System must be in READY
+                  state before starting.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Machine Position:</span> Ensure machine is at
+                  home position (Distance = 0.0 mm)
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Sample Placement:</span>  Verify sample is
+                  properly positioned and secured.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Temperature Reading:</span> Check temperature
+                  sensor shows valid readings.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Force Sensor:</span> Verify force reading is at
+                  baseline (near 0 mN).
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Distance:</span> Verify matches your test
+                  requirements.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Peak Force:</span> Confirm safety threshold is
+                  set correctly (in mN).
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Temperature:</span> Ensure temperature setting
+                  is appropriate.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Monitor Graph:</span> Watch real-time
+                  force-distance plot for anomalies.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">STOP Function:</span> Use STOP button if any
+                  issues are observed.
+                  </p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
+                  <p className="text-blue-800 text-sm lg:text-base">
+                    <span className="font-semibold">Stay Present:</span> Never leave the machine
+                  unattended during operation.
+                  </p>
+                </div>
+                {/* <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl border-t border-gray-200">
+                <button
+                    onClick={() => setShowInfoModal(false)}
+                    className="w-full bg-linear-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
+                >
+                    I Understand - Close
+                </button>
+                </div> */}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       )}
 
       <div

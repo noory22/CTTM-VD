@@ -1,6 +1,6 @@
 {
   "name": "cttm",
-  "version": "1.0.5",
+  "version": "1.0.12",
   "description": "Catheter Trackability Testing Machine",
   "main": "main.js",
   "author": {

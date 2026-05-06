@@ -38,18 +38,18 @@ if (!isDev) {
       mainWindow.webContents.send('update-available', info);
       
       // Also show a system dialog as backup
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'Update Available',
-        message: `A new version ${info.version} is available. Do you want to download it now?`,
-        buttons: ['Yes', 'No'],
-        defaultId: 0,
-        cancelId: 1
-      }).then((result) => {
-        if (result.response === 0) {
-          autoUpdater.downloadUpdate();
-        }
-      });
+      // dialog.showMessageBox(mainWindow, {
+      //   type: 'info',
+      //   title: 'Update Available',
+      //   message: `A new version ${info.version} is available. Do you want to download it now?`,
+      //   buttons: ['Yes', 'No'],
+      //   defaultId: 0,
+      //   cancelId: 1
+      // }).then((result) => {
+      //   if (result.response === 0) {
+      //     autoUpdater.downloadUpdate();
+      //   }
+      // });
     }
   });
 
@@ -79,17 +79,17 @@ if (!isDev) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-status', 'downloaded');
       
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'Update Ready',
-        message: `Version ${info.version} has been downloaded. The application will restart to install the update.`,
-        buttons: ['Restart Now'],
-        defaultId: 0
-      }).then(() => {
-        setImmediate(() => {
-          autoUpdater.quitAndInstall();
-        });
-      });
+      // dialog.showMessageBox(mainWindow, {
+      //   type: 'info',
+      //   title: 'Update Ready',
+      //   message: `Version ${info.version} has been downloaded. The application will restart to install the update.`,
+      //   buttons: ['Restart Now'],
+      //   defaultId: 0
+      // }).then(() => {
+      //   setImmediate(() => {
+      //     autoUpdater.quitAndInstall();
+      //   });
+      // });
     }
   });
 }

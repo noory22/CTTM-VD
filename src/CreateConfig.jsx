@@ -342,7 +342,7 @@ const CreateConfig = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -359,7 +359,7 @@ const CreateConfig = () => {
             {/* Help Button */}
             <button
               onClick={() => setShowHelpModal(true)}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              className="group bg-linear-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
@@ -370,7 +370,7 @@ const CreateConfig = () => {
                   window.close();
                 }
               }}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
+              className="group bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
                 <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64"
@@ -384,7 +384,7 @@ const CreateConfig = () => {
         {successMessage && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-green-500 shrink-0" />
               <p className="text-green-800 font-semibold">{successMessage}</p>
             </div>
           </div>
@@ -394,7 +394,7 @@ const CreateConfig = () => {
         {errors.submit && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
               <p className="text-red-800 font-semibold">{errors.submit}</p>
             </div>
           </div>
@@ -602,7 +602,7 @@ const CreateConfig = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center min-w-[140px]"
+                  className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center min-w-35"
                 >
                   {isLoading ? (
                     <>
@@ -620,7 +620,7 @@ const CreateConfig = () => {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="min-w-[140px] py-4 px-8 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center"
+                  className="min-w-35 py-4 px-8 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 flex items-center justify-center"
                 >
                   Cancel
                 </button>
@@ -632,7 +632,7 @@ const CreateConfig = () => {
         {showHelpModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+              <div className="bg-linear-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-blue-100 rounded-lg">
@@ -653,68 +653,68 @@ const CreateConfig = () => {
                 <div className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Configuration Name</span> must contain only alphabets, numbers, and spaces (no special characters)
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         The values of Path Length, Threshold Force,Insertion Stroke Length, Retraction Stroke Length, and Number of Curves required and must be positive numbers
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Rig Path Length</span> should be in range <span className="font-semibold">30 - 2000 mm</span>
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Threshold Force </span> should be in range  <span className="font-semibold"> 100mN - 10000mN </span>
                       </p>
                     </div>
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Insertion Stroke Length</span> should be in range <span className="font-semibold">10mm - 60mm</span>
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">10mm - 60mm</span>
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 20</span> (natural numbers only)
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Curve Distances</span> must be between <span className="font-semibold">1mm and the Rig Path Length</span> (e.g., if Path Length is 500mm, curves must be 1-500mm)
                       </p>
                     </div>
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         <span className="font-semibold">Curve Distances</span> must be unique values between <span className="font-semibold">1mm and the Rig Path Length</span> (no duplicate values allowed)
                       </p>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                       <p className="text-blue-800 text-sm lg:text-base">
                         Configuration will be saved to CTTM.json
                       </p>
