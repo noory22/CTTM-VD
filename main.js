@@ -63,7 +63,18 @@ if (!isDev) {
   autoUpdater.on('error', (err) => {
     console.error('Update error:', err);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', `Error: ${err.message}`);
+      const errMsg = err.message || err.toString() || '';
+      const isNotFoundError = errMsg.includes('404') || 
+                            errMsg.toLowerCase().includes('not found') || 
+                            errMsg.includes('No published versions') ||
+                            errMsg.includes('latest.yml');
+                            
+      if (isNotFoundError) {
+        console.log('No updates found (404/no releases). Treating as up-to-date.');
+        mainWindow.webContents.send('update-status', 'latest');
+      } else {
+        mainWindow.webContents.send('update-status', `Error: ${err.message}`);
+      }
     }
   });
 
@@ -578,7 +589,7 @@ async function deleteLogFile(filePath) {
 // ============================
 function createWindow() {
   const preloadPath = isDev
-    ? path.join(__dirname, 'preload.js')
+    ? path.join(__dirname, 'src/preload.js')
     : path.join(__dirname, '.vite/build/preload/preload.js');
 
   console.log('Preload path:', preloadPath);
@@ -1394,7 +1405,15 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
 
 ipcMain.handle("check-for-updates", async () => {
   if (isDev) {
-    return { success: false, message: "Auto-updates disabled in development" };
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', 'Checking for updates...');
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-status', 'latest');
+        }
+      }, 1000);
+    }
+    return { success: true, message: "Checking for updates (simulated in development)..." };
   }
   try {
     autoUpdater.checkForUpdates();
