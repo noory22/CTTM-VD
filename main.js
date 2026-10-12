@@ -117,8 +117,8 @@ let PORT = null; // Auto-detected
 const BAUDRATE = 9600;
 const TIMEOUT = 0; // Using buffered read, timeout not as critical in this config
 
-const COIL_POW = 1003
-const COIL_EMER = 1004
+const COIL_POW = 1002
+const COIL_EMER = 1003
 const COIL_HOME = 2001;
 const COIL_LLS = 1000;
 const COIL_START = 2002;
@@ -134,12 +134,28 @@ const COIL_CLAMP = 2007;
 
 const REG_DISTANCE = 70;  // 1 register (16-bit integer)
 const REG_FORCE = 54;  // 2 registers (32-bit float)
-const REG_TEMP = 501; // 1 register (16-bit integer)
+const REG_TEMP = 503; // 1 register (16-bit integer)
 const REG_MANUAL_DISTANCE = 6550; // 1 register (16-bit integer)
 
 // Global State
 let isConnected = false;
+let isConnecting = false;
 const client = new ModbusRTU();
+
+// Register error listener on Modbus client to prevent uncaught exceptions on serial aborts
+client.on('error', (err) => {
+  console.warn("⚠️ Modbus client background warning:", err?.message || err);
+});
+
+async function safeCloseClient() {
+  if (client && client.isOpen) {
+    try {
+      await client.close();
+    } catch (e) {
+      // Ignore close errors
+    }
+  }
+}
 
 // PLC Cache & Command Queue
 let plcState = {
@@ -166,16 +182,15 @@ const CONFIG_FILE_PATH = path.join(app.getPath('documents'), 'CTTM.json');
 
 
 // -------------------------
-// Connect Modbus - UPDATED
+// Connect & Verify Modbus Port
 // -------------------------
-async function connectModbus(targetPort) {
+async function testAndConnectPort(targetPort) {
   try {
     console.log("🔌 Attempting to connect to Modbus on", targetPort);
 
-    // Close existing connection if any
-    if (client.isOpen) {
-      client.close();
-    }
+    // Safely close existing connection if any
+    await safeCloseClient();
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     await client.connectRTUBuffered(targetPort, {
       baudRate: BAUDRATE,
@@ -185,10 +200,15 @@ async function connectModbus(targetPort) {
     });
 
     client.setID(1);
-    client.setTimeout(200); // 200ms timeout for faster disconnection detection
+    client.setTimeout(300); // 300ms verification timeout
+
+    // CRITICAL: Verify with a read BEFORE setting isConnected = true
+    await client.readCoils(COIL_LLS, 1);
+
+    // Verification succeeded
+    PORT = targetPort;
     isConnected = true;
-    PORT = targetPort; // Update global
-    console.log("✅ Modbus connected on", PORT);
+    console.log("✅ Verified Modbus device on", PORT);
 
     // Update UI to show connection status
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -197,9 +217,15 @@ async function connectModbus(targetPort) {
 
     return true;
   } catch (err) {
+    console.warn(`⚠️ Failed to verify Modbus on ${targetPort}:`, err.message);
     isConnected = false;
+    await safeCloseClient();
     return false;
   }
+}
+
+async function connectModbus(targetPort) {
+  return await testAndConnectPort(targetPort);
 }
 
 // -------------------------
@@ -208,34 +234,39 @@ async function connectModbus(targetPort) {
 async function findAndConnectPort() {
   try {
     console.log("🔍 Scanning for available COM ports...");
-    const ports = await SerialPort.list();
-    console.log("Found ports:", ports.map(p => p.path).join(', '));
+    const allPorts = await SerialPort.list();
+    console.log("Found ports:", allPorts.map(p => `${p.path} (${p.friendlyName || p.pnpId || 'Unknown'})`).join(', '));
 
-    if (ports.length === 0) {
-      console.log("⚠️ No COM ports found.");
+    // Filter out Bluetooth virtual COM ports (BTHENUM) which cause hang and abort errors
+    const validPorts = allPorts.filter(p => {
+      const pnp = (p.pnpId || '').toUpperCase();
+      const friendly = (p.friendlyName || '').toLowerCase();
+      const manufacturer = (p.manufacturer || '').toLowerCase();
+
+      const isBluetooth = pnp.includes('BTHENUM') ||
+                          friendly.includes('bluetooth') ||
+                          manufacturer.includes('bluetooth');
+      return !isBluetooth;
+    });
+
+    if (validPorts.length === 0) {
+      console.log("⚠️ No physical USB COM ports found (Bluetooth ports ignored).");
       return false;
     }
 
-    for (const portInfo of ports) {
+    console.log("Physical ports to test:", validPorts.map(p => p.path).join(', '));
+
+    for (const portInfo of validPorts) {
       const portPath = portInfo.path;
       console.log(`👉 Trying port: ${portPath}`);
 
-      const success = await connectModbus(portPath);
+      const success = await testAndConnectPort(portPath);
       if (success) {
-        // Try to read a coil to verify responsiveness
-        try {
-          await client.readCoils(COIL_LLS, 1);
-          console.log(`✅ Verified Modbus device on ${portPath}`);
-          return true;
-        } catch (readErr) {
-          console.warn(`⚠️ Connected to ${portPath} but read failed. Next...`);
-          isConnected = false;
-          client.close();
-        }
+        return true;
       }
     }
 
-    console.log("❌ Could not find a valid Modbus device on any port.");
+    console.log("❌ Could not find a valid Modbus device on any physical port.");
     return false;
 
   } catch (err) {
@@ -248,26 +279,26 @@ async function findAndConnectPort() {
 // Auto connect to port - UPDATED
 // -------------------------
 async function autoConnectPort() {
+  if (isConnecting) {
+    console.log("⏳ Connection scan already in progress. Skipping duplicate request.");
+    return false;
+  }
+
+  isConnecting = true;
   try {
     console.log("🔄 Attempting auto-connect...");
 
     // 1. Try last known PORT first if exists
-    if (PORT && await connectModbus(PORT)) {
-      try {
-        await client.readCoils(COIL_LLS, 1);
-        console.log(`✅ Quick re-connect successful on ${PORT}`);
-        return true;
-      } catch (e) {
-        console.log(`⚠️ Quick connect failed verify. Scanning all...`);
-        isConnected = false;
-        client.close();
-      }
+    if (PORT && await testAndConnectPort(PORT)) {
+      console.log(`✅ Quick re-connect successful on ${PORT}`);
+      return true;
     }
 
-    // 2. Scan all
+    // 2. Scan all valid physical ports
     const connected = await findAndConnectPort();
 
     if (!connected) {
+      isConnected = false;
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('modbus-status', 'disconnected');
       }
@@ -275,7 +306,10 @@ async function autoConnectPort() {
     return connected;
   } catch (error) {
     console.log("⚠️ Auto-connect error:", error.message);
+    isConnected = false;
     return false;
+  } finally {
+    isConnecting = false;
   }
 }
 
@@ -290,7 +324,7 @@ async function manualConnectModbus() {
     if (!connected && mainWindow && !mainWindow.isDestroyed()) {
       dialog.showErrorBox(
         'Modbus Connection Error',
-        `Failed to find compatible Modbus device.\n\nPlease check:\n1. Cable connection\n2. Device power\n3. Port availability`
+        `No Modbus machine detected.\n\nPlease check:\n1. Machine power is turned ON\n2. USB cable is securely connected to the computer\n3. USB serial driver (CH340 / CP210x / FTDI) is recognized in Device Manager`
       );
     }
 
@@ -328,7 +362,7 @@ async function performSafetyStop(reason) {
   if (!isHardwareStopActive) {
     isHardwareStopActive = true;
     try {
-      if (client.isOpen) {
+      if (isConnected && client.isOpen) {
         await client.writeCoil(COIL_STOP, true);
         await client.writeCoil(COIL_START, false);
         await client.writeCoil(COIL_HEATER, false);
@@ -683,7 +717,7 @@ async function processModbusLoop() {
     }
 
     // 1. Check Connection
-    if (!isConnected || !client.isOpen) {
+    if (!isConnected || !client.isOpen || isConnecting) {
       // Wait before checking again
       await new Promise(resolve => setTimeout(resolve, 500));
       continue;
@@ -735,33 +769,40 @@ async function processModbusLoop() {
       } catch (e) { }
 
       // Read Safety Coils
+      let emerSuccess = false;
+      let powSuccess = false;
+
       try {
         const emerResult = await client.readCoils(COIL_EMER, 1);
         currentEmerState = Boolean(emerResult.data[0]);
+        emerSuccess = true;
         cycleSuccess = true;
       } catch (e) { }
 
       try {
         const powResult = await client.readCoils(COIL_POW, 1);
         currentPowState = !Boolean(powResult.data[0]);
+        powSuccess = true;
         cycleSuccess = true;
       } catch (e) { }
 
-      // Global Safety Check
-      if (currentEmerState || !currentPowState) {
-        await performSafetyStop(currentEmerState ? "Emergency Pressed" : "Power OFF");
+      // Global Safety Check - only check if coil read succeeded
+      if (emerSuccess && currentEmerState) {
+        await performSafetyStop("Emergency Pressed");
+      } else if (powSuccess && !currentPowState) {
+        await performSafetyStop("Power OFF");
       } else {
         isHardwareStopActive = false;
       }
 
       // Emit Safety Updates
-      if (currentEmerState !== lastEmerState) {
+      if (emerSuccess && currentEmerState !== lastEmerState) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('emergency-status', currentEmerState);
         }
         lastEmerState = currentEmerState;
       }
-      if (currentPowState !== lastPowState) {
+      if (powSuccess && currentPowState !== lastPowState) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('power-status', currentPowState);
         }
@@ -799,11 +840,12 @@ async function processModbusLoop() {
       } else {
         consecutiveErrors++;
         if (consecutiveErrors >= 5) {
+          console.warn("⚠️ 5 consecutive Modbus read errors. Disconnecting...");
           isConnected = false;
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('modbus-status', 'disconnected');
           }
-          try { if (client.isOpen) client.close(); } catch (e) { }
+          await safeCloseClient();
           consecutiveErrors = 0;
         }
       }
@@ -1241,10 +1283,8 @@ ipcMain.handle("reconnect", async () => {
   try {
     console.log("Attempting to reconnect...");
 
-    if (client.isOpen) {
-      client.close();
-      console.log("Closed existing connection");
-    }
+    await safeCloseClient();
+    console.log("Closed existing connection");
 
     isConnected = false;
 
