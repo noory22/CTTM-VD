@@ -139,7 +139,7 @@ const COIL_CLAMP = 2007;
 
 const REG_DISTANCE = 70;  // 1 register (16-bit integer)
 const REG_FORCE = 54;  // 2 registers (32-bit float)
-const REG_TEMP = 501; // 1 register (16-bit integer)
+const REG_TEMP = 503; // 1 register (16-bit integer)
 const REG_MANUAL_DISTANCE = 6550; // 1 register (16-bit integer)
 
 // Global State

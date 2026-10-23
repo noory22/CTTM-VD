@@ -79,6 +79,19 @@ const ProcessMode = () => {
   });
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Camera Feed States
+  const [showCameraPanel, setShowCameraPanel] = useState(false);
+  const [cameraButtonPos, setCameraButtonPos] = useState({
+    x: window.innerWidth - 70,
+    y: 236,
+  });
+  const [isDraggingCamera, setIsDraggingCamera] = useState(false);
+  const [cameraDragOffset, setCameraDragOffset] = useState({ x: 0, y: 0 });
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  const cameraVideoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const startTimeRef = useRef(Date.now());
   const pauseTimeRef = useRef(null);
   const [isRetractionEnabled, setIsRetractionEnabled] = useState(false);
@@ -890,6 +903,127 @@ const ProcessMode = () => {
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isDraggingConfig, dragOffset]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDraggingCamera) {
+        setCameraButtonPos({
+          x: Math.max(
+            0,
+            Math.min(window.innerWidth - 56, e.clientX - cameraDragOffset.x),
+          ),
+          y: Math.max(
+            0,
+            Math.min(window.innerHeight - 56, e.clientY - cameraDragOffset.y),
+          ),
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingCamera(false);
+    };
+
+    const handleTouchMove = (e) => {
+      if (isDraggingCamera && e.touches.length > 0) {
+        setCameraButtonPos({
+          x: Math.max(
+            0,
+            Math.min(
+              window.innerWidth - 56,
+              e.touches[0].clientX - cameraDragOffset.x,
+            ),
+          ),
+          y: Math.max(
+            0,
+            Math.min(
+              window.innerHeight - 56,
+              e.touches[0].clientY - cameraDragOffset.y,
+            ),
+          ),
+        });
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDraggingCamera(false);
+    };
+
+    if (isDraggingCamera) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("touchmove", handleTouchMove);
+      window.addEventListener("touchend", handleTouchEnd);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isDraggingCamera, cameraDragOffset]);
+
+  const startCamera = async () => {
+    try {
+      setCameraLoading(true);
+      setCameraError(false);
+
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+
+      cameraStreamRef.current = stream;
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        cameraVideoRef.current.onloadedmetadata = () => {
+          cameraVideoRef.current.play().catch((e) => console.log("Play error:", e));
+        };
+      }
+      setCameraLoading(false);
+    } catch (err) {
+      console.error("Camera access error:", err);
+      setCameraError(true);
+      setCameraLoading(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraLoading(false);
+  };
+
+  useEffect(() => {
+    if (showCameraPanel) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [showCameraPanel]);
+
+  useEffect(() => {
+    if (showCameraPanel && cameraStreamRef.current && cameraVideoRef.current) {
+      if (cameraVideoRef.current.srcObject !== cameraStreamRef.current) {
+        cameraVideoRef.current.srcObject = cameraStreamRef.current;
+        cameraVideoRef.current.play().catch((e) => console.log("Play error:", e));
+      }
+    }
+  }, [showCameraPanel]);
 
   const handleStart = async () => {
     if (!selectedConfig) {
@@ -1973,6 +2107,69 @@ const ProcessMode = () => {
         </div>
       </div>
 
+      {/* Camera Feed Drawer */}
+      <div
+        className={`fixed top-0 right-0 h-auto max-h-[92vh] w-[90vw] max-w-md bg-white/95 backdrop-blur-xl shadow-2xl rounded-bl-2xl border-l border-b border-gray-200/80 z-40 transform transition-transform duration-300 ${
+          showCameraPanel ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Camera className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-bold text-gray-900">Live Camera Feed</h3>
+              <div className="flex items-center space-x-1.5 ml-2 bg-red-50 border border-red-200/60 px-2 py-0.5 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span className="text-[11px] font-bold text-red-600 tracking-wide">LIVE</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCameraPanel(false)}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-inner flex items-center justify-center border border-gray-200">
+            {/* Video element is permanently mounted in DOM */}
+            <video
+              ref={cameraVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+
+            {/* Loading Overlay */}
+            {cameraLoading && (
+              <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center space-y-2 p-4 text-center z-10">
+                <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-slate-300 text-xs font-medium">Starting camera feed...</p>
+              </div>
+            )}
+
+            {/* Error Overlay */}
+            {cameraError && !cameraLoading && (
+              <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center space-y-2.5 p-4 text-center z-10">
+                <Camera className="w-10 h-10 text-slate-500" />
+                <div>
+                  <p className="text-white text-sm font-semibold">Camera Not Available</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Please check camera connection and permissions</p>
+                </div>
+                <button
+                  onClick={startCamera}
+                  className="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Retry Camera</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <header className="shrink-0 relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
         <div
           className={`${isXlScreen ? "px-6 py-4" : isLgScreen ? "px-4 py-3" : "px-3 py-2"}`}
@@ -2105,6 +2302,45 @@ const ProcessMode = () => {
           </button>
         </div>
       )}
+
+      {/* Floating Camera Feed Button */}
+      <div className="fixed z-30">
+        <button
+          title="Live Camera Feed"
+          onMouseDown={(e) => {
+            setIsDraggingCamera(true);
+            setCameraDragOffset({
+              x: e.clientX - cameraButtonPos.x,
+              y: e.clientY - cameraButtonPos.y,
+            });
+          }}
+          onTouchStart={(e) => {
+            if (e.touches.length > 0) {
+              setIsDraggingCamera(true);
+              setCameraDragOffset({
+                x: e.touches[0].clientX - cameraButtonPos.x,
+                y: e.touches[0].clientY - cameraButtonPos.y,
+              });
+            }
+          }}
+          onClick={(e) => {
+            if (!isDraggingCamera) {
+              setShowCameraPanel((prev) => !prev);
+            }
+            e.stopPropagation();
+          }}
+          style={{
+            position: "fixed",
+            left: `${cameraButtonPos.x}px`,
+            top: `${cameraButtonPos.y}px`,
+            cursor: isDraggingCamera ? "grabbing" : "grab",
+            touchAction: "none",
+          }}
+          className="bg-linear-to-br from-blue-600 to-cyan-600 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
+        >
+          <Camera className="w-5 h-5" />
+        </button>
+      </div>
 
       <main
         className={`relative flex ${isXlScreen ? "flex-row" : "flex-col"} flex-1 ${isXlScreen ? "gap-6 p-6" : isLgScreen ? "gap-4 p-4" : "gap-3 p-3"} min-h-0 overflow-hidden`}
