@@ -22,10 +22,8 @@ import {
   Info,
   X,
   Activity,
-  Thermometer,
   Gauge,
   Ruler,
-  Flame,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -45,8 +43,6 @@ const ProcessMode = () => {
   const navigate = useNavigate();
   const [isConnected, setIsConnected] = useState(false);
   const [sensorData, setSensorData] = useState({
-    temperature: "--",
-    temperatureDisplay: "-- °C",
     force: "--",
     forceDisplay: "-- mN",
     force_mN: "--",
@@ -56,8 +52,6 @@ const ProcessMode = () => {
     status: "READY",
   });
   const [readData, setReadData] = useState({
-    temperature: "--",
-    temperatureDisplay: "-- °C",
     force: "--",
     forceDisplay: "-- mN",
     force_mN: "--",
@@ -99,16 +93,6 @@ const ProcessMode = () => {
   const [isRetractionPaused, setIsRetractionPaused] = useState(false);
   const [isRetractionCompleted, setIsRetractionCompleted] = useState(false);
   const [showForceLimitAlert, setShowForceLimitAlert] = useState(false);
-
-  // Temperature check state
-  const [temperatureStatus, setTemperatureStatus] = useState({
-    isHeatingRequired: false,
-    isHeatingActive: false,
-    showHeatingDialog: false,
-    heaterButtonDisabled: false,
-    targetTemperature: null,
-    lastHeatingState: null,
-  });
 
   const [isLogging, setIsLogging] = useState(false);
   const lastLoggedDataRef = useRef({ time: null, distance: null, force: null });
@@ -207,13 +191,6 @@ const ProcessMode = () => {
             val !== undefined && val !== null && val !== "--"
               ? `${val} ${unit}`
               : `-- ${unit}`;
-          const formatTemp = (val) => {
-            if (val === undefined || val === null || val === "--")
-              return "-- °C";
-            const num = parseFloat(val);
-            if (!isNaN(num) && num > 100) return "ERROR 01";
-            return `${val} °C`;
-          };
           const rawVal = (val) =>
             val !== undefined && val !== null ? val : "--";
 
@@ -224,8 +201,6 @@ const ProcessMode = () => {
           };
 
           setReadData({
-            temperature: rawVal(data.temperature),
-            temperatureDisplay: formatTemp(data.temperature),
             force: rawVal(data.force_mN),
             forceDisplay: formatVal(toFixed2(data.force_mN), "mN"),
             force_mN: rawVal(data.force_mN),
@@ -236,7 +211,6 @@ const ProcessMode = () => {
 
           setSensorData((prev) => ({
             ...prev,
-            temperature: formatTemp(data.temperature),
             force: formatVal(toFixed2(data.force_mN), "mN"),
             distance: formatVal(data.distance, "mm"),
           }));
@@ -409,7 +383,6 @@ const ProcessMode = () => {
         } else if (data && !data.success) {
           setReadData((prev) => ({
             ...prev,
-            temperatureDisplay: "-- °C",
             forceDisplay: "-- mN",
             distanceDisplay: "-- mm",
           }));
@@ -440,221 +413,6 @@ const ProcessMode = () => {
     isRetractionActive,
     isRetractionPaused,
   ]);
-
-  // Check temperature when component mounts or config changes
-  useEffect(() => {
-    if (readData.temperature !== "--") {
-      const realTimeTemp = parseFloat(readData.temperature);
-      // const targetTemp = parseFloat(selectedConfig.temperature); // IGNORED per new requirement
-
-      if (!isNaN(realTimeTemp)) {
-        // Condition: Process should START if 35 < realTimeTemp < 39
-        // So we BLOCK if realTimeTemp <= 35 OR realTimeTemp >= 39
-
-        // Strict range based on user request: "greater than 35 or less than 39" (interpreted as range)
-        const isTempTooLow = realTimeTemp <= 35;
-        const isTempTooHigh = realTimeTemp >= 39;
-        const isTempValid = !isTempTooLow && !isTempTooHigh;
-
-        // Check if process is active (running, paused, or retracting)
-        const isProcessActive =
-          isProcessRunning ||
-          isRetractionActive ||
-          isPaused ||
-          isRetractionPaused;
-
-        console.log(
-          `🌡️ Temperature Check: Real=${realTimeTemp}°C, Range=[35-39], Valid=${isTempValid}`,
-        );
-
-        if (
-          !isTempValid &&
-          !temperatureStatus.isHeatingActive &&
-          !isProcessActive
-        ) {
-          // Show dialog if temperature is invalid AND process is NOT active
-
-          // If too low, we can suggest heating. If too high, we just block.
-          if (isTempTooLow) {
-            setTemperatureStatus((prev) => ({
-              ...prev,
-              isHeatingRequired: true,
-              showHeatingDialog: true,
-              heaterButtonDisabled: false,
-              // targetTemperature: 37, // Optional: default target
-            }));
-          } else if (isTempTooHigh) {
-            // High Temp Case: Show dialog to explain blockage
-            setTemperatureStatus((prev) => ({
-              ...prev,
-              isHeatingRequired: true, // Reuse this flag to block start
-              showHeatingDialog: true, // Show blocking dialog
-              // heaterButtonDisabled: true // Optional: explicit disable
-            }));
-            // Also ensure heater is OFF if too high
-            if (temperatureStatus.isHeatingActive) turnOffHeater();
-          }
-        } else if (isTempValid) {
-          // If in range
-          if (temperatureStatus.isHeatingActive && !isTempTooLow) {
-            // If we were heating and now we are good (or too high), stop.
-            // Note: User logic implies valid is 35-39. Heating takes us UP.
-            // If we reach 35.1, we are valid.
-            // We can keep heating until we reach some target, but technically valid range starts at 35.
-            // Let's rely on the manual heater toggle or auto-off if we defined a target.
-            // For now, if we are in valid range, we UNBLOCK.
-          }
-
-          // Unblock start
-          setTemperatureStatus((prev) => ({
-            ...prev,
-            isHeatingRequired: false,
-            showHeatingDialog: false,
-            // isHeatingActive: false, // Keep active if user wants to keep heating within range
-            heaterButtonDisabled: false,
-          }));
-
-          console.log("✅ Temperature in valid range (35-39) - dialog closed");
-        }
-      }
-    }
-  }, [
-    readData.temperature,
-    isProcessRunning,
-    isRetractionActive,
-    isPaused,
-    isRetractionPaused,
-    temperatureStatus.isHeatingActive,
-  ]);
-
-  // Monitor temperature to auto-close dialog when target is reached or exceeded
-  useEffect(() => {
-    if (temperatureStatus.isHeatingActive && readData.temperature !== "--") {
-      const realTimeTemp = parseFloat(readData.temperature);
-      // const targetTemp = temperatureStatus.targetTemperature || parseFloat(selectedConfig.temperature);
-      // User requirement: Valid if > 35.
-      // If we are heating, we assume we were below 35.
-      // We should probably stop if we are comfortably inside the range (e.g. > 35).
-
-      if (!isNaN(realTimeTemp)) {
-        // Check if temperature is valid (e.g. > 35)
-        const isTempReached = realTimeTemp > 35.0;
-
-        if (isTempReached) {
-          console.log(
-            `✅ Valid temperature reached! Real=${realTimeTemp}°C > 35°C`,
-          );
-
-          // Turn off heater
-          // turnOffHeater(); // User didn't explicitly say to auto-off, but it's good practice.
-          // Note: If they want to reach 37, stopping at 35.01 might be annoying.
-          // I will leave the Heater ON but close the dialog/unblock.
-
-          // Actually, let's just update validity.
-          setTemperatureStatus((prev) => ({
-            ...prev,
-            isHeatingRequired: false,
-            showHeatingDialog: false, // Hide dialog
-            // isHeatingActive: false, // Don't force off, let user decide or reach target
-            heaterButtonDisabled: false,
-          }));
-        }
-      }
-    }
-  }, [readData.temperature, temperatureStatus.isHeatingActive]);
-
-  // Check temperature when component mounts
-  useEffect(() => {
-    if (selectedConfig) {
-      // Small delay to ensure data is loaded
-      setTimeout(() => {
-        if (readData.temperature !== "--") {
-          const realTimeTemp = parseFloat(readData.temperature);
-          // const targetTemp = parseFloat(selectedConfig.temperature);
-
-          if (!isNaN(realTimeTemp)) {
-            // Range check: 35-39
-            const isTempTooLow = realTimeTemp <= 35;
-            const isTempTooHigh = realTimeTemp >= 39;
-            const isInvalid = isTempTooLow || isTempTooHigh;
-
-            if (isInvalid) {
-              console.log(
-                `🔥 Temperature check on entry: Invalid Range (${realTimeTemp}°C). Blocking start.`,
-              );
-              setTemperatureStatus((prev) => ({
-                ...prev,
-                isHeatingRequired: true,
-                showHeatingDialog: true, // Show dialog for BOTH low and high temp
-                // targetTemperature: 37,
-                heaterButtonDisabled: false,
-              }));
-            }
-          }
-        }
-      }, 1000);
-    }
-  }, [selectedConfig]);
-
-  const turnOnHeater = async () => {
-    try {
-      console.log("🔥 Turning heater ON...");
-      setTemperatureStatus((prev) => ({
-        ...prev,
-        heaterButtonDisabled: true,
-      }));
-
-      const result = await window.api.heater();
-
-      if (result && result.success) {
-        console.log("✅ Heater turned ON successfully");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          isHeatingActive: true,
-        }));
-      } else {
-        console.error("❌ Failed to turn heater ON");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          heaterButtonDisabled: false,
-        }));
-      }
-    } catch (error) {
-      console.error("❌ Error turning heater ON:", error);
-      setTemperatureStatus((prev) => ({
-        ...prev,
-        heaterButtonDisabled: false,
-      }));
-    }
-  };
-
-  const turnOffHeater = async () => {
-    try {
-      console.log("🔥 Turning heater OFF...");
-
-      const result = await window.api.heaterOff();
-
-      if (result && result.success) {
-        console.log("✅ Heater turned OFF successfully");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          isHeatingActive: false,
-          heaterButtonDisabled: false,
-        }));
-      }
-    } catch (error) {
-      console.error("❌ Error turning heater OFF:", error);
-    }
-  };
-
-  const closeHeatingDialog = async () => {
-    // Turn off heater and navigate back
-    console.log(
-      "🔙 Closing heating dialog: Turning heater OFF and navigating back...",
-    );
-    await turnOffHeater();
-    navigate("/handle-config/load");
-  };
 
   //-------------------------------------------------------------------------//
 
@@ -775,7 +533,7 @@ const ProcessMode = () => {
         data: {
           distance: distNum,
           force_mN: forceNum,
-          temperature: parseFloat(readData.temperature) || 0,
+          temperature: 0,
         },
         config: selectedConfig, // Make sure config is included
       });
@@ -802,7 +560,6 @@ const ProcessMode = () => {
         if (!connection.connected) {
           setReadData((prev) => ({
             ...prev,
-            temperatureDisplay: "-- °C",
             forceDisplay: "-- mN",
             distanceDisplay: "-- mm",
           }));
@@ -1031,12 +788,6 @@ const ProcessMode = () => {
       return;
     }
 
-    // Prevent start if heating is required
-    if (temperatureStatus.isHeatingRequired) {
-      console.log("❌ Cannot start process - heating required");
-      return;
-    }
-
     try {
       console.log("🚀 Starting process...");
       let result;
@@ -1049,8 +800,6 @@ const ProcessMode = () => {
         result = await window.api.start();
       } else {
         result = await window.api.start();
-        // Also ensure heater is on when starting fresh
-        await window.api.heater();
       }
 
       console.log("Start Result:", result);
@@ -1196,16 +945,6 @@ const ProcessMode = () => {
           status: "HOMING",
         }));
 
-        // Reset temperature status
-        setTemperatureStatus({
-          isHeatingRequired: false,
-          isHeatingActive: false,
-          showHeatingDialog: false,
-          heaterButtonDisabled: false,
-          targetTemperature: null,
-          lastHeatingState: null,
-        });
-
         stopCsvLogging();
         console.log("Process reset");
       } else {
@@ -1220,10 +959,8 @@ const ProcessMode = () => {
     return isHoming || !selectedConfig;
   };
 
-  // Add this to prevent process start when heating is required
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
-    if (temperatureStatus.isHeatingRequired) return true; // Disable if heating is required
     if (isRetractionEnabled && !isRetractionPaused) return true;
     if (isRetractionPaused) return true;
     if (isRetractionCompleted) return false;
@@ -1607,159 +1344,6 @@ const ProcessMode = () => {
         </div>
       )}
 
-      {temperatureStatus.showHeatingDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200/80">
-            <div
-              className={`p-6 rounded-t-2xl bg-linear-to-r ${parseFloat(readData.temperature) >= 39 ? "from-red-600 to-rose-700" : "from-orange-500 to-red-500"}`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Flame className="w-6 h-6 text-white" />
-                  <h2 className="text-xl font-bold text-white">
-                    {parseFloat(readData.temperature) >= 39
-                      ? "Temperature Alert"
-                      : temperatureStatus.isHeatingActive
-                        ? "Heating In Progress"
-                        : "Heating Required"}
-                  </h2>
-                </div>
-                <button
-                  onClick={closeHeatingDialog}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      Real-time Temperature
-                    </p>
-                    <div className="flex items-center justify-center space-x-2">
-                      <Thermometer className="w-5 h-5 text-blue-600" />
-                      <p
-                        className={`text-2xl font-bold ${parseFloat(readData.temperature) >= 39 ? "text-red-700" : "text-blue-700"}`}
-                      >
-                        {readData.temperatureDisplay}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Valid Range</p>
-                    <div className="flex items-center justify-center space-x-2">
-                      <Flame className="w-5 h-5 text-orange-600" />
-                      <p className="text-2xl font-bold text-orange-700">
-                        35 - 39°C
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  {/* Simplified Progress Bar or Range Indicator */}
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Low (35°C)</span>
-                    <span>Range</span>
-                    <span>High (39°C)</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 relative">
-                    {/* Marker for current temp */}
-                    {(() => {
-                      const temp = parseFloat(readData.temperature);
-                      let left = 0;
-                      let color = "bg-blue-500";
-                      if (!isNaN(temp)) {
-                        // Map 30-45 range to 0-100%
-                        const min = 30;
-                        const max = 45;
-                        const pct = Math.max(
-                          0,
-                          Math.min(100, ((temp - min) / (max - min)) * 100),
-                        );
-                        left = pct;
-                        if (temp > 35 && temp < 39) color = "bg-green-500";
-                        else if (temp >= 39) color = "bg-red-500";
-                        else color = "bg-orange-500";
-                      }
-                      return (
-                        <div
-                          className={`absolute top-0 bottom-0 w-3 h-3 rounded-full -mt-0.5 border-2 border-white shadow ${color}`}
-                          style={{ left: `calc(${left}% - 6px)` }}
-                        />
-                      );
-                    })()}
-                    {/* Green Zone Marker */}
-                    <div
-                      className="absolute top-0 h-2 bg-green-500/20 left-[33%] width-[26%]"
-                      style={{
-                        left: `${((35 - 30) / 15) * 100}%`,
-                        width: `${((39 - 35) / 15) * 100}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
-                {parseFloat(readData.temperature) < 39 &&
-                  (!temperatureStatus.isHeatingActive ? (
-                    <button
-                      onClick={turnOnHeater}
-                      disabled={temperatureStatus.heaterButtonDisabled}
-                      className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${temperatureStatus.heaterButtonDisabled
-                          ? "bg-gray-400 cursor-not-allowed text-gray-200"
-                          : "bg-linear-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
-                        }`}
-                    >
-                      <Flame className="w-5 h-5" />
-                      <span>
-                        {temperatureStatus.heaterButtonDisabled
-                          ? "Turning ON..."
-                          : "Turn ON Heater"}
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="w-full bg-green-50 border border-green-200 rounded-xl p-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <Flame className="w-3 h-3 text-white" />
-                        </div>
-                        <p className="text-green-700 font-bold">Heater is ON</p>
-                      </div>
-                      <p className="text-green-600 text-center text-sm mt-1">
-                        Waiting for temperature to rise above 35°C...
-                      </p>
-                    </div>
-                  ))}
-                {parseFloat(readData.temperature) >= 39 && (
-                  <div className="w-full bg-red-50 border border-red-200 rounded-xl p-4">
-                    <div className="flex items-center justify-center space-x-2">
-                      <Thermometer className="w-6 h-6 text-red-500" />
-                      <p className="text-red-700 font-bold">Cooling Required</p>
-                    </div>
-                    <p className="text-red-600 text-center text-sm mt-1">
-                      System is waiting for natural cooling.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 text-center">
-                <p className="text-gray-500 text-sm">
-                  Process start is disabled until temperature is between 35°C
-                  and 39°C.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -1833,13 +1417,6 @@ const ProcessMode = () => {
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span>
-                      <strong>Temperature Reading:</strong> Check temperature
-                      sensor shows valid readings.
-                    </span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold mt-1">•</span>
-                    <span>
                       <strong>Force Sensor:</strong> Verify force reading is at
                       baseline (near 0 mN).
                     </span>
@@ -1865,13 +1442,6 @@ const ProcessMode = () => {
                     <span>
                       <strong>Peak Force:</strong> Confirm safety threshold is
                       set correctly (in mN).
-                    </span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold mt-1">•</span>
-                    <span>
-                      <strong>Temperature:</strong> Ensure temperature setting
-                      is appropriate.
                     </span>
                   </li>
                 </ul>
@@ -1972,13 +1542,6 @@ const ProcessMode = () => {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                   <p className="text-blue-800 text-sm lg:text-base">
-                    <span className="font-semibold">Temperature Reading:</span> Check temperature
-                  sensor shows valid readings.
-                  </p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
-                  <p className="text-blue-800 text-sm lg:text-base">
                     <span className="font-semibold">Force Sensor:</span> Verify force reading is at
                   baseline (near 0 mN).
                   </p>
@@ -1995,13 +1558,6 @@ const ProcessMode = () => {
                   <p className="text-blue-800 text-sm lg:text-base">
                     <span className="font-semibold">Peak Force:</span> Confirm safety threshold is
                   set correctly (in mN).
-                  </p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
-                  <p className="text-blue-800 text-sm lg:text-base">
-                    <span className="font-semibold">Temperature:</span> Ensure temperature setting
-                  is appropriate.
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
@@ -2365,22 +1921,7 @@ const ProcessMode = () => {
             </div>
 
             {!isXlScreen && (
-              <div className="mb-3 grid grid-cols-2 gap-2 shrink-0">
-                {/* Temperature box */}
-                <div className="bg-linear-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-6 h-6 bg-linear-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
-                      <Thermometer className="w-3 h-3 text-white" />
-                    </div>
-                    <p className="text-gray-600 text-xs font-medium">
-                      Temperature
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-orange-600">
-                    {readData.temperatureDisplay}
-                  </p>
-                </div>
-
+              <div className="mb-3 grid grid-cols-3 gap-2 shrink-0">
                 {/* Force box */}
                 <div className="bg-linear-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
                   <div className="flex items-center space-x-2 mb-1">
@@ -2587,21 +2128,7 @@ const ProcessMode = () => {
                 <p className="text-gray-600 text-xs">Live monitoring data</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-linear-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
-                  <div className="flex items-center space-x-2 mb-1.5">
-                    <div className="w-8 h-8 bg-linear-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
-                      <Thermometer className="w-4 h-4 text-white" />
-                    </div>
-                    <p className="text-gray-600 text-xs font-medium">
-                      Temperature
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-orange-600">
-                    {readData.temperatureDisplay}
-                  </p>
-                </div>
-
+              <div className="grid grid-cols-3 gap-3">
                 <div className="bg-linear-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
                     <div className="w-8 h-8 bg-linear-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">

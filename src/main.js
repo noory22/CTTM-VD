@@ -768,9 +768,6 @@ async function processModbusLoop() {
         plcState.clamp = Boolean(ctrlRes.data[0]);     // 2007
         plcState.insertion = Boolean(ctrlRes.data[1]); // 2008
         plcState.retraction = Boolean(ctrlRes.data[2]);// 2009
-
-        const heatingRes = await client.readCoils(COIL_HEATING, 1);
-        plcState.heater = Boolean(heatingRes.data[0]); // 2012
       } catch (e) { }
 
       // Read Safety Coils
@@ -824,12 +821,6 @@ async function processModbusLoop() {
       try {
         const fRes = await client.readHoldingRegisters(REG_FORCE, 2);
         plcState.force_mN = registersToFloat32LE(fRes.data[0], fRes.data[1]);
-        cycleSuccess = true;
-      } catch (e) { }
-
-      try {
-        const tRes = await client.readHoldingRegisters(REG_TEMP, 1);
-        plcState.temperature = tRes.data[0] / 10.0;
         cycleSuccess = true;
       } catch (e) { }
 

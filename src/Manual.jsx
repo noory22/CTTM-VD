@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move, TrendingUp, Hand, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, Power, Zap, RotateCw, Camera, Usb, Move, TrendingUp, Hand, ChevronRight } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -30,12 +30,10 @@ const Manual = () => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [showConnectionError, setShowConnectionError] = useState(false);
-  const [temperature, setTemperature] = useState('--');
   const [force, setForce] = useState('--');
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
   const [controls, setControls] = useState({
-    heater: false,
     homing: false,
     clamp: false,
     insertion: false,
@@ -202,7 +200,6 @@ const Manual = () => {
 
           if (!status.connected) {
             setShowConnectionError(true);
-            setTemperature('--');
             setForce('--');
             setManualDistance('--');
             setCoilLLSStatus(false);
@@ -217,7 +214,6 @@ const Manual = () => {
             dataSource: 'real'
           });
           setShowConnectionError(true);
-          setTemperature('--');
           setForce('--');
           setManualDistance('--');
           setCoilLLSStatus(false);
@@ -242,14 +238,12 @@ const Manual = () => {
 
       if (status === 'disconnected') {
         setShowConnectionError(true);
-        setTemperature('--');
         setForce('--');
         setManualDistance('--');
         setCoilLLSStatus(false);
 
         // Reset all control states when disconnected
         setControls({
-          heater: false,
           homing: false,
           clamp: false,
           insertion: false,
@@ -337,35 +331,6 @@ const Manual = () => {
       window.removeEventListener('lls-status-change', handleWindowEvent);
     };
   }, []);
-
-  // Handle heater toggle
-  const handleHeaterToggle = () => {
-    window.api.checkConnection()
-      .then(status => {
-        if (!status.connected) {
-          alert('PLC is not connected. Please connect to PLC first.');
-          setShowConnectionError(true);
-          return;
-        }
-
-        window.api.heating()
-          .then(result => {
-            if (result && result.success) {
-              setControls(prev => ({ ...prev, heater: result.heating }));
-              console.log('Heater toggled to:', result.heating, 'Result:', result);
-            } else {
-              throw new Error(result?.message || 'Heater operation failed');
-            }
-          })
-          .catch(error => {
-            console.error('Heater control error:', error.message);
-            setShowConnectionError(true);
-          });
-      })
-      .catch(error => {
-        console.error('Connection check error:', error);
-      });
-  };
 
   // Handle Clamp toggle
   const handleClampToggle = () => {
@@ -631,7 +596,6 @@ const Manual = () => {
         .then(data => {
           if (data.success) {
             setForce(data.force_mN);
-            setTemperature(data.temperature);
 
             const maxDistance = 1000;
             const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
@@ -642,7 +606,6 @@ const Manual = () => {
             setControls(prev => ({
               ...prev,
               clamp: data.clamp !== undefined ? Boolean(data.clamp) : prev.clamp,
-              heater: data.heater !== undefined ? Boolean(data.heater) : prev.heater,
               insertion: data.insertion !== undefined ? Boolean(data.insertion) : prev.insertion,
               retraction: data.retraction !== undefined ? Boolean(data.retraction) : prev.retraction
             }));
@@ -687,7 +650,6 @@ const Manual = () => {
             });
           } else {
             setForce('--');
-            setTemperature('--');
             setManualDistance('--');
             setCoilLLSStatus(false);
           }
@@ -695,7 +657,6 @@ const Manual = () => {
         .catch(error => {
           console.error('Error reading PLC data:', error);
           setForce('--');
-          setTemperature('--');
           setManualDistance('--');
           setCoilLLSStatus(false);
         });
@@ -893,50 +854,15 @@ const Manual = () => {
                 {/* <div className="grid grid-cols-2 gap-6"> */}
                 {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6"> */}
                 {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6"> */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-                  {/* Temperature */}
-                  {/* <div className="flex items-center space-x-4"> */}
-                  {/* <div className="flex items-center space-x-3 md:space-x-4"> */}
-                  {/* <div className="flex items-center space-x-3 md:space-x-4 bg-white"> */}
-                  <div className="flex items-center space-x-4 md:space-x-6 bg-white p-4 md:p-5 rounded-xl">
-                    <div className="p-3 bg-orange-100 rounded-xl">
-                      <Thermometer className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-slate-600 text-sm font-medium">Temperature</p>
-                      <div className="flex items-center space-x-2">
-                        <div>
-                          <div
-                            className="h-full bg-orange-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, (temperature / 40) * 100)}%` }}
-                          ></div>
-                        </div>
-                        {/* <span className="text-slate-800 font-bold text-lg"> */}
-                        <span className="text-slate-800 font-bold text-base md:text-lg">
-                          {temperature === '--' ? '-- °C' : (parseFloat(temperature) > 100 ? 'ERROR 01' : `${parseFloat(temperature).toFixed(1)}°C`)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
                   {/* Force in mN */}
-                  {/* <div className="flex items-center space-x-4"> */}
-                  {/* <div className="flex items-center space-x-3 md:space-x-4"> */}
-                  <div className="flex items-center space-x-3 md:space-x-4 bg-white">
+                  <div className="flex items-center space-x-4 md:space-x-6 bg-white p-4 md:p-5 rounded-xl">
                     <div className="p-3 bg-blue-100 rounded-xl">
                       <Zap className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
                       <p className="text-slate-600 text-sm font-medium">Force</p>
                       <div className="flex items-center space-x-2">
-                        <div>
-                          <div
-                            className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, (force / 2000) * 100)}%` }}
-                          ></div>
-                        </div>
-
-                        {/* <span className="text-slate-800 font-bold text-lg"> */}
                         <span className="text-slate-800 font-bold text-base md:text-lg">
                           {force === '--' ? '-- mN' : `${parseFloat(force).toFixed(2)} mN`}
                         </span>
@@ -945,19 +871,13 @@ const Manual = () => {
                   </div>
 
                   {/* Manual Movement Distance */}
-                  {/* <div className="flex items-center space-x-4 mt-3"> */}
-                  {/* <div className="flex items-center space-x-3 md:space-x-4 mt-2 md:mt-3"> */}
-                  <div className="flex items-center space-x-4 md:space-x-6 mt-2 md:mt-3 bg-white p-4 md:p-5 rounded-xl col-span-1">
-                    {/* <div className="flex items-center space-x-3 md:space-x-4 bg-white"></div> */}
-                    <div className="flex items-center space-x-4 md:space-x-6 bg-white p-4 md:p-5 rounded-xl">
-                      <div className="p-3 bg-emerald-100 rounded-xl">
-                        <Move className="w-6 h-6 text-emerald-600" />
-                      </div>
-
-                      <div>
-                        <p className="text-slate-600 text-sm font-medium">Distance</p>
-
-                        {/* <span className="text-slate-800 font-bold text-lg"> */}
+                  <div className="flex items-center space-x-4 md:space-x-6 bg-white p-4 md:p-5 rounded-xl">
+                    <div className="p-3 bg-emerald-100 rounded-xl">
+                      <Move className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-slate-600 text-sm font-medium">Distance</p>
+                      <div className="flex items-center space-x-2">
                         <span className="text-slate-800 font-bold text-base md:text-lg">
                           {manualDistance === '--' ? '-- mm' : `${manualDistance} mm`}
                         </span>
@@ -970,11 +890,7 @@ const Manual = () => {
           </div>
 
           {/* Control Panel */}
-          {/* <div className="space-y-6"> */}
-          {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-6"> */}
-          {/* Control Panel */}
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            {/* Row 1: Clamp Control and Heater Control side by side */}
+          <div className="space-y-4 md:space-y-6">
             {/* Clamp Control */}
             <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp Control</h3>
@@ -1010,38 +926,8 @@ const Manual = () => {
               </div>
             </div>
 
-            {/* Heater Control */}
+            {/* Movement Control */}
             <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
-              <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
-              <div className="flex justify-center">
-                <button
-                  onClick={handleHeaterToggle}
-                  disabled={!connectionStatus.connected || controls.homing}
-                  className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
-                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.heater
-                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
-                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                    }`}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Flame className="w-6 h-6 sm:w-8 sm:h-8" />
-                  </div>
-                  {controls.heater && connectionStatus.connected && (
-                    <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
-                  )}
-                </button>
-              </div>
-              <div className="mt-4 text-center">
-                <span className={`text-sm font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
-                  {controls.heater ? 'HEATING' : 'OFF'}
-                </span>
-              </div>
-            </div>
-
-            {/* Row 2: Movement Control full width */}
-            <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Movement Control</h3>
               <p className="text-sm text-slate-500 mb-4">Control catheter movement</p>
 
@@ -1120,8 +1006,8 @@ const Manual = () => {
               </div>
             </div>
 
-            {/* Row 3: Homing Control full width */}
-            <div className="col-span-2 bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+            {/* Homing Control */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
               <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
               <div className="flex justify-center">
