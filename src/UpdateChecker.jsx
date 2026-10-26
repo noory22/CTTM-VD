@@ -32,7 +32,7 @@ const UpdateChecker = () => {
           } else if (updateStatus === 'Update available' || updateStatus === 'downloaded' || updateStatus.startsWith('Error')) {
             setChecking(false);
             setIsVisible(true);
-          } else if (updateStatus === 'latest') {
+          } else if (updateStatus === 'latest' || updateStatus === 'No updates available' || updateStatus === 'up-to-date') {
             setChecking(false);
             // If manual check says latest, show the "You're up to date" modal
             if (isManual) {
@@ -75,10 +75,12 @@ const UpdateChecker = () => {
     window.api.quitAndInstall();
   };
 
+  const isLatest = status === 'latest' || status === 'No updates available' || status === 'up-to-date';
+
   const closeUpdate = () => {
     setIsVisible(false);
     setIsManual(false); // Reset to auto mode for next time
-    if (status === 'latest' || status.startsWith('Error')) {
+    if (isLatest || status.startsWith('Error')) {
         setStatus('');
     }
   };
@@ -101,17 +103,17 @@ const UpdateChecker = () => {
           <div className="p-8">
             <div className="flex flex-col items-center text-center mb-8">
               <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 transition-all duration-500 ${
-                status === 'latest' ? 'bg-green-50 text-green-500' : status.startsWith('Error') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'
+                isLatest ? 'bg-green-50 text-green-500' : status.startsWith('Error') ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'
               }`}>
                 {status === 'Checking for updates...' ? <Loader2 size={40} className="animate-spin" /> : 
-                 status === 'latest' ? <CheckCircle size={40} strokeWidth={2.5} /> : 
+                 isLatest ? <CheckCircle size={40} strokeWidth={2.5} /> : 
                  status.startsWith('Error') ? <AlertCircle size={40} strokeWidth={2.5} /> : <Download size={40} strokeWidth={2.5} />}
               </div>
               <h2 className="text-2xl font-bold text-slate-800 tracking-tight mb-2">
-                {status === 'Checking for updates...' ? 'Checking for Updates' : status === 'latest' ? "You're All Set!" : status === 'downloaded' ? 'Update Ready' : status.startsWith('Error') ? 'Update Failed' : 'New Update Available'}
+                {status === 'Checking for updates...' ? 'Checking for Updates' : isLatest ? "You're All Set!" : status === 'downloaded' ? 'Update Ready' : status.startsWith('Error') ? 'Update Failed' : 'New Update Available'}
               </h2>
               <p className="text-slate-500 text-sm font-medium">
-                 {status === 'Checking for updates...' ? 'Searching for the latest version on GitHub...' : status === 'latest' ? 'The application is running the most recent version.' : status === 'downloaded' ? 'The new version is ready to be applied.' : status.startsWith('Error') ? 'There was an issue reaching the update server.' : `Version ${updateInfo?.version || ''} is now available.`}
+                 {status === 'Checking for updates...' ? 'Searching for the latest version on GitHub...' : isLatest ? 'The application is running the most recent version.' : status === 'downloaded' ? 'The new version is ready to be applied.' : status.startsWith('Error') ? (status.replace(/^Error:\s*/i, '') || 'There was an issue reaching the update server.') : `Version ${updateInfo?.version || ''} is now available.`}
               </p>
             </div>
 
@@ -128,7 +130,7 @@ const UpdateChecker = () => {
                   <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-all duration-300 rounded-full" style={{ width: `${progress.percent}%` }} /></div>
                 </div>
               )}
-              {status === 'latest' && (
+              {isLatest && (
                 <button onClick={closeUpdate} className="w-full py-4 px-6 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl text-base font-bold transition-all shadow-xl shadow-slate-900/20 flex items-center justify-center active:scale-[0.98]"><span>Perfect, Thanks!</span></button>
               )}
             </div>

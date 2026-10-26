@@ -1,6 +1,9 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
-
+const https = require('https');
+const http = require('http');
+const os = require('os');
+const { spawn } = require('child_process');
 
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
@@ -22,6 +25,17 @@ let mainWindow;
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
+try {
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'noory22',
+    repo: 'CTTM-VD',
+    private: false
+  });
+} catch (e) {
+  console.log('autoUpdater setFeedURL note:', e.message);
+}
+
 if (!isDev) {
   autoUpdater.on('checking-for-update', () => {
     console.log('Checking for updates...');
@@ -36,20 +50,6 @@ if (!isDev) {
       // Send to UI component
       mainWindow.webContents.send('update-status', 'Update available');
       mainWindow.webContents.send('update-available', info);
-      
-      // Also show a system dialog as backup
-      // dialog.showMessageBox(mainWindow, {
-      //   type: 'info',
-      //   title: 'Update Available',
-      //   message: `A new version ${info.version} is available. Do you want to download it now?`,
-      //   buttons: ['Yes', 'No'],
-      //   defaultId: 0,
-      //   cancelId: 1
-      // }).then((result) => {
-      //   if (result.response === 0) {
-      //     autoUpdater.downloadUpdate();
-      //   }
-      // });
     }
   });
 
@@ -63,14 +63,19 @@ if (!isDev) {
   autoUpdater.on('error', (err) => {
     console.error('Update error:', err);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const errMsg = err.message || err.toString() || '';
+      const errMsg = (err.message || err.toString() || '').toLowerCase();
       const isNotFoundError = errMsg.includes('404') || 
-                            errMsg.toLowerCase().includes('not found') || 
-                            errMsg.includes('No published versions') ||
+                            errMsg.includes('not found') || 
+                            errMsg.includes('unable to find') ||
+                            errMsg.includes('cannot find') ||
+                            errMsg.includes('no published versions') ||
+                            errMsg.includes('err_updater_latest_version_not_found') ||
+                            errMsg.includes('err_updater_channel_file_not_found') ||
+                            errMsg.includes('err_updater_no_published_versions') ||
                             errMsg.includes('latest.yml');
                             
       if (isNotFoundError) {
-        console.log('No updates found (404/no releases). Treating as up-to-date.');
+        console.log('No updates found on server (treating as up-to-date).');
         mainWindow.webContents.send('update-status', 'latest');
       } else {
         mainWindow.webContents.send('update-status', `Error: ${err.message}`);
@@ -89,18 +94,6 @@ if (!isDev) {
     console.log('Update downloaded:', info);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-status', 'downloaded');
-      
-      // dialog.showMessageBox(mainWindow, {
-      //   type: 'info',
-      //   title: 'Update Ready',
-      //   message: `Version ${info.version} has been downloaded. The application will restart to install the update.`,
-      //   buttons: ['Restart Now'],
-      //   defaultId: 0
-      // }).then(() => {
-      //   setImmediate(() => {
-      //     autoUpdater.quitAndInstall();
-      //   });
-      // });
     }
   });
 }
@@ -1434,29 +1427,224 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
 });
 
 
-ipcMain.handle("check-for-updates", async () => {
-  if (isDev) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', 'Checking for updates...');
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update-status', 'latest');
+// ============================
+// GITHUB RELEASE & AUTO-UPDATE ENGINE
+// ============================
+let pendingUpdateInfo = null;
+let downloadedInstallerPath = null;
+
+function parseSemver(v) {
+  if (!v) return [0, 0, 0];
+  const match = String(v).match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return [0, 0, 0];
+  return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
+}
+
+function isNewerVersion(remote, local) {
+  const [rMaj, rMin, rPat] = parseSemver(remote);
+  const [lMaj, lMin, lPat] = parseSemver(local);
+  if (rMaj !== lMaj) return rMaj > lMaj;
+  if (rMin !== lMin) return rMin > lMin;
+  return rPat > lPat;
+}
+
+function fetchGitHubReleases(owner, repo) {
+  return new Promise((resolve, reject) => {
+    function get(urlStr, maxRedirects = 5) {
+      if (maxRedirects <= 0) return reject(new Error('Too many redirects'));
+      const parsedUrl = new URL(urlStr);
+      const headers = {
+        'User-Agent': 'CTTM-Desktop-App',
+        'Accept': 'application/vnd.github.v3+json'
+      };
+      if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+        headers['Authorization'] = `token ${process.env.GH_TOKEN || process.env.GITHUB_TOKEN}`;
+      }
+
+      const req = https.get(parsedUrl, { headers }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return get(res.headers.location, maxRedirects - 1);
         }
-      }, 1000);
+
+        if (res.statusCode === 404) {
+          return resolve([]);
+        }
+
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              const parsed = JSON.parse(data);
+              resolve(Array.isArray(parsed) ? parsed : [parsed]);
+            } catch (e) {
+              reject(e);
+            }
+          } else {
+            reject(new Error(`GitHub returned HTTP ${res.statusCode}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(12000, () => {
+        req.destroy(new Error('Request timed out'));
+      });
     }
-    return { success: true, message: "Checking for updates (simulated in development)..." };
+
+    get(`https://api.github.com/repos/${owner}/${repo}/releases`);
+  });
+}
+
+function downloadFileWithProgress(urlStr, destPath, onProgress) {
+  return new Promise((resolve, reject) => {
+    function get(currentUrl, maxRedirects = 5) {
+      if (maxRedirects <= 0) {
+        return reject(new Error('Too many redirects'));
+      }
+      const parsedUrl = new URL(currentUrl);
+      const client = parsedUrl.protocol === 'http:' ? http : https;
+
+      const req = client.get(parsedUrl, {
+        headers: {
+          'User-Agent': 'CTTM-Desktop-App'
+        }
+      }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return get(res.headers.location, maxRedirects - 1);
+        }
+
+        if (res.statusCode !== 200) {
+          return reject(new Error(`Download failed with status ${res.statusCode}`));
+        }
+
+        const totalBytes = parseInt(res.headers['content-length'], 10) || 0;
+        let downloadedBytes = 0;
+        const fileStream = fs.createWriteStream(destPath);
+
+        res.on('data', (chunk) => {
+          downloadedBytes += chunk.length;
+          if (totalBytes > 0 && onProgress) {
+            const percent = (downloadedBytes / totalBytes) * 100;
+            onProgress({
+              percent,
+              transferred: downloadedBytes,
+              total: totalBytes
+            });
+          }
+        });
+
+        res.pipe(fileStream);
+
+        fileStream.on('finish', () => {
+          fileStream.close(() => resolve(destPath));
+        });
+
+        fileStream.on('error', (err) => {
+          fs.unlink(destPath, () => {});
+          reject(err);
+        });
+      });
+
+      req.on('error', reject);
+    }
+
+    get(urlStr);
+  });
+}
+
+async function checkForUpdatesHandler(isManual = false) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', 'Checking for updates...');
   }
+
+  const currentVersion = app.getVersion();
+  console.log(`Checking for updates... Current version: ${currentVersion}`);
+
   try {
-    autoUpdater.checkForUpdates();
-    return { success: true, message: "Checking for Updates..." };
-  } catch (error) {
-    console.error("Update check error:", error);
-    return { success: false, error: error.message };
+    const releases = await fetchGitHubReleases('noory22', 'CTTM-VD');
+    const publishedReleases = releases.filter(r => !r.draft);
+
+    if (publishedReleases.length === 0) {
+      console.log('No published releases found on GitHub. Application is up to date.');
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-status', 'latest');
+      }
+      return { success: true, message: 'You are using the latest version.' };
+    }
+
+    const latestRelease = publishedReleases[0];
+    const rawTag = latestRelease.tag_name || latestRelease.name || '';
+    const match = rawTag.match(/(\d+\.\d+\.\d+)/);
+    const remoteVersion = match ? match[1] : rawTag;
+
+    console.log(`Latest release on GitHub: ${rawTag} -> version ${remoteVersion}`);
+
+    if (remoteVersion && isNewerVersion(remoteVersion, currentVersion)) {
+      console.log(`New version found: ${remoteVersion} (current: ${currentVersion})`);
+      
+      const exeAsset = latestRelease.assets?.find(a => a.name && a.name.endsWith('.exe')) ||
+                       latestRelease.assets?.[0];
+
+      pendingUpdateInfo = {
+        version: remoteVersion,
+        releaseName: latestRelease.name || `v${remoteVersion}`,
+        releaseNotes: latestRelease.body || '',
+        downloadUrl: exeAsset ? exeAsset.browser_download_url : latestRelease.html_url,
+        fileName: exeAsset ? exeAsset.name : `CTTM-Setup-${remoteVersion}.exe`
+      };
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-available', pendingUpdateInfo);
+        mainWindow.webContents.send('update-status', 'Update available');
+      }
+
+      return { success: true, updateAvailable: true, version: remoteVersion };
+    } else {
+      console.log(`Application is up to date. (GitHub: ${remoteVersion}, Installed: ${currentVersion})`);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-status', 'latest');
+      }
+      return { success: true, updateAvailable: false, message: 'You are using the latest version.' };
+    }
+  } catch (err) {
+    console.error('Update check error, falling back to electron-updater:', err.message);
+    
+    // Fallback: try electron-updater if not in dev
+    if (!isDev) {
+      try {
+        await autoUpdater.checkForUpdates();
+        return { success: true };
+      } catch (e) {
+        console.error('autoUpdater fallback failed:', e.message);
+      }
+    }
+
+    const errMsg = (err.message || '').toLowerCase();
+    const isNetworkError = errMsg.includes('enotfound') || 
+                           errMsg.includes('econnrefused') || 
+                           errMsg.includes('etimedout') ||
+                           errMsg.includes('timed out');
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (isNetworkError) {
+        mainWindow.webContents.send('update-status', 'Error: Unable to reach GitHub. Please check your internet connection.');
+      } else {
+        // Any other non-fatal error treats as up to date
+        console.log('Treating non-fatal update check as latest version.');
+        mainWindow.webContents.send('update-status', 'latest');
+      }
+    }
+    return { success: false, error: err.message };
   }
+}
+
+ipcMain.handle("check-for-updates", async () => {
+  return await checkForUpdatesHandler(true);
 });
+
 // Add handler for update progress
 ipcMain.handle("get-update-progress", () => {
-  // Placeholder or state return if needed
   return { success: true };
 });
 
@@ -1464,12 +1652,63 @@ ipcMain.handle("get-update-progress", () => {
 // App lifecycle
 // -------------------------
 ipcMain.handle("download-update", async () => {
-  autoUpdater.downloadUpdate();
-  return { success: true };
+  if (!pendingUpdateInfo || !pendingUpdateInfo.downloadUrl) {
+    try {
+      autoUpdater.downloadUpdate();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // If downloadUrl is a webpage rather than direct binary
+  if (!pendingUpdateInfo.downloadUrl.endsWith('.exe')) {
+    shell.openExternal(pendingUpdateInfo.downloadUrl);
+    return { success: true };
+  }
+
+  try {
+    const targetFile = path.join(os.tmpdir(), pendingUpdateInfo.fileName || `CTTM-Update-${pendingUpdateInfo.version}.exe`);
+    downloadedInstallerPath = targetFile;
+
+    console.log(`Downloading update from ${pendingUpdateInfo.downloadUrl} to ${targetFile}...`);
+
+    await downloadFileWithProgress(pendingUpdateInfo.downloadUrl, targetFile, (progressObj) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-progress', progressObj);
+      }
+    });
+
+    console.log('Update downloaded successfully!');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', 'downloaded');
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to download update:', err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', `Error: ${err.message}`);
+    }
+    return { success: false, error: err.message };
+  }
 });
 
 ipcMain.handle("quit-and-install", () => {
-  autoUpdater.quitAndInstall();
+  if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
+    console.log('Launching installer:', downloadedInstallerPath);
+    spawn(downloadedInstallerPath, [], {
+      detached: true,
+      stdio: 'ignore'
+    }).unref();
+    app.quit();
+  } else {
+    try {
+      autoUpdater.quitAndInstall();
+    } catch (e) {
+      console.error('quitAndInstall error:', e);
+      app.quit();
+    }
+  }
 });
 
 app.whenReady().then(() => {
@@ -1478,7 +1717,7 @@ app.whenReady().then(() => {
   // Check for updates on startup (with a small delay to ensure window is ready)
   if (!isDev) {
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify();
+      checkForUpdatesHandler(false);
     }, 5000);
   }
 });
