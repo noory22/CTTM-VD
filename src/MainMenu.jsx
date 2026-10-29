@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Power, Usb } from 'lucide-react';
+import { Power, Usb, Sliders } from 'lucide-react';
 import manualIcon from './assets/Manual.png';
 
 const MainMenu = () => {
@@ -105,6 +105,15 @@ const MainMenu = () => {
       description: 'Remove existing configuration files',
       variant: 'danger',
       gradient: 'from-red-500 to-rose-500'
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      icon: (
+        <Sliders className="w-8 h-8" />
+      ),
+      description: 'Load cell calibration and system settings',
+      gradient: 'from-cyan-500 to-blue-500'
     },
     {
       id: 'check-updates',
@@ -240,6 +249,9 @@ const MainMenu = () => {
     }
     else if (option.id === 'process-logs') {
       navigate('/process-logs');
+    }
+    else if (option.id === 'settings') {
+      navigate('/settings');
     }
     else if (option.id === 'check-updates') {
       try {

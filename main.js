@@ -130,6 +130,15 @@ const REG_FORCE = 54;  // 2 registers (32-bit float)
 const REG_TEMP = 503; // 1 register (16-bit integer)
 const REG_MANUAL_DISTANCE = 6550; // 1 register (16-bit integer)
 
+// Load Cell Calibration Coils & Registers
+const COIL_CALIB_NORMAL = 2400;    // M400 Normal
+const COIL_CALIB_TARE = 2401;      // M401 Tare / Tear
+const COIL_CALIB_CALIBRATE = 2402; // M402 Calibrate
+
+const REG_PLC_REALTIME = 0;        // R0 PLC Real-time value
+const REG_RAW_FORCE = 1;           // R1 Raw Force value
+const REG_WEIGHT_RANGE = 2;        // R2 Weight range parameter sent to PLC from UI
+
 // Global State
 let isConnected = false;
 let isConnecting = false;
@@ -161,6 +170,10 @@ let plcState = {
   heater: false,
   insertion: false,
   retraction: false,
+  rawForce: 0,           // R1
+  realtimePlcValue: 0,   // R0
+  weightRange: 0,        // R2
+  calibrationMode: 'normal', // 'normal' | 'tare' | 'calibrate'
   lastUpdated: 0
 };
 
@@ -818,6 +831,26 @@ async function processModbusLoop() {
         cycleSuccess = true;
       } catch (e) { }
 
+      // Read Calibration Registers (R0, R1, R2)
+      try {
+        const calibRegs = await client.readHoldingRegisters(REG_PLC_REALTIME, 3);
+        plcState.realtimePlcValue = calibRegs.data[0]; // R0
+        plcState.rawForce = calibRegs.data[1];         // R1
+        plcState.weightRange = calibRegs.data[2];      // R2
+        cycleSuccess = true;
+      } catch (e) { }
+
+      // Read Calibration Coils (M10, M11, M12)
+      try {
+        const calibCoils = await client.readCoils(COIL_CALIB_NORMAL, 3);
+        const m10 = Boolean(calibCoils.data[0]);
+        const m11 = Boolean(calibCoils.data[1]);
+        const m12 = Boolean(calibCoils.data[2]);
+        if (m10) plcState.calibrationMode = 'normal';
+        else if (m11) plcState.calibrationMode = 'tare';
+        else if (m12) plcState.calibrationMode = 'calibrate';
+      } catch (e) { }
+
       // 4. Connection Success/Failure Tracking
       if (cycleSuccess) {
         consecutiveErrors = 0;
@@ -885,6 +918,12 @@ async function readPLCData() {
     heater: plcState.heater,
     insertion: plcState.insertion,
     retraction: plcState.retraction,
+
+    // Calibration data
+    rawForce: plcState.rawForce,
+    realtimePlcValue: plcState.realtimePlcValue,
+    weightRange: plcState.weightRange,
+    calibrationMode: plcState.calibrationMode,
 
     // Raw data stub for compatibility if needed
     rawRegisters: {}
@@ -1248,6 +1287,73 @@ ipcMain.handle("disable-manual-mode", async () => {
   });
 });
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Calibration: Set Mode (Normal = M10, Tare = M11, Calibrate = M12)
+// Ensures mutual exclusion: turns OFF other 2 coils before turning ON selected coil
+ipcMain.handle("set-calibration-mode", async (event, mode) => {
+  return await safeExecute("SET-CALIBRATION-MODE", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    console.log(`[Calibration] Setting mode: ${mode}`);
+
+    let turnOnCoil = null;
+    let turnOffCoils = [];
+
+    if (mode === 'normal') {
+      turnOnCoil = COIL_CALIB_NORMAL;    // 2010 (M10)
+      turnOffCoils = [COIL_CALIB_TARE, COIL_CALIB_CALIBRATE]; // 2011, 2012
+    } else if (mode === 'tare') {
+      turnOnCoil = COIL_CALIB_TARE;      // 2011 (M11)
+      turnOffCoils = [COIL_CALIB_NORMAL, COIL_CALIB_CALIBRATE]; // 2010, 2012
+    } else if (mode === 'calibrate') {
+      turnOnCoil = COIL_CALIB_CALIBRATE; // 2012 (M12)
+      turnOffCoils = [COIL_CALIB_NORMAL, COIL_CALIB_TARE]; // 2010, 2011
+    } else {
+      throw new Error(`Invalid calibration mode: ${mode}`);
+    }
+
+    // Step 1: Turn OFF the other two coils first (with inter-write delay for RS-485 stability)
+    for (const coil of turnOffCoils) {
+      try {
+        console.log(`[Calibration] Writing coil ${coil} = false`);
+        await client.writeCoil(coil, false);
+        await delay(60);
+      } catch (err) {
+        console.warn(`[Calibration] Warning turning off coil ${coil}:`, err.message);
+      }
+    }
+
+    // Step 2: Turn ON the selected coil
+    console.log(`[Calibration] Writing target coil ${turnOnCoil} = true`);
+    await client.writeCoil(turnOnCoil, true);
+    await delay(60);
+
+    plcState.calibrationMode = mode;
+    console.log(`[Calibration] Mode ${mode} successfully written to PLC (Coil ${turnOnCoil} is ON)`);
+
+    return { success: true, mode: plcState.calibrationMode, activeCoil: turnOnCoil };
+  });
+});
+
+// Calibration: Write Weight Range to R2
+ipcMain.handle("write-weight-range", async (event, value) => {
+  return await safeExecute("WRITE-WEIGHT-RANGE", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    const numVal = parseInt(value, 10);
+    if (isNaN(numVal) || numVal < 0 || numVal > 1000) {
+      throw new Error("Weight range must be a number between 0 and 1000");
+    }
+
+    console.log(`Writing Weight Range: ${numVal} to R2`);
+    await client.writeRegister(REG_WEIGHT_RANGE, numVal);
+    plcState.weightRange = numVal;
+
+    return { success: true, weightRange: numVal };
+  });
+});
+
 // Read data handler
 ipcMain.handle("read-data", async () => {
   return await readPLCData();
@@ -1319,7 +1425,6 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
     return false;
   }
 });
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 ipcMain.handle("send-process-mode", async (event, config) => {
   return await safeExecute("SEND_PROCESS_CONFIG", async () => {
     try {

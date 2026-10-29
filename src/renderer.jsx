@@ -9,6 +9,7 @@ import HandleConfig from "./HandleConfig.jsx";
 import Manual from "./Manual.jsx";
 import ProcessLogs from "./ProcessLogs.jsx";
 import ProcessMode from "./ProcessMode.jsx"; // add this import
+import Settings from "./Settings.jsx";
 import UpdateChecker from "./UpdateChecker.jsx";
 
 import SafetyAlert from "./SafetyAlert.jsx";
@@ -25,6 +26,7 @@ const routesWithSafetyAlert = [
   "/handle-config/load", // LoadConfig
   "/manual-mode", // ManualMode
   "/process-mode", // ProcessMode
+  "/settings", // Settings (Load Cell Calibration)
 ];
 
 const App = () => {
@@ -71,6 +73,17 @@ const App = () => {
             <>
               <SafetyAlert />
               <ProcessMode />
+            </>
+          }
+        />
+
+        {/* Route for Settings with SafetyAlert */}
+        <Route
+          path="/settings"
+          element={
+            <>
+              <SafetyAlert />
+              <Settings />
             </>
           }
         />
