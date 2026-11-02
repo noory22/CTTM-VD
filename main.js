@@ -820,9 +820,10 @@ async function processModbusLoop() {
       // Read Calibration Registers (R0, R1, R2)
       try {
         const calibRegs = await client.readHoldingRegisters(REG_PLC_REALTIME, 3);
-        plcState.realtimePlcValue = calibRegs.data[0]; // R0
-        plcState.rawForce = calibRegs.data[1];         // R1
-        plcState.weightRange = calibRegs.data[2];      // R2
+        const toSignedInt16 = (val) => (val > 32767 ? val - 65536 : val);
+        plcState.realtimePlcValue = toSignedInt16(calibRegs.data[0]); // R0: Signed 16-bit integer
+        plcState.rawForce = toSignedInt16(calibRegs.data[1]);         // R1: Signed 16-bit integer
+        plcState.weightRange = calibRegs.data[2];                    // R2: Weight range parameter (0-1000)
         cycleSuccess = true;
       } catch (e) { }
 

@@ -104,17 +104,19 @@ const Settings = () => {
         if (data && data.success) {
           setConnectionStatus('connected');
 
+          const toSignedInt16 = (val) => (val > 32767 ? val - 65536 : val);
+
           // R54: Real-time Force (mN)
           const forceVal = Number(data.force_mN);
           const formattedForce = isFinite(forceVal) ? `${forceVal.toFixed(2)} mN` : (data.forceDisplay || '--');
 
-          // R1: Raw Force Value
+          // R1: Raw Force Value (signed 16-bit integer)
           const rawForceVal = Number(data.rawForce);
-          const formattedRawForce = isFinite(rawForceVal) ? `${rawForceVal}` : '--';
+          const formattedRawForce = isFinite(rawForceVal) ? `${toSignedInt16(rawForceVal)}` : '--';
 
-          // R0: PLC Real-time Value
+          // R0: PLC Real-time Value (signed 16-bit integer)
           const plcVal = Number(data.realtimePlcValue);
-          const formattedPlcVal = isFinite(plcVal) ? `${plcVal}` : '--';
+          const formattedPlcVal = isFinite(plcVal) ? `${toSignedInt16(plcVal)}` : '--';
 
           setTelemetry({
             force: formattedForce,
