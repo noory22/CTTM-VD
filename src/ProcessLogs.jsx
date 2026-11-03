@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
+  Download,
   Power,
   ChevronDown,
   FileText,
@@ -45,6 +46,154 @@ const ProcessLogs = () => {
 
 
   const [showCurvesDropdown, setShowCurvesDropdown] = useState(false);
+  const [csvToast, setCsvToast] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  useEffect(() => {
+    if (csvToast) {
+      const timer = setTimeout(() => setCsvToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [csvToast]);
+
+  const escapeCsv = (val) => {
+    if (val === null || val === undefined) return "";
+    const str = String(val);
+    if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const getCurveLabelForDistance = (dist, curves) => {
+    if (!curves || curves.length === 0) return "--";
+    let matchedCurve = "Straight";
+    for (const c of curves) {
+      if (dist >= c.distance) {
+        matchedCurve = c.label;
+      } else {
+        break;
+      }
+    }
+    return matchedCurve;
+  };
+
+  const handleDownloadCsv = async () => {
+    if (!selectedLog) {
+      setCsvToast({ type: "error", message: "Select a log first" });
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      const configData = selectedLog.configData || {};
+      const configName =
+        configData.configName ||
+        selectedLog.configName ||
+        selectedLog.displayName ||
+        "Unknown";
+      const pathLength = configData.pathlength || configData.pathLength || "--";
+      const thresholdForce = configData.thresholdForce || "--";
+      const insertionLength = configData.insertionLength || "--";
+      const retractionLength = configData.retractionLength || "--";
+
+      let parsedCurves = [];
+      if (configData.curveDistances) {
+        try {
+          const raw =
+            typeof configData.curveDistances === "string"
+              ? JSON.parse(configData.curveDistances)
+              : configData.curveDistances;
+          parsedCurves = Object.entries(raw)
+            .map(([label, dist]) => ({
+              label: String(label).startsWith("Curve") ? String(label) : `Curve ${label}`,
+              distance: parseFloat(dist),
+            }))
+            .filter((c) => !isNaN(c.distance))
+            .sort((a, b) => a.distance - b.distance);
+        } catch (e) {
+          console.error("Error parsing curve distances:", e);
+        }
+      }
+
+      const numberOfCurves =
+        configData.numberOfCurves && configData.numberOfCurves !== "--"
+          ? configData.numberOfCurves
+          : parsedCurves.length > 0
+          ? parsedCurves.length
+          : "--";
+
+      const logDateTime = `${formatDate(selectedLog.date)} ${formatTime(selectedLog.date, selectedLog.time)}`;
+
+      const metadata = [
+        ["Configuration Name", configName],
+        ["Path Length (mm)", pathLength],
+        ["Threshold Force (mN)", thresholdForce],
+        ["Insertion Stroke Length (mm)", insertionLength],
+        ["Retraction Stroke Length (mm)", retractionLength],
+        ["Number of Curves", numberOfCurves],
+        ["Log date/time", logDateTime],
+      ];
+
+      const metadataLines = metadata
+        .map((row) => row.map(escapeCsv).join(","))
+        .join("\n");
+
+      const headerRow = ["Curve", "Direction (Insertion/Retraction)", "Distance (mm)", "Force (mN)"]
+        .map(escapeCsv)
+        .join(",");
+
+      const dataPoints = [
+        ...forwardData.map((p) => ({ ...p, direction: "Insertion" })),
+        ...backwardData.map((p) => ({ ...p, direction: "Retraction" })),
+      ];
+
+      const dataRows = dataPoints
+        .map((p) => {
+          const curve = p.curve || getCurveLabelForDistance(parseFloat(p.distance), parsedCurves);
+          const direction = p.direction;
+          const distVal = typeof p.distance === "number" ? p.distance.toFixed(2) : p.distance;
+          const forceVal = typeof p.force === "number" ? p.force.toFixed(2) : p.force;
+          return [curve, direction, distVal, forceVal].map(escapeCsv).join(",");
+        })
+        .join("\n");
+
+      const csvContent = `${metadataLines}\n\n${headerRow}\n${dataRows}\n`;
+
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const timeStampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+      const baseLogName =
+        configData.configName ||
+        selectedLog.configName ||
+        selectedLog.displayName ||
+        (selectedLog.filename ? selectedLog.filename.replace(/\.csv$/i, "") : "Log");
+      const fileName = `${baseLogName}_${timeStampStr}.csv`;
+
+      const res = await window.api.saveCsv({ fileName, csvContent });
+
+      if (res && res.success) {
+        const savedFileName = res.filePath ? res.filePath.split(/[\\/]/).pop() : fileName;
+        setCsvToast({
+          type: "success",
+          message: `Saved to Downloads: ${savedFileName}`,
+        });
+      } else {
+        setCsvToast({
+          type: "error",
+          message: `Failed to save CSV: ${res?.error || "Unknown error"}`,
+        });
+      }
+    } catch (err) {
+      console.error("Error generating CSV:", err);
+      setCsvToast({
+        type: "error",
+        message: `Error downloading CSV: ${err.message}`,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     loadLogFiles();
@@ -607,8 +756,18 @@ const ProcessLogs = () => {
               </div>
             )}
 
-            {/* Delete Buttons */}
+            {/* Action & Delete Buttons */}
             <div className="space-y-3">
+              <button
+                onClick={handleDownloadCsv}
+                disabled={!selectedLog || isLoading || isDownloading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2"
+                title={!selectedLog ? "Select a log first" : "Download log as CSV"}
+              >
+                <Download className="w-4 h-4" />
+                <span>{isDownloading ? "Downloading..." : "Download CSV"}</span>
+              </button>
+
               <button
                 onClick={() => {
                   if (selectedLog) {
@@ -954,6 +1113,25 @@ const ProcessLogs = () => {
               OK
             </button>
           </div>
+        </div>
+      )}
+
+      {/* CSV Toast Notification */}
+      {csvToast && (
+        <div
+          className={`fixed top-6 right-6 z-50 flex items-center space-x-3 px-5 py-3.5 rounded-xl shadow-2xl transition-all border ${
+            csvToast.type === "success"
+              ? "bg-emerald-600 text-white border-emerald-500"
+              : "bg-red-600 text-white border-red-500"
+          }`}
+        >
+          <span className="text-sm font-semibold">{csvToast.message}</span>
+          <button
+            onClick={() => setCsvToast(null)}
+            className="p-1 hover:bg-white/20 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

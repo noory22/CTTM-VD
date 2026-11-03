@@ -358,11 +358,18 @@ const ProcessMode = () => {
             const currentTime = (Date.now() - startTimeRef.current) / 1000;
             const timeFormatted = parseFloat(currentTime.toFixed(1));
 
+            const isRetractionMovement = Boolean(
+              isRetractionActive ||
+              sensorData.status === "RETRACTION" ||
+              sensorData.status === "RETRACTION PAUSED"
+            );
+
             setChartData((prev) => {
               const newDataPoint = {
                 time: timeFormatted,
                 distance: parseFloat(data.distance) || 0,
                 force: parseFloat(data.force_mN) || 0,
+                type: isRetractionMovement ? "retraction" : "insertion",
               };
 
               const newData = [...prev, newDataPoint];
@@ -1079,8 +1086,8 @@ const ProcessMode = () => {
           const index = legendItem.datasetIndex;
           const meta = legend.chart.getDatasetMeta(index);
           
-          // Allow toggling for force line (index 0), but not for curves
-          if (index === 0) {
+          // Allow toggling for Insertion (index 0) and Retraction (index 1), but not for curves
+          if (index === 0 || index === 1) {
             meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : null;
             legend.chart.update();
           }
@@ -1108,8 +1115,8 @@ const ProcessMode = () => {
               return `${label} - Reached: ${reachedCurves[curveLabel] ? 'Yes' : 'No'}`;
             }
             
-            // For force line
-            return `Force: ${context.parsed.y.toFixed(2)} mN`;
+            // For force lines (Insertion / Retraction)
+            return `${label || "Force"}: ${context.parsed.y.toFixed(2)} mN`;
           },
           title: function(context) {
             return `Distance: ${context[0].parsed.x.toFixed(2)} mm`;
@@ -1211,8 +1218,10 @@ const ProcessMode = () => {
   const chartConfig = {
     datasets: [
       {
-        label: "Force",
-        data: chartData.map((point) => ({ x: point.distance, y: point.force })),
+        label: "Insertion",
+        data: chartData
+          .filter((point) => point.type !== "retraction")
+          .map((point) => ({ x: point.distance, y: point.force })),
         borderColor: "#3b82f6",
         backgroundColor: "rgba(59, 130, 246, 0.1)",
         fill: false,
@@ -1220,6 +1229,22 @@ const ProcessMode = () => {
         pointBorderColor: "#fff",
         pointHoverBackgroundColor: "#fff",
         pointHoverBorderColor: "#3b82f6",
+
+        yAxisID: 'y',
+        xAxisID: 'x',
+      },
+      {
+        label: "Retraction",
+        data: chartData
+          .filter((point) => point.type === "retraction")
+          .map((point) => ({ x: point.distance, y: point.force })),
+        borderColor: "#ef4444",
+        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        fill: false,
+        pointBackgroundColor: "#ef4444",
+        pointBorderColor: "#fff",
+        pointHoverBackgroundColor: "#fff",
+        pointHoverBorderColor: "#ef4444",
 
         yAxisID: 'y',
         xAxisID: 'x',

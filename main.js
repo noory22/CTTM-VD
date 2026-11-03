@@ -1,3 +1,4 @@
+console.log(">>> MAIN.JS LOADED <<<");
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const https = require('https');
@@ -1424,6 +1425,38 @@ ipcMain.handle("read-log-file", async (event, filePath) => {
 
 ipcMain.handle("delete-log-file", async (event, filePath) => {
   return await deleteLogFile(filePath);
+});
+
+console.log("save-csv handler registered");
+ipcMain.handle("save-csv", async (event, { fileName, csvContent }) => {
+  try {
+    const downloadsPath = app.getPath("downloads");
+    let safeName = (fileName || "process_log").replace(/[\\/:*?"<>|]/g, "_").trim();
+    if (!safeName.toLowerCase().endsWith(".csv")) {
+      safeName += ".csv";
+    }
+
+    const ext = path.extname(safeName);
+    const base = path.basename(safeName, ext);
+    let finalPath = path.join(downloadsPath, safeName);
+    let counter = 1;
+
+    while (fs.existsSync(finalPath)) {
+      finalPath = path.join(downloadsPath, `${base} (${counter})${ext}`);
+      counter++;
+    }
+
+    await fs.promises.writeFile(finalPath, '\uFEFF' + csvContent, 'utf8');
+    try {
+      shell.showItemInFolder(finalPath);
+    } catch (e) {
+      console.warn("Could not show item in folder:", e);
+    }
+    return { success: true, filePath: finalPath };
+  } catch (err) {
+    console.error("Error saving CSV to downloads:", err);
+    return { success: false, error: err.message };
+  }
 });
 
 

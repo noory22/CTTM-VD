@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("api", {
   getLogFiles: () => ipcRenderer.invoke("get-log-files"),
   readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
   deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
+  saveCsv: (payload) => ipcRenderer.invoke("save-csv", payload),
 
   // ============= DATA FUNCTIONS =============
   readData: () => ipcRenderer.invoke("read-data"),

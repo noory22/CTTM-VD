@@ -1,3 +1,4 @@
+console.log(">>> MAIN.JS LOADED <<<");
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const https = require('https');
@@ -64,16 +65,16 @@ if (!isDev) {
     console.error('Update error:', err);
     if (mainWindow && !mainWindow.isDestroyed()) {
       const errMsg = (err.message || err.toString() || '').toLowerCase();
-      const isNotFoundError = errMsg.includes('404') || 
-                            errMsg.includes('not found') || 
-                            errMsg.includes('unable to find') ||
-                            errMsg.includes('cannot find') ||
-                            errMsg.includes('no published versions') ||
-                            errMsg.includes('err_updater_latest_version_not_found') ||
-                            errMsg.includes('err_updater_channel_file_not_found') ||
-                            errMsg.includes('err_updater_no_published_versions') ||
-                            errMsg.includes('latest.yml');
-                            
+      const isNotFoundError = errMsg.includes('404') ||
+        errMsg.includes('not found') ||
+        errMsg.includes('unable to find') ||
+        errMsg.includes('cannot find') ||
+        errMsg.includes('no published versions') ||
+        errMsg.includes('err_updater_latest_version_not_found') ||
+        errMsg.includes('err_updater_channel_file_not_found') ||
+        errMsg.includes('err_updater_no_published_versions') ||
+        errMsg.includes('latest.yml');
+
       if (isNotFoundError) {
         console.log('No updates found on server (treating as up-to-date).');
         mainWindow.webContents.send('update-status', 'latest');
@@ -237,8 +238,8 @@ async function findAndConnectPort() {
       const manufacturer = (p.manufacturer || '').toLowerCase();
 
       const isBluetooth = pnp.includes('BTHENUM') ||
-                          friendly.includes('bluetooth') ||
-                          manufacturer.includes('bluetooth');
+        friendly.includes('bluetooth') ||
+        manufacturer.includes('bluetooth');
       return !isBluetooth;
     });
 
@@ -625,6 +626,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 1100,
+    minHeight: 650,
     icon: iconPath,
     webPreferences: {
       preload: preloadPath,
@@ -1426,6 +1429,37 @@ ipcMain.handle("delete-log-file", async (event, filePath) => {
   return await deleteLogFile(filePath);
 });
 
+console.log("save-csv handler registered");
+ipcMain.handle("save-csv", async (event, { fileName, csvContent }) => {
+  try {
+    const downloadsPath = app.getPath("downloads");
+    let safeName = (fileName || "process_log").replace(/[\\/:*?"<>|]/g, "_").trim();
+    if (!safeName.toLowerCase().endsWith(".csv")) {
+      safeName += ".csv";
+    }
+
+    const ext = path.extname(safeName);
+    const base = path.basename(safeName, ext);
+    let finalPath = path.join(downloadsPath, safeName);
+    let counter = 1;
+
+    while (fs.existsSync(finalPath)) {
+      finalPath = path.join(downloadsPath, `${base} (${counter})${ext}`);
+      counter++;
+    }
+
+    await fs.promises.writeFile(finalPath, '\uFEFF' + csvContent, 'utf8');
+    try {
+      shell.showItemInFolder(finalPath);
+    } catch (e) {
+      console.warn("Could not show item in folder:", e);
+    }
+    return { success: true, filePath: finalPath };
+  } catch (err) {
+    console.error("Error saving CSV to downloads:", err);
+    return { success: false, error: err.message };
+  }
+});
 
 // ============================
 // GITHUB RELEASE & AUTO-UPDATE ENGINE
@@ -1541,7 +1575,7 @@ function downloadFileWithProgress(urlStr, destPath, onProgress) {
         });
 
         fileStream.on('error', (err) => {
-          fs.unlink(destPath, () => {});
+          fs.unlink(destPath, () => { });
           reject(err);
         });
       });
@@ -1582,9 +1616,9 @@ async function checkForUpdatesHandler(isManual = false) {
 
     if (remoteVersion && isNewerVersion(remoteVersion, currentVersion)) {
       console.log(`New version found: ${remoteVersion} (current: ${currentVersion})`);
-      
+
       const exeAsset = latestRelease.assets?.find(a => a.name && a.name.endsWith('.exe')) ||
-                       latestRelease.assets?.[0];
+        latestRelease.assets?.[0];
 
       pendingUpdateInfo = {
         version: remoteVersion,
@@ -1609,7 +1643,7 @@ async function checkForUpdatesHandler(isManual = false) {
     }
   } catch (err) {
     console.error('Update check error, falling back to electron-updater:', err.message);
-    
+
     // Fallback: try electron-updater if not in dev
     if (!isDev) {
       try {
@@ -1621,10 +1655,10 @@ async function checkForUpdatesHandler(isManual = false) {
     }
 
     const errMsg = (err.message || '').toLowerCase();
-    const isNetworkError = errMsg.includes('enotfound') || 
-                           errMsg.includes('econnrefused') || 
-                           errMsg.includes('etimedout') ||
-                           errMsg.includes('timed out');
+    const isNetworkError = errMsg.includes('enotfound') ||
+      errMsg.includes('econnrefused') ||
+      errMsg.includes('etimedout') ||
+      errMsg.includes('timed out');
 
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (isNetworkError) {

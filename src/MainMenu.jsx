@@ -1,3 +1,4 @@
+import AppHeader from './components/AppHeader';
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Power, Usb } from 'lucide-react';
@@ -306,70 +307,7 @@ const MainMenu = () => {
   return (
     <div className="min-h-screen flex flex-col bg-linear-to-br from-slate-50 via-blue-50 to-indigo-100 shrink-0 ">
       {/* Header */}
-      <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
-
-        <div className="flex-1 flex items-center gap-4">
-          <h1 className="text-3xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            Main Menu
-          </h1>
-          {emergencyActive && (
-            <div className="bg-red-600 text-white px-4 py-2 rounded-full animate-pulse border-2 border-red-400 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="font-bold tracking-wider">EMERGENCY BUTTON ACTIVATED</span>
-            </div>
-          )}
-        </div>
-
-        {/* Connection & Power Status Indicators */}
-        <div className="flex items-center gap-3 mr-4">
-          {/* Power Status Indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
-            <Power className={`w-4 h-4 ${powerActive ? 'text-green-700' : 'text-red-700'}`} />
-            <span className={`text-sm font-medium ${powerActive ? 'text-green-700' : 'text-red-700'}`}>
-              POWERED {powerActive ? 'ON' : 'OFF'}
-            </span>
-          </div>
-
-          {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionInfo.bgColor} border ${connectionInfo.borderColor}`}>
-            {connectionInfo.icon}
-            <span className={`text-sm font-medium ${connectionInfo.color}`}>
-              {connectionInfo.text}
-            </span>
-          </div> */}
-                    {/* USB Status Indicator - Updated to match power button style */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
-            <Usb className={`w-4 h-4 ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`} />
-            <span className={`text-sm font-medium ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
-              {connectionStatus === 'connected' ? 'USB Connected' : 'USB Disconnected'}
-            </span>
-          </div>
-
-          {connectionStatus === 'disconnected' && connectionChecked && (
-            <button
-              onClick={handleReconnect}
-              className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Reconnect
-            </button>
-          )}
-        </div>
-        {/* Direct Power Button - No Dropdown */}
-        <button
-          onClick={() => {
-            const confirmed = window.confirm("Are you sure you want to exit?");
-            if (confirmed) {
-              window.close();
-            }
-          }}
-          className="group bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
-        >
-          <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-        </button>
-
-
-      </header>
+      <AppHeader title="Main Menu" />
 
       {/* Main Content */}
       <main className="flex-1 px-8 py-8 xl:py-16 shrink-0 min-h-0">
