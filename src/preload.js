@@ -33,6 +33,10 @@ contextBridge.exposeInMainWorld("api", {
   deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
   saveCsv: (payload) => ipcRenderer.invoke("save-csv", payload),
 
+  // ============= CALIBRATION API =============
+  setCalibrationMode: (mode) => ipcRenderer.invoke("set-calibration-mode", mode),
+  writeWeightRange: (weight) => ipcRenderer.invoke("write-weight-range", weight),
+
   // ============= DATA FUNCTIONS =============
   readData: () => ipcRenderer.invoke("read-data"),
   // Add this to the exposed API in preload.js

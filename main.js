@@ -1,10 +1,6 @@
 console.log(">>> MAIN.JS LOADED <<<");
-const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const https = require('https');
-const http = require('http');
-const os = require('os');
-const { spawn } = require('child_process');
 
 const ModbusRTU = require("modbus-serial");
 const { SerialPort } = require('serialport');
@@ -26,16 +22,6 @@ let mainWindow;
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
-try {
-  autoUpdater.setFeedURL({
-    provider: 'github',
-    owner: 'noory22',
-    repo: 'CTTM-VD',
-    private: false
-  });
-} catch (e) {
-  console.log('autoUpdater setFeedURL note:', e.message);
-}
 
 if (!isDev) {
   autoUpdater.on('checking-for-update', () => {
@@ -65,16 +51,16 @@ if (!isDev) {
     console.error('Update error:', err);
     if (mainWindow && !mainWindow.isDestroyed()) {
       const errMsg = (err.message || err.toString() || '').toLowerCase();
-      const isNotFoundError = errMsg.includes('404') || 
-                            errMsg.includes('not found') || 
-                            errMsg.includes('unable to find') ||
-                            errMsg.includes('cannot find') ||
-                            errMsg.includes('no published versions') ||
-                            errMsg.includes('err_updater_latest_version_not_found') ||
-                            errMsg.includes('err_updater_channel_file_not_found') ||
-                            errMsg.includes('err_updater_no_published_versions') ||
-                            errMsg.includes('latest.yml');
-                            
+      const isNotFoundError = errMsg.includes('404') ||
+        errMsg.includes('not found') ||
+        errMsg.includes('unable to find') ||
+        errMsg.includes('cannot find') ||
+        errMsg.includes('no published versions') ||
+        errMsg.includes('err_updater_latest_version_not_found') ||
+        errMsg.includes('err_updater_channel_file_not_found') ||
+        errMsg.includes('err_updater_no_published_versions') ||
+        errMsg.includes('latest.yml');
+
       if (isNotFoundError) {
         console.log('No updates found on server (treating as up-to-date).');
         mainWindow.webContents.send('update-status', 'latest');
@@ -131,6 +117,15 @@ const REG_FORCE = 54;  // 2 registers (32-bit float)
 const REG_TEMP = 503; // 1 register (16-bit integer)
 const REG_MANUAL_DISTANCE = 6550; // 1 register (16-bit integer)
 
+// Load Cell Calibration Coils & Registers
+const COIL_CALIB_NORMAL = 2400;    // M400 Normal
+const COIL_CALIB_TARE = 2401;      // M401 Tare / Tear
+const COIL_CALIB_CALIBRATE = 2402; // M402 Calibrate
+
+const REG_PLC_REALTIME = 0;        // R0 PLC Real-time value
+const REG_RAW_FORCE = 1;           // R1 Raw Force value
+const REG_WEIGHT_RANGE = 2;        // R2 Weight range parameter sent to PLC from UI
+
 // Global State
 let isConnected = false;
 let isConnecting = false;
@@ -162,6 +157,10 @@ let plcState = {
   heater: false,
   insertion: false,
   retraction: false,
+  rawForce: 0,           // R1
+  realtimePlcValue: 0,   // R0
+  weightRange: 0,        // R2
+  calibrationMode: 'normal', // 'normal' | 'tare' | 'calibrate'
   lastUpdated: 0
 };
 
@@ -238,8 +237,8 @@ async function findAndConnectPort() {
       const manufacturer = (p.manufacturer || '').toLowerCase();
 
       const isBluetooth = pnp.includes('BTHENUM') ||
-                          friendly.includes('bluetooth') ||
-                          manufacturer.includes('bluetooth');
+        friendly.includes('bluetooth') ||
+        manufacturer.includes('bluetooth');
       return !isBluetooth;
     });
 
@@ -819,6 +818,27 @@ async function processModbusLoop() {
         cycleSuccess = true;
       } catch (e) { }
 
+      // Read Calibration Registers (R0, R1, R2)
+      try {
+        const calibRegs = await client.readHoldingRegisters(REG_PLC_REALTIME, 3);
+        const toSignedInt16 = (val) => (val > 32767 ? val - 65536 : val);
+        plcState.realtimePlcValue = toSignedInt16(calibRegs.data[0]); // R0: Signed 16-bit integer
+        plcState.rawForce = toSignedInt16(calibRegs.data[1]);         // R1: Signed 16-bit integer
+        plcState.weightRange = calibRegs.data[2];                    // R2: Weight range parameter (0-1000)
+        cycleSuccess = true;
+      } catch (e) { }
+
+      // Read Calibration Coils (M10, M11, M12)
+      try {
+        const calibCoils = await client.readCoils(COIL_CALIB_NORMAL, 3);
+        const m10 = Boolean(calibCoils.data[0]);
+        const m11 = Boolean(calibCoils.data[1]);
+        const m12 = Boolean(calibCoils.data[2]);
+        if (m10) plcState.calibrationMode = 'normal';
+        else if (m11) plcState.calibrationMode = 'tare';
+        else if (m12) plcState.calibrationMode = 'calibrate';
+      } catch (e) { }
+
       // 4. Connection Success/Failure Tracking
       if (cycleSuccess) {
         consecutiveErrors = 0;
@@ -886,6 +906,12 @@ async function readPLCData() {
     heater: plcState.heater,
     insertion: plcState.insertion,
     retraction: plcState.retraction,
+
+    // Calibration data
+    rawForce: plcState.rawForce,
+    realtimePlcValue: plcState.realtimePlcValue,
+    weightRange: plcState.weightRange,
+    calibrationMode: plcState.calibrationMode,
 
     // Raw data stub for compatibility if needed
     rawRegisters: {}
@@ -1249,6 +1275,73 @@ ipcMain.handle("disable-manual-mode", async () => {
   });
 });
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Calibration: Set Mode (Normal = M10, Tare = M11, Calibrate = M12)
+// Ensures mutual exclusion: turns OFF other 2 coils before turning ON selected coil
+ipcMain.handle("set-calibration-mode", async (event, mode) => {
+  return await safeExecute("SET-CALIBRATION-MODE", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    console.log(`[Calibration] Setting mode: ${mode}`);
+
+    let turnOnCoil = null;
+    let turnOffCoils = [];
+
+    if (mode === 'normal') {
+      turnOnCoil = COIL_CALIB_NORMAL;    // 2010 (M10)
+      turnOffCoils = [COIL_CALIB_TARE, COIL_CALIB_CALIBRATE]; // 2011, 2012
+    } else if (mode === 'tare') {
+      turnOnCoil = COIL_CALIB_TARE;      // 2011 (M11)
+      turnOffCoils = [COIL_CALIB_NORMAL, COIL_CALIB_CALIBRATE]; // 2010, 2012
+    } else if (mode === 'calibrate') {
+      turnOnCoil = COIL_CALIB_CALIBRATE; // 2012 (M12)
+      turnOffCoils = [COIL_CALIB_NORMAL, COIL_CALIB_TARE]; // 2010, 2011
+    } else {
+      throw new Error(`Invalid calibration mode: ${mode}`);
+    }
+
+    // Step 1: Turn OFF the other two coils first (with inter-write delay for RS-485 stability)
+    for (const coil of turnOffCoils) {
+      try {
+        console.log(`[Calibration] Writing coil ${coil} = false`);
+        await client.writeCoil(coil, false);
+        await delay(60);
+      } catch (err) {
+        console.warn(`[Calibration] Warning turning off coil ${coil}:`, err.message);
+      }
+    }
+
+    // Step 2: Turn ON the selected coil
+    console.log(`[Calibration] Writing target coil ${turnOnCoil} = true`);
+    await client.writeCoil(turnOnCoil, true);
+    await delay(60);
+
+    plcState.calibrationMode = mode;
+    console.log(`[Calibration] Mode ${mode} successfully written to PLC (Coil ${turnOnCoil} is ON)`);
+
+    return { success: true, mode: plcState.calibrationMode, activeCoil: turnOnCoil };
+  });
+});
+
+// Calibration: Write Weight Range to R2
+ipcMain.handle("write-weight-range", async (event, value) => {
+  return await safeExecute("WRITE-WEIGHT-RANGE", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    const numVal = parseInt(value, 10);
+    if (isNaN(numVal) || numVal < 0 || numVal > 1000) {
+      throw new Error("Weight range must be a number between 0 and 1000");
+    }
+
+    console.log(`Writing Weight Range: ${numVal} to R2`);
+    await client.writeRegister(REG_WEIGHT_RANGE, numVal);
+    plcState.weightRange = numVal;
+
+    return { success: true, weightRange: numVal };
+  });
+});
+
 // Read data handler
 ipcMain.handle("read-data", async () => {
   return await readPLCData();
@@ -1320,7 +1413,6 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
     return false;
   }
 });
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 ipcMain.handle("send-process-mode", async (event, config) => {
   return await safeExecute("SEND_PROCESS_CONFIG", async () => {
     try {
@@ -1574,7 +1666,7 @@ function downloadFileWithProgress(urlStr, destPath, onProgress) {
         });
 
         fileStream.on('error', (err) => {
-          fs.unlink(destPath, () => {});
+          fs.unlink(destPath, () => { });
           reject(err);
         });
       });
@@ -1615,9 +1707,9 @@ async function checkForUpdatesHandler(isManual = false) {
 
     if (remoteVersion && isNewerVersion(remoteVersion, currentVersion)) {
       console.log(`New version found: ${remoteVersion} (current: ${currentVersion})`);
-      
+
       const exeAsset = latestRelease.assets?.find(a => a.name && a.name.endsWith('.exe')) ||
-                       latestRelease.assets?.[0];
+        latestRelease.assets?.[0];
 
       pendingUpdateInfo = {
         version: remoteVersion,
@@ -1642,7 +1734,7 @@ async function checkForUpdatesHandler(isManual = false) {
     }
   } catch (err) {
     console.error('Update check error, falling back to electron-updater:', err.message);
-    
+
     // Fallback: try electron-updater if not in dev
     if (!isDev) {
       try {
@@ -1654,10 +1746,10 @@ async function checkForUpdatesHandler(isManual = false) {
     }
 
     const errMsg = (err.message || '').toLowerCase();
-    const isNetworkError = errMsg.includes('enotfound') || 
-                           errMsg.includes('econnrefused') || 
-                           errMsg.includes('etimedout') ||
-                           errMsg.includes('timed out');
+    const isNetworkError = errMsg.includes('enotfound') ||
+      errMsg.includes('econnrefused') ||
+      errMsg.includes('etimedout') ||
+      errMsg.includes('timed out');
 
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (isNetworkError) {
@@ -1670,14 +1762,10 @@ async function checkForUpdatesHandler(isManual = false) {
     }
     return { success: false, error: err.message };
   }
-}
-
-ipcMain.handle("check-for-updates", async () => {
-  return await checkForUpdatesHandler(true);
 });
-
 // Add handler for update progress
 ipcMain.handle("get-update-progress", () => {
+  // Placeholder or state return if needed
   return { success: true };
 });
 
@@ -1685,63 +1773,12 @@ ipcMain.handle("get-update-progress", () => {
 // App lifecycle
 // -------------------------
 ipcMain.handle("download-update", async () => {
-  if (!pendingUpdateInfo || !pendingUpdateInfo.downloadUrl) {
-    try {
-      autoUpdater.downloadUpdate();
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  }
-
-  // If downloadUrl is a webpage rather than direct binary
-  if (!pendingUpdateInfo.downloadUrl.endsWith('.exe')) {
-    shell.openExternal(pendingUpdateInfo.downloadUrl);
-    return { success: true };
-  }
-
-  try {
-    const targetFile = path.join(os.tmpdir(), pendingUpdateInfo.fileName || `CTTM-Update-${pendingUpdateInfo.version}.exe`);
-    downloadedInstallerPath = targetFile;
-
-    console.log(`Downloading update from ${pendingUpdateInfo.downloadUrl} to ${targetFile}...`);
-
-    await downloadFileWithProgress(pendingUpdateInfo.downloadUrl, targetFile, (progressObj) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update-progress', progressObj);
-      }
-    });
-
-    console.log('Update downloaded successfully!');
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', 'downloaded');
-    }
-    return { success: true };
-  } catch (err) {
-    console.error('Failed to download update:', err);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-status', `Error: ${err.message}`);
-    }
-    return { success: false, error: err.message };
-  }
+  autoUpdater.downloadUpdate();
+  return { success: true };
 });
 
 ipcMain.handle("quit-and-install", () => {
-  if (downloadedInstallerPath && fs.existsSync(downloadedInstallerPath)) {
-    console.log('Launching installer:', downloadedInstallerPath);
-    spawn(downloadedInstallerPath, [], {
-      detached: true,
-      stdio: 'ignore'
-    }).unref();
-    app.quit();
-  } else {
-    try {
-      autoUpdater.quitAndInstall();
-    } catch (e) {
-      console.error('quitAndInstall error:', e);
-      app.quit();
-    }
-  }
+  autoUpdater.quitAndInstall();
 });
 
 app.whenReady().then(() => {
@@ -1750,7 +1787,7 @@ app.whenReady().then(() => {
   // Check for updates on startup (with a small delay to ensure window is ready)
   if (!isDev) {
     setTimeout(() => {
-      checkForUpdatesHandler(false);
+      autoUpdater.checkForUpdatesAndNotify();
     }, 5000);
   }
 });
