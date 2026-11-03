@@ -1762,7 +1762,7 @@ async function checkForUpdatesHandler(isManual = false) {
     }
     return { success: false, error: err.message };
   }
-});
+}
 // Add handler for update progress
 ipcMain.handle("get-update-progress", () => {
   // Placeholder or state return if needed
