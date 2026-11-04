@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Power, RotateCw, Usb } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Power, RotateCw, Usb, AlertCircle } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -32,6 +32,7 @@ const Manual = () => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [showConnectionError, setShowConnectionError] = useState(false);
+  const [showHomingPrompt, setShowHomingPrompt] = useState(false);
   const [force, setForce] = useState('--');
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
@@ -726,18 +727,53 @@ const Manual = () => {
   // 2. Insertion is currently active
   const isRetractionDisabled = isMovementDisabled || controls.insertion;
 
-  const handleBack = () => {
-    window.api.checkConnection()
-      .then(status => {
-        if (status.connected) {
-          stopAllMovement();
-          window.api.disableManualMode()
-            .catch(error => console.error('Disable error:', error));
+  const handleBack = async () => {
+    try {
+      const status = await window.api.checkConnection();
+      if (!status.connected) {
+        const confirmLeave = window.confirm("PLC is not connected. Are you sure you want to leave manual mode?");
+        if (confirmLeave) {
+          window.history.back();
         }
-      })
-      .catch(error => console.error('Connection check error:', error));
+        return;
+      }
 
-    window.history.back();
+      // If homing is currently running, block exit and show prompt
+      if (controls.homing) {
+        setShowHomingPrompt(true);
+        return;
+      }
+
+      // Verify latest X0 bit (COIL_LLS) state
+      let isHomed = coilLLSStatus;
+      try {
+        const data = await window.api.readData();
+        if (data && data.success && data.coilLLS !== undefined) {
+          isHomed = Boolean(data.coilLLS);
+          setCoilLLSStatus(isHomed);
+        }
+      } catch (err) {
+        console.warn("Could not read immediate PLC data, using last known state:", err);
+      }
+
+      // If X0 bit is False, user cannot leave manual mode
+      if (!isHomed) {
+        setShowHomingPrompt(true);
+        return;
+      }
+
+      // If X0 bit is True, user can leave manual mode
+      stopAllMovement();
+      await window.api.disableManualMode().catch(error => console.error('Disable error:', error));
+      window.history.back();
+    } catch (error) {
+      console.error('Connection check error:', error);
+      if (!coilLLSStatus) {
+        setShowHomingPrompt(true);
+      } else {
+        window.history.back();
+      }
+    }
   };
 
   const handleExit = () => {
@@ -1060,6 +1096,41 @@ const Manual = () => {
         </div>
       </div>
 
+      {/* Homing Required Prompt Modal */}
+      {showHomingPrompt && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border border-amber-200">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Homing Required</h3>
+            <p className="text-slate-600 font-medium mb-6">
+              Perform homing before leaving the manual mode
+            </p>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowHomingPrompt(false)}
+                className="flex-1 px-4 py-2.5 border-2 border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowHomingPrompt(false);
+                  resetCatheter();
+                }}
+                disabled={controls.homing}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center space-x-2"
+              >
+                <RotateCw className={`w-4 h-4 ${controls.homing ? 'animate-spin' : ''}`} />
+                <span>Perform Homing</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
