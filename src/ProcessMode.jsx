@@ -217,7 +217,20 @@ const ProcessMode = () => {
 
           // Updated: Continuously update COIL_LLS status from polling
           if (data.coilLLS !== undefined) {
-            setCoilLLSStatus(Boolean(data.coilLLS));
+            const isLLSTrue = Boolean(data.coilLLS);
+            setCoilLLSStatus(isLLSTrue);
+
+            // If machine reaches home position while homing, update status to READY
+            if (isLLSTrue) {
+              setIsHoming((prevIsHoming) => {
+                if (prevIsHoming) {
+                  console.log("✅ Homing complete via polling - changing status to READY");
+                  setSensorData((prev) => ({ ...prev, status: "READY" }));
+                  return false;
+                }
+                return prevIsHoming;
+              });
+            }
           }
 
           // ---------------------------------------------------------------------------
@@ -333,7 +346,17 @@ const ProcessMode = () => {
               setIsRetractionActive(false);
               setIsRetractionEnabled(false);
               setIsProcessRunning(false);
-              setSensorData((prev) => ({ ...prev, status: "READY" }));
+
+              // If machine is not yet at physical home switch (X1), transition to HOMING and disable controls
+              if (!coilLLSStatus) {
+                console.log("🔄 Retraction stroke completed (0mm), machine moving to home switch (X1) - Status: HOMING");
+                setIsHoming(true);
+                setSensorData((prev) => ({ ...prev, status: "HOMING" }));
+              } else {
+                console.log("✅ Retraction stroke completed and machine is already at home - Status: READY");
+                setIsHoming(false);
+                setSensorData((prev) => ({ ...prev, status: "READY" }));
+              }
 
               // Clear chart data
               setChartData([]);
@@ -345,7 +368,7 @@ const ProcessMode = () => {
               stopCsvLogging();
 
               console.log(
-                "🔄 System reset to READY state after retraction completion",
+                "🔄 Retraction cycle completed processing finished",
               );
             }
           }
@@ -795,12 +818,18 @@ const ProcessMode = () => {
       return;
     }
 
+    // Determine if we are starting fresh or from pause
+    const isResuming = isPaused || isRetractionPaused;
+
+    // Safety guard: Machine must be at home position (X1 bit active) to start new process
+    if (!isResuming && !coilLLSStatus) {
+      console.warn("⚠️ Machine is not at home position (X1 bit is FALSE). Please reset first.");
+      return;
+    }
+
     try {
       console.log("🚀 Starting process...");
       let result;
-
-      // Determine if we are starting fresh or from pause
-      const isResuming = isPaused || isRetractionPaused;
 
       if (isResuming) {
         console.log("⏯️ Resuming process from pause...");
@@ -963,13 +992,18 @@ const ProcessMode = () => {
   };
 
   const shouldDisableButtons = () => {
-    return isHoming || !selectedConfig;
+    return isHoming || sensorData.status === "HOMING" || !selectedConfig;
   };
 
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
+
+    // Machine must be at home position (X1 bit active) to start the process
+    if (!isPaused && !coilLLSStatus) return true;
+
     if (isRetractionEnabled && !isRetractionPaused) return true;
     if (isRetractionPaused) return true;
+    if (isRetractionCompleted && !coilLLSStatus) return true;
     if (isRetractionCompleted) return false;
     if (isProcessRunning && !isPaused && !isRetractionPaused) return true;
     return false;
@@ -1010,8 +1044,8 @@ const ProcessMode = () => {
     }
 
     // Other conditions from original logic
-    if (!selectedConfig || isHoming) return true;
-    if (isRetractionCompleted) return true; // Disable when retraction is completed
+    if (!selectedConfig || isHoming || sensorData.status === "HOMING") return true;
+    if (isRetractionCompleted && coilLLSStatus) return true;
 
     return false;
   };
@@ -1032,11 +1066,13 @@ const ProcessMode = () => {
   };
 
   const shouldDisableBackButton = () => {
+    if (isHoming || sensorData.status === "HOMING") return true;
     if (isRetractionCompleted) return false; // Enable back button when retraction is completed
     return sensorData.status !== "READY";
   };
 
   const shouldDisablePowerButton = () => {
+    if (isHoming || sensorData.status === "HOMING") return true;
     if (isRetractionCompleted) return false; // Enable power button when retraction is completed
     return sensorData.status !== "READY";
   };
@@ -2260,6 +2296,11 @@ const ProcessMode = () => {
               <button
                 onClick={handleStart}
                 disabled={shouldDisableStartButton()}
+                title={
+                  !isPaused && !coilLLSStatus
+                    ? "Machine is not at home position (X1 bit is OFF). Press RESET to home the machine before starting."
+                    : ""
+                }
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableStartButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-linear-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30"
@@ -2300,6 +2341,11 @@ const ProcessMode = () => {
               <button
                 onClick={handleReset}
                 disabled={shouldDisableResetButton()}
+                title={
+                  coilLLSStatus
+                    ? "Machine is already at home position (X1 bit active)"
+                    : "Reset machine to home position"
+                }
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableResetButton()
                     ? "bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300"
                     : "bg-linear-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30"
@@ -2312,6 +2358,11 @@ const ProcessMode = () => {
                 )}
               </button>
             </div>
+            {!coilLLSStatus && !isProcessRunning && !isPaused && !isHoming && sensorData.status !== "HOMING" && (
+              <p className="text-center text-xs text-amber-600 font-semibold mt-2">
+                ⚠️ Machine is not at home position. Press RESET to bring it to home before starting.
+              </p>
+            )}
           </div>
         </section>
       </main>
