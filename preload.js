@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("api", {
   getLogFiles: () => ipcRenderer.invoke("get-log-files"),
   readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
   deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
+  saveCsv: (payload) => ipcRenderer.invoke("save-csv", payload),
 
   // ============= CALIBRATION API =============
   setCalibrationMode: (mode) => ipcRenderer.invoke("set-calibration-mode", mode),
@@ -102,6 +103,16 @@ ipcRenderer.on('update-progress', (event, progress) => {
     detail: progress
   }));
 });
+ipcRenderer.on('update_available',()=>{
+  alert("New update available! Downloading...");
+});
+ipcRenderer.on('update_ready',()=>{
+  const confirmUpdate = confirm("Update ready. Restart now:");
+  if (confirmUpdate){
+    ipcRenderer.send('restart_app');
+  }
+});
+
 // Optional: Add error handling for IPC
 window.addEventListener('DOMContentLoaded', () => {
   console.log('Preload script loaded');

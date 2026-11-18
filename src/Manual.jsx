@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Power, RotateCw, Usb, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Power, RotateCw, Usb, AlertCircle, Check } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -33,6 +33,7 @@ const Manual = () => {
   const streamRef = useRef(null);
   const [showConnectionError, setShowConnectionError] = useState(false);
   const [showHomingPrompt, setShowHomingPrompt] = useState(false);
+  const [showPowerExitModal, setShowPowerExitModal] = useState(false);
   const [force, setForce] = useState('--');
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
@@ -738,9 +739,9 @@ const Manual = () => {
         return;
       }
 
-      // If homing is currently running, block exit and show prompt
+      // If homing is currently running, block exit and show homing modal until it completes
       if (controls.homing) {
-        setShowHomingPrompt(true);
+        setShowPowerExitModal(true);
         return;
       }
 
@@ -756,7 +757,7 @@ const Manual = () => {
         console.warn("Could not read immediate PLC data, using last known state:", err);
       }
 
-      // If X0 bit is False, user cannot leave manual mode
+      // If X0 bit is False, user cannot leave manual mode without homing
       if (!isHomed) {
         setShowHomingPrompt(true);
         return;
@@ -768,8 +769,8 @@ const Manual = () => {
       window.history.back();
     } catch (error) {
       console.error('Connection check error:', error);
-      if (!coilLLSStatus) {
-        setShowHomingPrompt(true);
+      if (!coilLLSStatus || controls.homing) {
+        setShowPowerExitModal(true);
       } else {
         window.history.back();
       }
@@ -778,6 +779,51 @@ const Manual = () => {
 
   const handleExit = () => {
     disableManualMode();
+  };
+
+  const handlePowerButton = async () => {
+    try {
+      // Verify latest home status (COIL_LLS / X1 bit)
+      let isHomed = coilLLSStatus;
+      try {
+        const data = await window.api.readData();
+        if (data && data.success && data.coilLLS !== undefined) {
+          isHomed = Boolean(data.coilLLS);
+          setCoilLLSStatus(isHomed);
+        }
+      } catch (err) {
+        console.warn("Could not read immediate PLC data, using last known state:", err);
+      }
+
+      if (!isHomed) {
+        // Machine is not at home position:
+        // 1. Stop manual movements
+        stopAllMovement();
+
+        // 2. Turn ON homing coil (COIL_HOME = 2001)
+        setControls(prev => ({ ...prev, homing: true }));
+        setGraphData([]);
+        setCatheterPosition(0);
+        await window.api.home().catch(err => console.error('Error initiating homing:', err));
+
+        // 3. Show Power Exit Modal so user can navigate back, exit app, or stay
+        setShowPowerExitModal(true);
+      } else {
+        // Machine is already at home position
+        const confirmed = window.confirm("Are you sure you want to exit?");
+        if (confirmed) {
+          handleExit();
+          window.close();
+        }
+      }
+    } catch (error) {
+      console.error("Power button error:", error);
+      const confirmed = window.confirm("Are you sure you want to exit?");
+      if (confirmed) {
+        handleExit();
+        window.close();
+      }
+    }
   };
 
   return (
@@ -802,8 +848,13 @@ const Manual = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={handleBack}
-            className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
-            title="Back"
+            disabled={controls.homing}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              controls.homing
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-white hover:shadow-md"
+            }`}
+            title={controls.homing ? "Homing in progress... Please wait" : "Back"}
           >
             <ArrowLeft className="w-6 h-6 text-slate-600" />
           </button>
@@ -837,15 +888,9 @@ const Manual = () => {
           )}
           {/* Power Button */}
           <button
-            onClick={() => {
-              const confirmed = window.confirm("Are you sure you want to exit?");
-              if (confirmed) {
-                handleExit();
-                window.close();
-              }
-            }}
+            onClick={handlePowerButton}
             className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
-            title="Exit"
+            title="Power / Exit"
           >
             <Power className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
           </button>
@@ -1126,6 +1171,86 @@ const Manual = () => {
               >
                 <RotateCw className={`w-4 h-4 ${controls.homing ? 'animate-spin' : ''}`} />
                 <span>Perform Homing</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Power Homing / Exit Modal */}
+      {showPowerExitModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center border border-blue-200">
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                controls.homing || !coilLLSStatus
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-green-100 text-green-600"
+              }`}
+            >
+              {controls.homing || !coilLLSStatus ? (
+                <RotateCw className="w-8 h-8 animate-spin" />
+              ) : (
+                <Check className="w-8 h-8 text-green-600" />
+              )}
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-800 mb-2">
+              {controls.homing || !coilLLSStatus
+                ? "Homing in Progress"
+                : "Homing Completed"}
+            </h3>
+            <p className="text-slate-600 font-medium mb-6 text-sm">
+              {controls.homing || !coilLLSStatus
+                ? "Machine is performing homing to reach the home position. Navigation back to the Main Menu is disabled until homing completes."
+                : "Machine has reached the home position. You can now safely navigate back to the Main Menu or exit."}
+            </p>
+
+            <div className="flex flex-col space-y-2.5">
+              <button
+                onClick={async () => {
+                  setShowPowerExitModal(false);
+                  stopAllMovement();
+                  await window.api.disableManualMode().catch((e) => console.error(e));
+                  window.history.back();
+                }}
+                disabled={controls.homing || !coilLLSStatus}
+                className={`w-full px-4 py-2.5 font-medium rounded-xl transition-colors flex items-center justify-center space-x-2 ${
+                  controls.homing || !coilLLSStatus
+                    ? "bg-slate-200 cursor-not-allowed text-slate-400 border border-slate-300"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20"
+                }`}
+              >
+                {controls.homing || !coilLLSStatus ? (
+                  <>
+                    <RotateCw className="w-4 h-4 animate-spin text-slate-400" />
+                    <span>Homing in progress... (Wait to navigate back)</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Navigate Back to Main Menu</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowPowerExitModal(false);
+                  handleExit();
+                  window.close();
+                }}
+                className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center space-x-2"
+              >
+                <Power className="w-4 h-4" />
+                <span>Exit Application</span>
+              </button>
+
+              <button
+                onClick={() => setShowPowerExitModal(false)}
+                className="w-full px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium rounded-xl transition-colors text-sm"
+              >
+                Stay in Manual Mode
               </button>
             </div>
           </div>

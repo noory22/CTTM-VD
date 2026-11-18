@@ -625,6 +625,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 1100,
+    minHeight: 650,
     icon: iconPath,
     webPreferences: {
       preload: preloadPath,
@@ -653,7 +655,60 @@ function createWindow() {
     }, 2000);
   });
 
-  // Handle window close
+  let isQuittingGracefully = false;
+
+  // Handle window close - ensure machine is homed before app exits
+  mainWindow.on('close', async (event) => {
+    if (isQuittingGracefully) {
+      return; // Allow close if already completed homing
+    }
+
+    // Check if machine is away from home (COIL_LLS / X1 is false) and connected
+    if (isConnected && !plcState.coilLLS) {
+      event.preventDefault();
+      isQuittingGracefully = true;
+
+      // Hide window so UI closes immediately for the user
+      try {
+        mainWindow.hide();
+      } catch (e) {}
+
+      console.log("⏳ Application closing: Machine is not at home position (X1 bit is OFF). Triggering homing before exit...");
+
+      try {
+        await client.writeCoil(COIL_HOME, true);
+        console.log("✅ Homing coil (COIL_HOME) turned ON for exit shutdown");
+      } catch (err) {
+        console.error("Failed to turn on homing coil during close:", err.message);
+      }
+
+      // Keep polling until machine reaches home position (COIL_LLS is true) or timeout
+      const startTime = Date.now();
+      const maxWaitTime = 40000; // 40s max safety timeout
+
+      const homingCheckInterval = setInterval(async () => {
+        const timedOut = Date.now() - startTime > maxWaitTime;
+        if (plcState.coilLLS || timedOut) {
+          clearInterval(homingCheckInterval);
+          console.log(
+            plcState.coilLLS
+              ? "✅ Homing completed successfully before shutdown! (X1 active)"
+              : "⚠️ Homing wait timed out before shutdown."
+          );
+
+          try {
+            if (client.isOpen) {
+              await client.close();
+            }
+          } catch (e) {}
+
+          app.exit(0);
+        }
+      }, 200);
+    }
+  });
+
+  // Handle window closed
   mainWindow.on('closed', () => {
     // Cleanup logic handled by window-all-closed or app quit
     mainWindow = null;
@@ -1550,7 +1605,6 @@ ipcMain.handle("save-csv", async (event, { fileName, csvContent }) => {
     return { success: false, error: err.message };
   }
 });
-
 
 // ============================
 // GITHUB RELEASE & AUTO-UPDATE ENGINE
