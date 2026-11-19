@@ -112,10 +112,10 @@ const COIL_INSERTION = 2008;
 const COIL_RET = 2009;
 const COIL_CLAMP = 2007;
 
-const REG_DISTANCE = 70;  // 1 register (16-bit integer)
+const REG_DISTANCE = 6116; // D116 — 2 registers (32-bit float)
 const REG_FORCE = 54;  // 2 registers (32-bit float)
 const REG_TEMP = 503; // 1 register (16-bit integer)
-const REG_MANUAL_DISTANCE = 6550; // 1 register (16-bit integer)
+const REG_MANUAL_DISTANCE = 6550; // D550 — 2 registers (32-bit float)
 
 // Load Cell Calibration Coils & Registers
 const COIL_CALIB_NORMAL = 2400;    // M400 Normal
@@ -411,9 +411,13 @@ async function appendCSVData(data, config) {
       throw new Error("CSV stream not initialized");
     }
 
+    const formattedDistance = Number.isFinite(Number(data.distance))
+      ? Number(data.distance).toFixed(2)
+      : data.distance;
+
     const row = [
       new Date().toISOString(),
-      data.distance,
+      formattedDistance,
       data.force_mN,
       data.temperature,
       config.configName,
@@ -728,6 +732,7 @@ function registersToFloat32LE(register1, register2) {
   return view.getFloat32(0, true);
 }
 
+
 // -------------------------
 // Safe register reading
 // -------------------------
@@ -856,8 +861,9 @@ async function processModbusLoop() {
 
       // Read Registers
       try {
-        const dRes = await client.readHoldingRegisters(REG_DISTANCE, 1);
-        plcState.distance = dRes.data[0];
+        const dRes = await client.readHoldingRegisters(REG_DISTANCE, 2);
+        const rawDist = registersToFloat32LE(dRes.data[0], dRes.data[1]);
+        plcState.distance = Number.isFinite(rawDist) ? Number(rawDist.toFixed(2)) : 0;
         cycleSuccess = true;
       } catch (e) { }
 
@@ -868,8 +874,9 @@ async function processModbusLoop() {
       } catch (e) { }
 
       try {
-        const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 1);
-        plcState.manualDistance = new Int16Array(new Uint16Array([mdRes.data[0]]).buffer)[0];
+        const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 2);
+        const rawManualDist = registersToFloat32LE(mdRes.data[0], mdRes.data[1]);
+        plcState.manualDistance = Number.isFinite(rawManualDist) ? Number(rawManualDist.toFixed(2)) : 0;
         cycleSuccess = true;
       } catch (e) { }
 
@@ -945,7 +952,7 @@ async function readPLCData() {
   return {
     success: true,
     distance: plcState.distance,
-    distanceDisplay: `${plcState.distance} mm`,
+    distanceDisplay: `${Number.isFinite(plcState.distance) ? plcState.distance.toFixed(2) : '--'} mm`,
 
     force_mN: plcState.force_mN,
     forceDisplay: `${plcState.force_mN} mN`,
@@ -954,7 +961,7 @@ async function readPLCData() {
     temperatureDisplay: `${plcState.temperature.toFixed(1)} °C`,
 
     manualDistance: plcState.manualDistance,
-    manualDistanceDisplay: `${plcState.manualDistance} mm`,
+    manualDistanceDisplay: `${Number.isFinite(plcState.manualDistance) ? plcState.manualDistance.toFixed(2) : '--'} mm`,
 
     coilLLS: plcState.coilLLS,
     clamp: plcState.clamp,

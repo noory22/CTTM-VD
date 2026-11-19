@@ -236,13 +236,13 @@ const ProcessMode = () => {
             force_mN: rawVal(data.force_mN),
             force_mN_Display: formatVal(toFixed2(data.force_mN), "mN"),
             distance: rawVal(data.distance),
-            distanceDisplay: formatVal(data.distance, "mm"),
+            distanceDisplay: formatVal(toFixed2(data.distance), "mm"),
           });
 
           setSensorData((prev) => ({
             ...prev,
             force: formatVal(toFixed2(data.force_mN), "mN"),
-            distance: formatVal(data.distance, "mm"),
+            distance: formatVal(toFixed2(data.distance), "mm"),
           }));
 
           // Updated: Continuously update COIL_LLS status from polling

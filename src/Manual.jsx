@@ -1162,7 +1162,7 @@ const Manual = () => {
             <div className="text-center px-2">
               <p className="text-[12px] text-slate-500 font-medium leading-none mb-1">Distance</p>
               <p className="text-xl font-bold text-slate-900 tracking-tight leading-none">
-                {manualDistance === '--' ? '0 mm' : `${manualDistance} mm`}
+                {manualDistance === '--' || isNaN(Number(manualDistance)) ? '0.00 mm' : `${Number(manualDistance).toFixed(2)} mm`}
               </p>
             </div>
           </div>
