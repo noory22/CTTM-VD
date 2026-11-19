@@ -95,7 +95,7 @@ const ProcessMode = () => {
   const [showForceLimitAlert, setShowForceLimitAlert] = useState(false);
 
   const [isLogging, setIsLogging] = useState(false);
-  const lastLoggedDataRef = useRef({ time: null, distance: null, force: null });
+  const lastLoggedDataRef = useRef({ direction: null, time: null, distance: null, force: null });
 
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
@@ -537,7 +537,7 @@ const ProcessMode = () => {
       if (result.success) {
         setIsLogging(true);
         console.log("✅ CSV logging started:", result.fileName);
-        lastLoggedDataRef.current = { time: null, distance: null, force: null };
+        lastLoggedDataRef.current = { direction: null, time: null, distance: null, force: null };
       } else {
         console.error("❌ Failed to start CSV logging:", result.error);
       }
@@ -575,8 +575,16 @@ const ProcessMode = () => {
       return;
     }
 
+    const isRetractionMovement = Boolean(
+      isRetractionActive ||
+      sensorData.status === "RETRACTION" ||
+      sensorData.status === "RETRACTION PAUSED"
+    );
+    const direction = isRetractionMovement ? "retraction" : "insertion";
+
+    // Deduplicate: Skip logging if direction, distance, and force are identical to the last logged row
     if (
-      lastLoggedDataRef.current.time === timeNum &&
+      lastLoggedDataRef.current.direction === direction &&
       lastLoggedDataRef.current.distance === distNum &&
       lastLoggedDataRef.current.force === forceNum
     ) {
@@ -585,7 +593,7 @@ const ProcessMode = () => {
 
     try {
       console.log(
-        `📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`,
+        `📊 ATTEMPTING LOG: Direction=${direction}, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`,
       );
 
       // Send data with config included
@@ -599,12 +607,13 @@ const ProcessMode = () => {
       });
 
       lastLoggedDataRef.current = {
+        direction: direction,
         time: timeNum,
         distance: distNum,
         force: forceNum,
       };
       console.log(
-        `✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN`,
+        `✅ SUCCESSFULLY LOGGED: Direction=${direction}, Distance=${distNum}mm, Force=${forceNum}mN`,
       );
     } catch (error) {
       console.error("❌ Error logging sensor data:", error);

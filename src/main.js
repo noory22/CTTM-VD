@@ -90,6 +90,8 @@ if (!isDev) {
 // ============================
 let csvStream = null;
 let csvFilePath = null;
+let lastLoggedDistance = null;
+let lastLoggedForce = null;
 // -------------------------
 // Modbus / PLC settings - UPDATED BASED ON PYTHON CODE
 // -------------------------
@@ -398,6 +400,9 @@ async function startCSVLogging(config) {
       "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,InsertionStrokeLength,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
     );
 
+    lastLoggedDistance = null;
+    lastLoggedForce = null;
+
     return { success: true, filePath: csvFilePath };
   } catch (error) {
     console.error("CSV start error:", error);
@@ -414,6 +419,21 @@ async function appendCSVData(data, config) {
     const formattedDistance = Number.isFinite(Number(data.distance))
       ? Number(data.distance).toFixed(2)
       : data.distance;
+
+    const formattedForce = Number.isFinite(Number(data.force_mN))
+      ? Number(data.force_mN).toFixed(2)
+      : data.force_mN;
+
+    // Skip consecutive identical points to keep CSV clean
+    if (
+      lastLoggedDistance === formattedDistance &&
+      lastLoggedForce === formattedForce
+    ) {
+      return { success: true };
+    }
+
+    lastLoggedDistance = formattedDistance;
+    lastLoggedForce = formattedForce;
 
     const row = [
       new Date().toISOString(),
@@ -443,6 +463,8 @@ async function stopCSVLogging() {
       csvStream.end();
       csvStream = null;
     }
+    lastLoggedDistance = null;
+    lastLoggedForce = null;
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

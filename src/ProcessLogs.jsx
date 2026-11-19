@@ -166,10 +166,21 @@ const ProcessLogs = () => {
         .map(escapeCsv)
         .join(",");
 
-      const dataPoints = [
+      const rawDataPoints = [
         ...forwardPts.map((p) => ({ ...p, direction: "Insertion" })),
         ...backwardPts.map((p) => ({ ...p, direction: "Retraction" })),
       ];
+
+      // Filter out consecutive duplicate rows (same direction, distance, and force)
+      const dataPoints = rawDataPoints.filter((p, idx, arr) => {
+        if (idx === 0) return true;
+        const prev = arr[idx - 1];
+        const distA = typeof p.distance === "number" ? p.distance.toFixed(2) : p.distance;
+        const distB = typeof prev.distance === "number" ? prev.distance.toFixed(2) : prev.distance;
+        const forceA = typeof p.force === "number" ? p.force.toFixed(2) : p.force;
+        const forceB = typeof prev.force === "number" ? prev.force.toFixed(2) : prev.force;
+        return p.direction !== prev.direction || distA !== distB || forceA !== forceB;
+      });
 
       const dataRows = dataPoints
         .map((p) => {
@@ -850,19 +861,7 @@ const ProcessLogs = () => {
           </div>
           <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Snapshot Button */}
-            <button
-              onClick={handleTakeSnapshot}
-              disabled={!selectedLog || isSnapshotting || isLoading}
-              title={selectedLog ? "Take snapshot of graph and configuration" : "Select a log file to take snapshot"}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed disabled:shadow-none text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 disabled:hover:translate-y-0 shadow-lg hover:shadow-xl border border-blue-400/30 flex-shrink-0"
-            >
-              {isSnapshotting ? (
-                <div className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Camera className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-              )}
-            </button>
-
+            
             {/* Help Button */}
             <button
               onClick={() => setShowHelpModal(true)}
