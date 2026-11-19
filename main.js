@@ -1606,6 +1606,41 @@ ipcMain.handle("save-csv", async (event, { fileName, csvContent }) => {
   }
 });
 
+console.log("save-snapshot handler registered");
+ipcMain.handle("save-snapshot", async (event, { fileName, dataUrl }) => {
+  try {
+    const downloadsPath = app.getPath("downloads");
+    let safeName = (fileName || "process_graph_snapshot").replace(/[\\/:*?"<>|]/g, "_").trim();
+    if (!safeName.toLowerCase().endsWith(".png")) {
+      safeName += ".png";
+    }
+
+    const ext = path.extname(safeName);
+    const base = path.basename(safeName, ext);
+    let finalPath = path.join(downloadsPath, safeName);
+    let counter = 1;
+
+    while (fs.existsSync(finalPath)) {
+      finalPath = path.join(downloadsPath, `${base} (${counter})${ext}`);
+      counter++;
+    }
+
+    const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    await fs.promises.writeFile(finalPath, buffer);
+    try {
+      shell.showItemInFolder(finalPath);
+    } catch (e) {
+      console.warn("Could not show item in folder:", e);
+    }
+    return { success: true, filePath: finalPath };
+  } catch (err) {
+    console.error("Error saving snapshot to downloads:", err);
+    return { success: false, error: err.message };
+  }
+});
+
 // ============================
 // GITHUB RELEASE & AUTO-UPDATE ENGINE
 // ============================

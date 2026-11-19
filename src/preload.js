@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld("api", {
   readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
   deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
   saveCsv: (payload) => ipcRenderer.invoke("save-csv", payload),
+  saveSnapshot: (payload) => ipcRenderer.invoke("save-snapshot", payload),
 
   // ============= CALIBRATION API =============
   setCalibrationMode: (mode) => ipcRenderer.invoke("set-calibration-mode", mode),
