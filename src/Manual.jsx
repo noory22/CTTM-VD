@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, Power, RotateCw, Usb, AlertCircle, Check } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -28,6 +29,7 @@ ChartJS.register(
 );
 
 const Manual = () => {
+  const navigate = useNavigate();
   const chartRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -43,6 +45,32 @@ const Manual = () => {
     insertion: false,
     retraction: false
   });
+
+  // Emergency button listener: immediately navigate to Main Menu
+  useEffect(() => {
+    const checkInitialEmergency = async () => {
+      try {
+        const emerStatus = await window.api.checkEmergencyStatus();
+        if (emerStatus?.active) {
+          navigate("/", { replace: true });
+        }
+      } catch (err) {
+        console.error("Error checking initial emergency status:", err);
+      }
+    };
+    checkInitialEmergency();
+
+    const handleEmergencyStatus = (event) => {
+      if (event.detail === true) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    window.addEventListener("emergency-status-change", handleEmergencyStatus);
+    return () => {
+      window.removeEventListener("emergency-status-change", handleEmergencyStatus);
+    };
+  }, [navigate]);
 
   const [manualDistance, setManualDistance] = useState('--');
   const [graphData, setGraphData] = useState([]);

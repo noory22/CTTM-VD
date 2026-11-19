@@ -12,9 +12,14 @@ const SafetyAlert = ({ children }) => {
         const checkStatus = async () => {
             try {
                 const emerStatus = await window.api.checkEmergencyStatus();
-                setEmergencyActive(emerStatus.active);
+                const isEmer = emerStatus?.active === true;
+                setEmergencyActive(isEmer);
+                if (isEmer && location.pathname !== '/') {
+                    navigate('/', { replace: true });
+                }
+
                 const powStatus = await window.api.checkPowerStatus();
-                setPowerActive(powStatus.active);
+                setPowerActive(powStatus?.active === true);
             } catch (error) {
                 console.error('Failed to check initial status:', error);
             }
@@ -22,7 +27,11 @@ const SafetyAlert = ({ children }) => {
         checkStatus();
 
         const handleEmergencyStatus = (event) => {
-            setEmergencyActive(event.detail === true);
+            const isEmer = event.detail === true;
+            setEmergencyActive(isEmer);
+            if (isEmer && location.pathname !== '/') {
+                navigate('/', { replace: true });
+            }
         };
 
         const handlePowerStatus = (event) => {
@@ -35,12 +44,13 @@ const SafetyAlert = ({ children }) => {
             window.removeEventListener('emergency-status-change', handleEmergencyStatus);
             window.removeEventListener('power-status-change', handlePowerStatus);
         };
-    }, []);
+    }, [location.pathname, navigate]);
 
     const isHome = location.pathname === '/';
 
-    // Only show the blocking prompt if NOT on MainMenu
-    const showPrompt = (emergencyActive || !powerActive) && !isHome;
+    // When emergency button is pressed, the user is automatically navigated to MainMenu ('/').
+    // Only show prompt if power is stopped (!powerActive) and not on MainMenu
+    const showPrompt = !powerActive && !isHome;
     const isPowerStop = !powerActive;
 
     const handleBackToMenu = () => {

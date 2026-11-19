@@ -123,6 +123,36 @@ const ProcessMode = () => {
   const isMdScreen = screenSize.width >= 1024 && screenSize.width < 1366;
   const isSmScreen = screenSize.width < 1024;
 
+  // Emergency button listener: immediately stop CSV logging and navigate to Main Menu
+  useEffect(() => {
+    const checkInitialEmergency = async () => {
+      try {
+        const emerStatus = await window.api.checkEmergencyStatus();
+        if (emerStatus?.active) {
+          window.api.stopCSV().catch(() => {});
+          setIsLogging(false);
+          navigate("/", { replace: true });
+        }
+      } catch (err) {
+        console.error("Error checking initial emergency status:", err);
+      }
+    };
+    checkInitialEmergency();
+
+    const handleEmergencyStatus = (event) => {
+      if (event.detail === true) {
+        window.api.stopCSV().catch(() => {});
+        setIsLogging(false);
+        navigate("/", { replace: true });
+      }
+    };
+
+    window.addEventListener("emergency-status-change", handleEmergencyStatus);
+    return () => {
+      window.removeEventListener("emergency-status-change", handleEmergencyStatus);
+    };
+  }, [navigate]);
+
   //-------------------------------------------------------------------------//
   // NEW: COIL_LLS Monitoring - Continuously monitor COIL_LLS status
   //-------------------------------------------------------------------------//
